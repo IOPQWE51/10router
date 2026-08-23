@@ -5,6 +5,13 @@ import os from "os";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
+// Request details live in the SQLite layer; re-export so chatCore's
+// `@/lib/usageDb` import keeps working.
+export {
+  saveRequestDetail, getRequestDetails, getActiveRequests, getChartData,
+} from "@/lib/db/index.js";
+export { statsEmitter } from "@/lib/db/repos/usageRepo.js";
+
 // Get app name from root package.json config
 function getAppName() {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
