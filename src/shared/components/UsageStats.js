@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Card from "./Card";
 import Badge from "./Badge";
 import { CardSkeleton } from "./Loading";
+import ProviderTopology from "@/app/(dashboard)/dashboard/usage/components/ProviderTopology";
 
 function SortIcon({ field, currentSort, currentOrder }) {
   if (currentSort !== field) return <span className="ml-1 opacity-20">↕</span>;
@@ -309,6 +310,23 @@ export default function UsageStats() {
           </div>
         </Card>
       </div>
+
+      {/* Provider Topology */}
+      {(() => {
+        const providers = Object.entries(stats.byModel || {}).map(([key, data]) => ({
+          provider: data.provider || "unknown",
+          name: data.rawModel || key,
+        }));
+        const lastProv = sortedModels[0]?.provider || "";
+        return (
+          <ProviderTopology
+            providers={providers}
+            activeRequests={stats.activeRequests || []}
+            lastProvider={lastProv}
+            errorProvider={stats.errorProvider || ""}
+          />
+        );
+      })()}
 
       {/* Usage by Model Table */}
       <Card className="overflow-hidden">
