@@ -1,6 +1,7 @@
 <div align="center">
 
-  <img src="./images/9router.png?1" alt="10Router Dashboard" width="800"/>
+<img width="3818" height="1901" alt="image" src="https://github.com/user-attachments/assets/790507c7-68be-4111-a907-32ca6303f141" />
+
 
   # 10Router
 
