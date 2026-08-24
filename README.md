@@ -56,12 +56,12 @@
 | **配额按 connection 隔离** | `usage/components/ProviderLimits/utils.js` | 多账号场景下每个 connection 独立计算配额，互不干扰 |
 | **arm64 Docker 支持** | `docker-publish.yml` | 镜像同时构建 linux/amd64 + linux/arm64，支持树莓派等 ARM 设备 |
 
-### 已在上游的改动（不再重复）
+### 已在 fork分支 的改动（不再重复）
 
-- 货币本地化（¥/NT$/₩/₫）— 上游 v0.5.50+
-- 配额包按 connection 独立 — 上游 v0.5.50+
-- 拓扑 toggle — 上游 v0.5.50+
-- Cloudflare 修复 — 上游 v0.5.50+
+- 货币本地化（¥/NT$/₩/₫）— fork分支 v0.5.50+
+- 配额包按 connection 独立 — fork分支 v0.5.50+
+- 拓扑 toggle — fork分支 v0.5.50+
+- Cloudflare 修复 — fork分支 v0.5.50+
 
 ## 快速开始
 
