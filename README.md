@@ -145,7 +145,7 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 
 - [techysy](https://github.com/techysy) — 主要维护者
 - [ShiYanG Yu](https://github.com/ShiYanG) — 代码优化
-- [monlor](https://github.com/monlor) — arm64 Docker 支持
+- [monkey2jack](https://github.com/monkey2jack) — arm64 Docker 支持
 
 ## License
 
