@@ -5,7 +5,27 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Card from "./Card";
 import Badge from "./Badge";
 import { CardSkeleton } from "./Loading";
-import ProviderTopology from "@/app/(dashboard)/dashboard/usage/components/ProviderTopology";
+import { FREE_PROVIDERS, AI_PROVIDERS } from "@/shared/constants/providers";
+// Lazy-load: keeps @xyflow/react out of the shared bundle until topology renders
+import dynamic from "next/dynamic";
+const ProviderTopology = dynamic(() => import("@/app/(dashboard)/dashboard/usage/components/ProviderTopology"), { ssr: false });
+
+// Keep providers without serviceKinds (default LLM) or with "llm" in serviceKinds
+function isLLMProvider(id) {
+  const p = AI_PROVIDERS[id];
+  if (!p?.serviceKinds) return true;
+  return p.serviceKinds.includes("llm");
+}
+
+// A noAuth free provider is shown on the usage topology canvas unless the user
+// has hidden it via the providers-page toggle, or it defaults hidden (e.g. a
+// terminated service like mimo-free) and hasn't been explicitly shown.
+function isTopologyVisible(p, topologyVisibility) {
+  const setting = topologyVisibility?.[p.id];
+  if (setting === false) return false;
+  if (setting === true) return true;
+  return !p.topologyHiddenByDefault;
+}
 
 function SortIcon({ field, currentSort, currentOrder }) {
   if (currentSort !== field) return <span className="ml-1 opacity-20">↕</span>;
@@ -39,6 +59,51 @@ export default function UsageStats() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [viewMode, setViewMode] = useState("tokens"); // 'tokens' or 'costs'
+  const [providers, setProviders] = useState([]);
+
+  // Fetch connected providers once, deduplicate by provider type.
+  // Always include noAuth free providers (e.g. opencode) regardless of connections.
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/providers").then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/provider-nodes").then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/settings", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((s) => s?.topologyVisibility || {}),
+    ])
+      .then(([d, nodesData, topologyVisibility]) => {
+        // Build node name lookup for custom providers
+        const nodeNameMap = {};
+        for (const node of nodesData?.nodes || []) {
+          nodeNameMap[node.id] = node.name;
+        }
+        const seen = new Set();
+        const unique = (d?.connections || [])
+          .filter((c) => {
+            if (c.isActive === false) return false;
+            if (!isLLMProvider(c.provider)) return false;
+            if (seen.has(c.provider)) return false;
+            seen.add(c.provider);
+            return true;
+          })
+          .map((c) => ({
+            ...c,
+            nodeName: nodeNameMap[c.provider] || null,
+          }));
+        const noAuthProviders = Object.values(FREE_PROVIDERS)
+          .filter(
+            (p) =>
+              p.noAuth &&
+              !p.hidden &&
+              !seen.has(p.id) &&
+              isLLMProvider(p.id) &&
+              isTopologyVisible(p, topologyVisibility),
+          )
+          .map((p) => ({ provider: p.id, name: p.name }));
+        setProviders([...unique, ...noAuthProviders]);
+      })
+      .catch(() => {});
+  }, []);
 
   const toggleSort = (field) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -312,21 +377,12 @@ export default function UsageStats() {
       </div>
 
       {/* Provider Topology */}
-      {(() => {
-        const providers = Object.entries(stats.byModel || {}).map(([key, data]) => ({
-          provider: data.provider || "unknown",
-          name: data.rawModel || key,
-        }));
-        const lastProv = sortedModels[0]?.provider || "";
-        return (
-          <ProviderTopology
-            providers={providers}
-            activeRequests={stats.activeRequests || []}
-            lastProvider={lastProv}
-            errorProvider={stats.errorProvider || ""}
-          />
-        );
-      })()}
+      <ProviderTopology
+        providers={providers}
+        activeRequests={stats.activeRequests || []}
+        lastProvider={stats.recentRequests?.[0]?.provider || sortedModels[0]?.provider || ""}
+        errorProvider={stats.errorProvider || ""}
+      />
 
       {/* Usage by Model Table */}
       <Card className="overflow-hidden">
