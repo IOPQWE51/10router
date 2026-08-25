@@ -5,22 +5,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      arch:
-        description: '目标架构 (arm / x86)'
-        required: false
-        default: 'x86'
-        type: choice
-        options:
-          - x86
-          - arm
 
 permissions:
   contents: write
 
 jobs:
   build-fpk:
-    runs-on: ${{ inputs.arch == 'arm' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    strategy:
+      matrix:
+        arch: [x86, arm]
+    runs-on: ${{ matrix.arch == 'arm' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -35,33 +29,25 @@ jobs:
       - name: Build standalone server
         run: npm run build
 
-      # ── Assemble fnos-packaging/app/server ─────────────────────────────
       - name: Copy standalone to fnos-packaging
         run: |
           set -euo pipefail
           rm -rf fnos-packaging/app/server
           mkdir -p fnos-packaging/app/server
-
-          # standalone output (already includes custom-server.js via postbuild)
           cp -r .next/standalone/. fnos-packaging/app/server/
-
-          # Next tracing may miss these — copy explicitly (mirrors Dockerfile)
           cp -r open-sse fnos-packaging/app/server/
           cp -r src/mitm fnos-packaging/app/server/
-
           mkdir -p fnos-packaging/app/server/node_modules
           cp -r node_modules/node-forge fnos-packaging/app/server/node_modules/
           cp -r node_modules/sql.js fnos-packaging/app/server/node_modules/
           cp -r node_modules/next fnos-packaging/app/server/node_modules/
-
           ls -la fnos-packaging/app/server/
 
-      # ── Download fnpack ────────────────────────────────────────────────
       - name: Download fnpack
         env:
           FNPACK_VERSION: "1.2.1"
         run: |
-          if [ "${{ inputs.arch }}" = "arm" ]; then
+          if [ "${{ matrix.arch }}" = "arm" ]; then
             FNPACK_BIN="fnpack-${FNPACK_VERSION}-linux-arm64"
           else
             FNPACK_BIN="fnpack-${FNPACK_VERSION}-linux-amd64"
@@ -70,24 +56,21 @@ jobs:
           chmod +x /usr/local/bin/fnpack
           fnpack --help | head -3
 
-      # ── Prepare manifest ───────────────────────────────────────────────
       - name: Set manifest platform
         run: |
           cd fnos-packaging
           if grep -qE '^platform[[:space:]]*=' manifest; then
-            sed -i "s/^platform[[:space:]]*=.*/platform               = ${{ inputs.arch }}/" manifest
+            sed -i "s/^platform[[:space:]]*=.*/platform               = ${{ matrix.arch }}/" manifest
           else
-            echo "platform               = ${{ inputs.arch }}" >> manifest
+            echo "platform               = ${{ matrix.arch }}" >> manifest
           fi
           grep -E '^(platform|appname|version|ctl_stop|install_dep_apps)[[:space:]]*=' manifest
 
-      # ── Remove symlinks (fnpack 不支持) ────────────────────────────────
       - name: Remove symlinks
         run: |
           find fnos-packaging -type l -not -path '*/.git/*' -delete 2>/dev/null || true
           echo "symlinks remaining: $(find fnos-packaging -type l -not -path '*/.git/*' | wc -l)"
 
-      # ── Build url variant ──────────────────────────────────────────────
       - name: Build url variant
         run: |
           set -euo pipefail
@@ -95,17 +78,15 @@ jobs:
           node -e "
             const fs=require('fs');
             const c=fs.readFileSync('app/ui/config','utf8');
-            fs.writeFileSync('app/ui/config', c.replace(/\\\"type\\\"\\s*:\\s*\\\"[a-z]*\\\"/, '\\\"type\\\": \\\"url\\\"'));
+            fs.writeFileSync('app/ui/config', c.replace(/\\\\\\\"type\\\\\\\"\\\\s*:\\\\s*\\\\\\\"[a-z]*\\\\\\\"/, '\\\\\\\"type\\\\\\\": \\\\\\\"url\\\\\\\"'));
           "
           rm -f *.fpk
           fnpack build -d .
           [ -f 10router.fpk ] || { echo "ERROR: fnpack build url failed"; exit 1; }
           VERSION="$(grep -E '^version[[:space:]]*=' manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
-          mv 10router.fpk "10router-${VERSION}-${{ inputs.arch }}.fpk"
-          ls -lh "10router-${VERSION}-${{ inputs.arch }}.fpk"
-          echo "FPK_URL=$PWD/10router-${VERSION}-${{ inputs.arch }}.fpk" >> "$GITHUB_ENV"
+          mv 10router.fpk "10router-${VERSION}-${{ matrix.arch }}.fpk"
+          ls -lh "10router-${VERSION}-${{ matrix.arch }}.fpk"
 
-      # ── Build iframe variant ───────────────────────────────────────────
       - name: Build iframe variant
         run: |
           set -euo pipefail
@@ -113,38 +94,44 @@ jobs:
           node -e "
             const fs=require('fs');
             const c=fs.readFileSync('app/ui/config','utf8');
-            fs.writeFileSync('app/ui/config', c.replace(/\\\"type\\\"\\s*:\\s*\\\"[a-z]*\\\"/, '\\\"type\\\": \\\"iframe\\\"'));
+            fs.writeFileSync('app/ui/config', c.replace(/\\\\\\\"type\\\\\\\"\\\\s*:\\\\s*\\\\\\\"[a-z]*\\\\\\\"/, '\\\\\\\"type\\\\\\\": \\\\\\\"iframe\\\\\\\"'));
           "
           rm -f *.fpk
           fnpack build -d .
           [ -f 10router.fpk ] || { echo "ERROR: fnpack build iframe failed"; exit 1; }
           VERSION="$(grep -E '^version[[:space:]]*=' manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
-          mv 10router.fpk "10router-${VERSION}-iframe-${{ inputs.arch }}.fpk"
-          ls -lh "10router-${VERSION}-iframe-${{ inputs.arch }}.fpk"
-          echo "FPK_IFRAME=$PWD/10router-${VERSION}-iframe-${{ inputs.arch }}.fpk" >> "$GITHUB_ENV"
+          mv 10router.fpk "10router-${VERSION}-iframe-${{ matrix.arch }}.fpk"
+          ls -lh "10router-${VERSION}-iframe-${{ matrix.arch }}.fpk"
 
-      # ── Upload artifact (manual dispatch) ──────────────────────────────
       - name: Upload fpk artifact
-        if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: actions/upload-artifact@v4
         with:
-          name: 10router-fpk-${{ inputs.arch }}-${{ github.sha }}
+          name: 10router-fpk-${{ matrix.arch }}-${{ github.sha }}
           path: fnos-packaging/10router-*.fpk
           if-no-files-found: error
           retention-days: 14
 
-      # ── Release asset (tag push) ───────────────────────────────────────
+  release:
+    needs: build-fpk
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all fpk artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: fpk-assets
+          pattern: 10router-fpk-*
+          merge-multiple: true
+
       - name: Upload to Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: fnos-packaging/10router-*.fpk
+          files: fpk-assets/10router-*.fpk
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
         run: |
-          echo "## ✅ 10Router fpk 构建完成 (${{ inputs.arch }})" >> "$GITHUB_STEP_SUMMARY"
-          echo "- URL 版: \`$FPK_URL\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- IFRAME 版: \`$FPK_IFRAME\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "## ✅ 10Router fpk 构建完成" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh fpk-assets/ >> "$GITHUB_STEP_SUMMARY"
