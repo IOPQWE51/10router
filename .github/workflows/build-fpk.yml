@@ -87,18 +87,41 @@ jobs:
           find fnos-packaging -type l -not -path '*/.git/*' -delete 2>/dev/null || true
           echo "symlinks remaining: $(find fnos-packaging -type l -not -path '*/.git/*' | wc -l)"
 
-      # ── Build fpk ──────────────────────────────────────────────────────
-      - name: Build fpk
+      # ── Build url variant ──────────────────────────────────────────────
+      - name: Build url variant
         run: |
           set -euo pipefail
           cd fnos-packaging
+          node -e "
+            const fs=require('fs');
+            const c=fs.readFileSync('app/ui/config','utf8');
+            fs.writeFileSync('app/ui/config', c.replace(/\\\"type\\\"\\s*:\\s*\\\"[a-z]*\\\"/, '\\\"type\\\": \\\"url\\\"'));
+          "
           rm -f *.fpk
           fnpack build -d .
-          [ -f 10router.fpk ] || { echo "ERROR: fnpack build failed"; exit 1; }
+          [ -f 10router.fpk ] || { echo "ERROR: fnpack build url failed"; exit 1; }
           VERSION="$(grep -E '^version[[:space:]]*=' manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
           mv 10router.fpk "10router-${VERSION}-${{ inputs.arch }}.fpk"
           ls -lh "10router-${VERSION}-${{ inputs.arch }}.fpk"
-          echo "FPK_PATH=$PWD/10router-${VERSION}-${{ inputs.arch }}.fpk" >> "$GITHUB_ENV"
+          echo "FPK_URL=$PWD/10router-${VERSION}-${{ inputs.arch }}.fpk" >> "$GITHUB_ENV"
+
+      # ── Build iframe variant ───────────────────────────────────────────
+      - name: Build iframe variant
+        run: |
+          set -euo pipefail
+          cd fnos-packaging
+          node -e "
+            const fs=require('fs');
+            const c=fs.readFileSync('app/ui/config','utf8');
+            fs.writeFileSync('app/ui/config', c.replace(/\\\"type\\\"\\s*:\\s*\\\"[a-z]*\\\"/, '\\\"type\\\": \\\"iframe\\\"'));
+          "
+          rm -f *.fpk
+          fnpack build -d .
+          [ -f 10router.fpk ] || { echo "ERROR: fnpack build iframe failed"; exit 1; }
+          VERSION="$(grep -E '^version[[:space:]]*=' manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
+          mv 10router.fpk "10router-${VERSION}-iframe-${{ inputs.arch }}.fpk"
+          ls -lh "10router-${VERSION}-iframe-${{ inputs.arch }}.fpk"
+          echo "FPK_IFRAME=$PWD/10router-${VERSION}-iframe-${{ inputs.arch }}.fpk" >> "$GITHUB_ENV"
 
       # ── Upload artifact (manual dispatch) ──────────────────────────────
       - name: Upload fpk artifact
@@ -123,4 +146,5 @@ jobs:
       - name: Summary
         run: |
           echo "## ✅ 10Router fpk 构建完成 (${{ inputs.arch }})" >> "$GITHUB_STEP_SUMMARY"
-          echo "- 文件: \`$FPK_PATH\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL 版: \`$FPK_URL\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- IFRAME 版: \`$FPK_IFRAME\`" >> "$GITHUB_STEP_SUMMARY"
