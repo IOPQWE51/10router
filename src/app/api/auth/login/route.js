@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
+import { setDashboardAuthCookie } from "@/lib/auth/dashboardSession";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
@@ -30,12 +31,7 @@ export async function POST(request) {
         .sign(SECRET);
 
       const cookieStore = await cookies();
-      cookieStore.set("auth_token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-      });
+      await setDashboardAuthCookie(cookieStore, request);
 
       return NextResponse.json({ success: true });
     }
