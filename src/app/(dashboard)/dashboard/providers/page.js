@@ -23,6 +23,7 @@ import Link from "next/link";
 import { getErrorCode, getRelativeTime } from "@/shared/utils";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
+import { translate } from "@/i18n/runtime";
 import ModelAvailabilityBadge from "./components/ModelAvailabilityBadge";
 import AddCompatibleModal from "./components/AddCompatibleModal";
 
@@ -750,14 +751,14 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle, topolog
                       <span className="material-symbols-outlined text-[12px]">
                         pause_circle
                       </span>
-                      Disabled
+                      {translate("Disabled")}
                     </span>
                   </Badge>
                 ) : isNoAuth ? (
                   topologyOn ? (
-                    <Badge variant="success" size="sm" dot>Ready</Badge>
+                    <Badge variant="success" size="sm" dot>{translate("Ready")}</Badge>
                   ) : (
-                    <Badge variant="default" size="sm">Topology off</Badge>
+                    <Badge variant="default" size="sm">{translate("Topology off")}</Badge>
                   )
                 ) : (
                   <>
@@ -784,7 +785,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle, topolog
                   size="sm"
                   checked={!allDisabled}
                   onChange={() => {}}
-                  title={allDisabled ? "Enable provider" : "Disable provider"}
+                  title={allDisabled ? translate("Enable provider") : translate("Disable provider")}
                 />
               </div>
             )}
@@ -903,7 +904,7 @@ function ApiKeyProviderCard({
                       <span className="material-symbols-outlined text-[12px]">
                         pause_circle
                       </span>
-                      Disabled
+                      {translate("Disabled")}
                     </span>
                   </Badge>
                 ) : (
@@ -943,7 +944,7 @@ function ApiKeyProviderCard({
                   size="sm"
                   checked={!allDisabled}
                   onChange={() => {}}
-                  title={allDisabled ? "Enable provider" : "Disable provider"}
+                  title={allDisabled ? translate("Enable provider") : translate("Disable provider")}
                 />
               </div>
             )}

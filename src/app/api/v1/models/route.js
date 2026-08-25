@@ -547,6 +547,39 @@ export async function buildModelsList(kindFilter, options = {}) {
     }
   }
 
+  // Orphan custom models: custom models whose providerAlias has no active
+  // connection (e.g. noAuth free providers like opencode — they never create
+  // connection records, so the per-connection loop above never sees them).
+  // Without this branch, adding oc/mimo-v2.5-free works in the dashboard but
+  // the model never shows up in /v1/models for clients.
+  if (connections.length > 0) {
+    const connectedAliases = new Set();
+    for (const [providerId] of activeConnectionByProvider.entries()) {
+      const staticAlias = PROVIDER_ID_TO_ALIAS[providerId] || providerId;
+      connectedAliases.add(staticAlias);
+      const alias = getProviderAlias(providerId);
+      if (alias) connectedAliases.add(alias);
+      connectedAliases.add(providerId);
+      const conn = activeConnectionByProvider.get(providerId);
+      const prefix = conn?.providerSpecificData?.prefix;
+      if (prefix) connectedAliases.add(String(prefix).trim());
+    }
+    for (const customModel of customModels) {
+      if (!customModel?.id) continue;
+      const kind = getModelKind(customModel) || LLM_KIND;
+      if (!kindFilter.includes(kind)) continue;
+      const alias = String(customModel.providerAlias || "").trim();
+      if (!alias || connectedAliases.has(alias)) continue;
+      const modelId = String(customModel.id).trim();
+      if (!modelId) continue;
+      models.push({
+        id: `${alias}/${modelId}`,
+        object: "model",
+        owned_by: alias,
+      });
+    }
+  }
+
   const dedupedModels = [];
   const seenModelIds = new Set();
   for (const model of models) {
