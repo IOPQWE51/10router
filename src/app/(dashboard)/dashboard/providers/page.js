@@ -720,7 +720,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle, topolog
     <Link href={`/dashboard/providers/${providerId}`} className="group min-w-0">
       <Card
         padding="xs"
-        className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
+        className={`h-full hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors cursor-pointer ${allDisabled || (topologyToggleable && !topologyOn) ? "opacity-50" : ""}`}
       >
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
@@ -754,7 +754,11 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle, topolog
                     </span>
                   </Badge>
                 ) : isNoAuth ? (
-                  <Badge variant="success" size="sm" dot>Ready</Badge>
+                  topologyOn ? (
+                    <Badge variant="success" size="sm" dot>Ready</Badge>
+                  ) : (
+                    <Badge variant="default" size="sm">Topology off</Badge>
+                  )
                 ) : (
                   <>
                     {getStatusDisplay(connected, error, errorCode)}
