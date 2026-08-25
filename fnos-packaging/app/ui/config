@@ -1,0 +1,13 @@
+{
+  ".url": {
+    "10router.Application": {
+      "title": "10Router",
+      "icon": "images/icon_{0}.png",
+      "type": "url",
+      "protocol": "http",
+      "port": "20127",
+      "url": "/",
+      "allUsers": true
+    }
+  }
+}

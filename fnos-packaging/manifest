@@ -1,0 +1,15 @@
+appname               = 10router
+version               = 0.5.55
+display_name          = 10Router
+desc                  = FREE AI Router & Token Saver - AI 编码路由器（10Router 版，端口 20127）
+platform              = x86
+source                = thirdparty
+maintainer            = decolua
+maintainer_url        = https://github.com/decolua/9router
+distributor           = techysy
+distributor_url       = https://github.com/techysy/10router-fnos
+desktop_uidir         = ui
+desktop_applaunchname = 10router.Application
+service_port          = 20127
+ctl_stop              = true
+install_dep_apps      = nodejs_v24

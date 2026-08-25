@@ -1,0 +1,21 @@
+{
+    "data-share":
+    {
+        "shares": [
+            {
+                "name": "10router",
+                "permission":
+                {
+                    "rw": ["10router"]
+                }
+            },
+            {
+                "name": "10router/data",
+                "permission":
+                {
+                    "rw": ["10router"]
+                }
+            }
+        ]
+    }
+}
