@@ -8,7 +8,7 @@
   [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
   [![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
   [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-  [![9Router upstream](https://img.shields.io/badge/9Router-v0.5.55-cyan.svg)](https://github.com/decolua/9router)
+  [![10Router](https://img.shields.io/badge/10Router-v1.0.0-orange.svg)](https://github.com/techysy/10router)
   [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 
   基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
@@ -66,6 +66,42 @@
 
 ## 快速开始
 
+### Docker 部署
+
+```bash
+docker pull ghcr.io/techysy/10router:latest
+docker run -d \
+  --name 10router \
+  -p 20128:20128 \
+  -v ~/.9router:/app/data \
+  ghcr.io/techysy/10router:latest
+```
+
+支持 `linux/amd64` 和 `linux/arm64`。
+
+### fnOS fpk 安装
+
+从 [Releases](https://github.com/techysy/10router/releases) 下载对应架构的 `.fpk` 文件：
+
+| 文件 | 说明 |
+|------|------|
+| `10router-1.0.0-x86.fpk` | x86 URL 版 |
+| `10router-1.0.0-iframe-x86.fpk` | x86 IFRAME 版 |
+| `10router-1.0.0-arm.fpk` | ARM URL 版 |
+| `10router-1.0.0-iframe-arm.fpk` | ARM IFRAME 版 |
+
+安装：App Center → 手动安装 → 选择 fpk。
+
+### Standalone Server
+
+```bash
+tar xzf 10router-server.tar.gz -C /opt/10router
+cd /opt/10router
+node custom-server.js --port 20128
+```
+
+### 源码开发
+
 ```bash
 git clone https://github.com/techysy/10router.git
 cd 10router
@@ -84,19 +120,6 @@ PORT=20128 HOSTNAME=0.0.0.0 npm run start
 - Dashboard: `http://localhost:20128/dashboard`
 - API endpoint: `http://localhost:20128/v1`
 - 初始密码: `123456`（登录后请修改）
-
-## Docker 部署
-
-```bash
-docker pull ghcr.io/techysy/10router:latest
-docker run -d \
-  --name 10router \
-  -p 20128:20128 \
-  -v ~/.9router:/root/.9router \
-  ghcr.io/techysy/10router:latest
-```
-
-支持 `linux/amd64` 和 `linux/arm64`。
 
 ## 同步上游
 
