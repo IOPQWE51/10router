@@ -1,12 +1,10 @@
-name: Build 9Router standalone server
+name: Build 10Router standalone server
 
 on:
   workflow_dispatch:
   push:
     tags:
       - "v*"
-    branches:
-      - feat/cache-stats-regional-currency
 
 permissions:
   contents: write
@@ -16,6 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify tag matches manifest version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION="$(grep -E '^version[[:space:]]*=' fnos-packaging/manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
+          echo "tag=${TAG_VERSION} manifest=${MANIFEST_VERSION}"
+          if [ "${TAG_VERSION}" != "${MANIFEST_VERSION}" ]; then
+            echo "ERROR: tag ${GITHUB_REF_NAME} does not match fnos-packaging/manifest version ${MANIFEST_VERSION}"
+            exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -35,9 +45,15 @@ jobs:
           rm -rf app-server && mkdir -p app-server
           cp -r "$STANDALONE"/. app-server/
           cp custom-server.js app-server/
+          # Next file tracing omits sibling files; MITM runs server.js as a separate process.
+          cp -r open-sse app-server/
+          cp -r src/mitm app-server/
           npm pack node-forge@latest --pack-destination /tmp 2>/dev/null
           mkdir -p app-server/node_modules/node-forge
           tar xzf /tmp/node-forge-*.tgz -C app-server/node_modules/node-forge --strip-components=1
+          # sql.js loads dist/sql-wasm.wasm by path at runtime; tracing only follows JS
+          # imports, so the last-resort DB driver would abort with ENOENT without it.
+          cp -r node_modules/sql.js app-server/node_modules/
           tar czf 10router-server.tar.gz -C app-server .
           ls -la 10router-server.tar.gz
 
@@ -64,7 +80,7 @@ jobs:
             node custom-server.js --port 20128
             ```
             
-            Data directory: `~/.9router/` (override with `DATA_DIR`)
+            Data directory: `~/.10router/` (override with `DATA_DIR`)
           files: 10router-server.tar.gz
           fail_on_unmatched_files: false
         env:

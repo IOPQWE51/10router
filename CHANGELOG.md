@@ -1,5 +1,12 @@
 # v1.0.0 (2026-08-26)
 
+## ⚠️ Breaking Changes
+
+1. **数据目录改名**：默认数据目录从 `~/.9router/` 变为 `~/.10router/`（Windows: `%APPDATA%\10router`）。启动时若检测到旧目录存在且新目录为空，会自动一次性拷贝迁移（旧目录保留不删除）。显式设置 `DATA_DIR` 的环境不受影响。
+2. **SAML entityID 变更**：默认 issuer 从 `urn:9router:sp` 改为 `urn:10router:sp`。已在 IdP 侧注册过 9Router SP 的用户升级后需在 IdP 重新注册新的 entityID，否则 SSO 登录中断。可在设置中手动改回旧值。
+3. **MITM CA 更名**：MITM 代理的 CA 证书随数据目录更名重新生成，已在设备端信任旧 CA 的需重新信任新 CA。
+4. **grok config marker 改名**：`config.toml` 中 `# 9router-prev-default` 记录不再被识别，升级后"上一个默认模型"记录丢失一次（仅一次，之后正常记录）。
+
 ## 品牌重塑
 - **Rebrand**: 9Router → 10Router，版本号统一 1.0.0
 - 全局替换 UI 文案、标题、landing page、元数据
@@ -12,7 +19,7 @@
 ### Docker 镜像
 - GitHub Actions 自动构建 multi-platform (amd64 + arm64)
 - 镜像：`ghcr.io/techysy/10router:latest`
-- 快速启动：`docker run -d --name 10router -p 20128:20128 -v ~/.9router:/app/data ghcr.io/techysy/10router:latest`
+- 快速启动：`docker run -d --name 10router -p 20128:20128 -v ~/.10router:/app/data ghcr.io/techysy/10router:latest`
 
 ### fnOS fpk 打包
 - Matrix 构建 x86 + arm 双架构

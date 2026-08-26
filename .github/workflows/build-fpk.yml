@@ -75,12 +75,13 @@ jobs:
         run: |
           set -euo pipefail
           cd fnos-packaging
-          jq '.".url"."10router.Application".type = "url"' app/ui/config > app/ui/config.tmp
+          jq --exit-status '.".url"."10router.Application".type = "url"' app/ui/config > app/ui/config.tmp
           mv app/ui/config.tmp app/ui/config
           rm -f 10router.fpk
           fnpack build -d .
           [ -f 10router.fpk ] || { echo "ERROR: fnpack build url failed"; exit 1; }
           VERSION="$(grep -E '^version[[:space:]]*=' manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
+          [ -n "$VERSION" ] || { echo "ERROR: could not extract version from manifest"; exit 1; }
           mv 10router.fpk "10router-${VERSION}-${{ matrix.arch }}.fpk"
           ls -lh "10router-${VERSION}-${{ matrix.arch }}.fpk"
 
@@ -88,12 +89,13 @@ jobs:
         run: |
           set -euo pipefail
           cd fnos-packaging
-          jq '.".url"."10router.Application".type = "iframe"' app/ui/config > app/ui/config.tmp
+          jq --exit-status '.".url"."10router.Application".type = "iframe"' app/ui/config > app/ui/config.tmp
           mv app/ui/config.tmp app/ui/config
           rm -f 10router.fpk
           fnpack build -d .
           [ -f 10router.fpk ] || { echo "ERROR: fnpack build iframe failed"; exit 1; }
           VERSION="$(grep -E '^version[[:space:]]*=' manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
+          [ -n "$VERSION" ] || { echo "ERROR: could not extract version from manifest"; exit 1; }
           mv 10router.fpk "10router-${VERSION}-iframe-${{ matrix.arch }}.fpk"
           ls -lh "10router-${VERSION}-iframe-${{ matrix.arch }}.fpk"
 

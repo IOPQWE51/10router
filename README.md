@@ -72,7 +72,7 @@ docker pull ghcr.io/techysy/10router:latest
 docker run -d \
   --name 10router \
   -p 20128:20128 \
-  -v ~/.9router:/app/data \
+  -v ~/.10router:/app/data \
   ghcr.io/techysy/10router:latest
 ```
 
