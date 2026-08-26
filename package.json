@@ -1,7 +1,7 @@
 {
-  "name": "9router-app",
+  "name": "10router-app",
   "version": "1.0.0",
-  "description": "9Router web dashboard",
+  "description": "10Router web dashboard",
   "private": true,
   "scripts": {
     "dev": "next dev --port 20127",

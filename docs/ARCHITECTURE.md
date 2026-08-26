@@ -1,10 +1,10 @@
-# 9Router Architecture
+# 10Router Architecture
 
-_Last updated: 2026-02-06_
+_Last updated: 2026-08-26_
 
 ## Executive Summary
 
-9Router is a local AI routing gateway and dashboard built on Next.js.
+10Router is a local AI routing gateway and dashboard built on Next.js.
 It provides a single OpenAI-compatible endpoint (`/v1/*`) and routes traffic across multiple upstream providers with translation, fallback, token refresh, and usage tracking.
 
 Core capabilities:
@@ -52,12 +52,12 @@ flowchart LR
         BROWSER[Browser Dashboard]
     end
 
-    subgraph Router[9Router Local Process]
+    subgraph Router[10Router Local Process]
         API[V1 Compatibility API\n/v1/*]
         DASH[Dashboard + Management API\n/api/*]
         CORE[SSE + Translation Core\nopen-sse + src/sse]
-        DB[(db.json)]
-        UDB[(usage.json + log.txt)]
+        DB[(SQLite: data.sqlite)]
+        UDB[(usage tables in same SQLite)]
     end
 
     subgraph Upstreams[Upstream Providers]
@@ -135,17 +135,16 @@ Main flow modules:
 
 ## 3) Persistence Layer
 
-Primary state DB:
+State is a SQLite layer under `src/lib/db/` with an adapter fallback chain (`driver.js`):
+`bun:sqlite` → `better-sqlite3` (optional native dep) → `node:sqlite` (Node ≥22.5) → `sql.js` (pure-JS fallback, always works).
+`better-sqlite3` is deliberately in `optionalDependencies` so install never fails without build tools.
 
-- `src/lib/localDb.js`
-- file: `${DATA_DIR}/db.json` (or `~/.9router/db.json` when `DATA_DIR` is unset)
-- entities: providerConnections, providerNodes, modelAliases, combos, apiKeys, settings, pricing
+- Primary state + usage/log tables live in one SQLite DB at `${DATA_DIR}/db/data.sqlite` (default `~/.10router/db/data.sqlite`).
+- `src/lib/localDb.js` is a backward-compat shim re-exporting `src/lib/db/index.js`; per-entity logic lives in `src/lib/db/repos/*`; schema/migrations in `src/lib/db/migrations/`.
+- `src/lib/usageDb.js` is a shim re-exporting usage/log functions from the same DB layer (usage stats and request logs are now SQLite tables, not `usage.json`/`log.txt`).
+- `src/mitm/*` writes MITM CA certs under the same data dir.
 
-Usage DB:
-
-- `src/lib/usageDb.js`
-- files: `~/.9router/usage.json`, `~/.9router/log.txt`
-- note: currently independent from `DATA_DIR`
+Data dir resolution (`src/lib/dataDir.js`): explicit `DATA_DIR` env wins; otherwise `~/.10router` (macOS/Linux) or `%APPDATA%\10router` (Windows). On first start, if the legacy `~/.9router` directory exists and the new one is empty, data is copied over once (legacy dir kept, never deleted).
 
 ## 4) Auth + Security Surfaces
 
@@ -377,9 +376,8 @@ erDiagram
 
 Physical storage files:
 
-- main state: `${DATA_DIR}/db.json` (or `~/.9router/db.json`)
-- usage stats: `~/.9router/usage.json`
-- request log lines: `~/.9router/log.txt`
+- main state + usage + request logs: `${DATA_DIR}/db/data.sqlite` (default `~/.10router/db/data.sqlite`)
+- auto backups: `${DATA_DIR}/db/backups/`
 - optional translator/request debug sessions: `<repo>/logs/...`
 
 ## Deployment Topology
@@ -391,11 +389,10 @@ flowchart LR
         Browser[Dashboard Browser]
     end
 
-    subgraph ContainerOrProcess[9Router Runtime]
+    subgraph ContainerOrProcess[10Router Runtime]
         Next[Next.js Server\nPORT=20128]
         Core[SSE Core + Executors]
-        MainDB[(db.json)]
-        UsageDB[(usage.json/log.txt)]
+        MainDB[(SQLite data.sqlite)]
     end
 
     subgraph External[External Services]
@@ -408,7 +405,6 @@ flowchart LR
     Next --> Core
     Next --> MainDB
     Core --> MainDB
-    Core --> UsageDB
     Core --> Providers
     Next --> SyncCloud
 ```
@@ -444,8 +440,10 @@ flowchart LR
 
 ### Persistence
 
-- `src/lib/localDb.js`: persistent config/state
-- `src/lib/usageDb.js`: usage history and rolling request logs
+- `src/lib/db/index.js`: the SQLite DB layer (state + usage + request logs)
+- `src/lib/db/driver.js`: adapter fallback chain (bun:sqlite → better-sqlite3 → node:sqlite → sql.js)
+- `src/lib/db/repos/*`: per-entity repos; `src/lib/db/migrations/`: schema migrations
+- `src/lib/localDb.js`, `src/lib/usageDb.js`: backward-compat shims re-exporting the DB layer
 
 ## Provider Executor Coverage
 
@@ -542,15 +540,15 @@ Environment variables actively used by code:
 
 ## Known Architectural Notes
 
-1. `usageDb` currently stores under `~/.9router` and does not follow `DATA_DIR`.
+1. `usageDb` (via `src/lib/usageDb.js`) is a shim over the shared SQLite DB and follows `DATA_DIR` like everything else.
 2. `/api/v1/route.js` returns a static model list and is not the main models source used by `/v1/models`.
 3. Request logger writes full headers/body when enabled; treat log directory as sensitive.
 4. Cloud behavior depends on correct `NEXT_PUBLIC_BASE_URL` and cloud endpoint reachability.
 
 ## Operational Verification Checklist
 
-- Build from source: `cd /root/dev/9router && npm run build`
-- Build Docker image: `cd /root/dev/9router && docker build -t 9router .`
+- Build from source: `cd /root/dev/10router && npm run build`
+- Build Docker image: `cd /root/dev/10router && docker build -t 10router .`
 - Start service and verify:
 - `GET /api/settings`
 - `GET /api/v1/models`

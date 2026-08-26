@@ -1,6 +1,6 @@
-# Docker
+# 🐳 Docker
 
-Run 9Router in a container. Published image: [`decolua/9router`](https://hub.docker.com/r/decolua/9router) — multi-platform `linux/amd64` + `linux/arm64`.
+Run 10Router in a container. Published image: [`ghcr.io/techysy/10router`](https://github.com/techysy/10router/pkgs/container/10router) — multi-platform `linux/amd64` + `linux/arm64`.
 
 ---
 
@@ -11,31 +11,33 @@ Run 9Router in a container. Published image: [`decolua/9router`](https://hub.doc
 ```bash
 docker run -d \
   -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
+  -v "$HOME/.10router:/app/data" \
   -e DATA_DIR=/app/data \
-  --name 9router \
-  decolua/9router:latest
+  --name 10router \
+  ghcr.io/techysy/10router:latest
 ```
 
 App listens on port `20128`. Open: http://localhost:20128
 
+> 📦 Upgrading from 9Router? If `~/.9router/` exists and `~/.10router/` is empty, 10Router copies your old data over automatically on first start (the old directory is kept).
+
 ## Manage container
 
 ```bash
-docker logs -f 9router        # view logs
-docker stop 9router           # stop
-docker start 9router          # start again
-docker rm -f 9router          # remove
+docker logs -f 10router       # view logs
+docker stop 10router          # stop
+docker start 10router         # start again
+docker rm -f 10router         # remove
 ```
 
 ## Data persistence
 
 ```bash
--v "$HOME/.9router:/app/data" \
+-v "$HOME/.10router:/app/data" \
 -e DATA_DIR=/app/data
 ```
 
-Without `DATA_DIR`, the app falls back to `~/.9router/` (macOS/Linux) or `%APPDATA%\9router\` (Windows). In the container, `DATA_DIR=/app/data` makes the bind mount work.
+Without `DATA_DIR`, the app falls back to `~/.10router/` (macOS/Linux) or `%APPDATA%\10router\` (Windows). In the container, `DATA_DIR=/app/data` makes the bind mount work.
 
 Data layout under `$DATA_DIR/`:
 
@@ -47,7 +49,7 @@ $DATA_DIR/
 └── ...                   # certs, logs, runtime configs
 ```
 
-Host path: `$HOME/.9router/db/data.sqlite`
+Host path: `$HOME/.10router/db/data.sqlite`
 Container path: `/app/data/db/data.sqlite`
 
 ## Optional env vars
@@ -55,27 +57,27 @@ Container path: `/app/data/db/data.sqlite`
 ```bash
 docker run -d \
   -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
+  -v "$HOME/.10router:/app/data" \
   -e DATA_DIR=/app/data \
   -e PORT=20128 \
   -e HOSTNAME=0.0.0.0 \
   -e DEBUG=true \
-  --name 9router \
-  decolua/9router:latest
+  --name 10router \
+  ghcr.io/techysy/10router:latest
 ```
 
 ## Optional Headroom sidecar
 
-The 9Router image does not bundle Python or Headroom. To use Headroom in Docker, run it as a separate service and point 9Router at that proxy:
+The 10Router image does not bundle Python or Headroom. To use Headroom in Docker, run it as a separate service and point 10Router at that proxy:
 
 ```yaml
 services:
-  9router:
-    image: decolua/9router:latest
+  10router:
+    image: ghcr.io/techysy/10router:latest
     ports:
       - "20128:20128"
     volumes:
-      - "$HOME/.9router:/app/data"
+      - "$HOME/.10router:/app/data"
     environment:
       DATA_DIR: /app/data
       HEADROOM_URL: http://headroom:8787
@@ -95,8 +97,8 @@ If Headroom runs on the Docker host instead of as a sidecar, use `http://host.do
 ## Update to latest
 
 ```bash
-docker pull decolua/9router:latest
-docker rm -f 9router
+docker pull ghcr.io/techysy/10router:latest
+docker rm -f 10router
 # re-run the quick start command
 ```
 
@@ -107,26 +109,21 @@ docker rm -f 9router
 ## Build image locally (test)
 
 ```bash
-cd app && docker build -t 9router .
+docker build -t 10router .
 
 docker run --rm -p 20128:20128 \
-  -v "$HOME/.9router:/app/data" \
+  -v "$HOME/.10router:/app/data" \
   -e DATA_DIR=/app/data \
-  9router
+  10router
 ```
 
 ## Publish (automatic via CI)
 
 Push a git tag `v*` → GitHub Actions builds multi-platform (amd64+arm64) and pushes to:
-- `ghcr.io/decolua/9router:v{version}` + `:latest`
-- `decolua/9router:v{version}` + `:latest`
+- `ghcr.io/techysy/10router:v{version}` + `:latest`
 
 ```bash
-# Use scripts/release.js (recommended)
-node scripts/release.js "Release title" "Notes"
-
-# Or manually
-git tag v0.4.x && git push origin v0.4.x
+git tag v1.x.x && git push origin v1.x.x
 ```
 
-Workflow: `app/.github/workflows/docker-publish.yml`
+Workflow: `.github/workflows/docker-publish.yml`
