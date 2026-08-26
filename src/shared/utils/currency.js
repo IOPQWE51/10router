@@ -1,5 +1,5 @@
 // 成本显示按界面语言切换本地货币。
-// 9Router 定价数据为 USD per million tokens，成本值本身是美元金额。
+// 10Router 定价数据为 USD per million tokens，成本值本身是美元金额。
 // 此工具按当前 locale 选择货币符号 + 汇率，让成本以本地货币展示。
 // 默认启用地区货币；可通过设置「使用地区货币」开关（localStorage: useRegionalCurrency）关闭。
 //

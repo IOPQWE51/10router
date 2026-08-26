@@ -6,7 +6,7 @@ import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "9router-default-secret-change-me"
+  process.env.JWT_SECRET || "10router-default-secret-change-me"
 );
 
 export async function POST(request) {
