@@ -21,7 +21,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -49,10 +49,13 @@ jobs:
         run: |
           if [ "${{ matrix.arch }}" = "arm" ]; then
             FNPACK_BIN="fnpack-${FNPACK_VERSION}-linux-arm64"
+            FNPACK_SHA256="aad9e16b101267d30017f39ab969e3c085fbce209716f8bd3b1e167eaf15e0cf"
           else
             FNPACK_BIN="fnpack-${FNPACK_VERSION}-linux-amd64"
+            FNPACK_SHA256="72d2a4095da676b64510b023731a227b369d80f8079bc45ff8a2f802ec0480c1"
           fi
           curl -fsSL -o /usr/local/bin/fnpack "https://static2.fnnas.com/fnpack/${FNPACK_BIN}"
+          echo "${FNPACK_SHA256}  /usr/local/bin/fnpack" | sha256sum -c -
           chmod +x /usr/local/bin/fnpack
           fnpack --help | head -3
 

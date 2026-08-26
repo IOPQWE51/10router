@@ -572,6 +572,7 @@ export async function buildModelsList(kindFilter, options = {}) {
       if (!alias || connectedAliases.has(alias)) continue;
       const modelId = String(customModel.id).trim();
       if (!modelId) continue;
+      if (isDisabled(alias, modelId)) continue;
       models.push({
         id: `${alias}/${modelId}`,
         object: "model",

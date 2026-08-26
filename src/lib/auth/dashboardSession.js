@@ -24,9 +24,10 @@ const SECRET = new TextEncoder().encode(loadJwtSecret());
 
 export function shouldUseSecureCookie(request) {
   const forceSecureCookie = process.env.AUTH_COOKIE_SECURE === "true";
-  const forwardedProto = request?.headers?.get?.("x-forwarded-proto");
-  const isHttpsRequest = forwardedProto === "https";
-  return forceSecureCookie || isHttpsRequest;
+  // Multi-hop proxies may send "https,http" — trust the first (client-facing) hop.
+  const forwardedProto = request?.headers?.get?.("x-forwarded-proto") || "";
+  const firstHop = String(forwardedProto).split(",")[0].trim().toLowerCase();
+  return forceSecureCookie || firstHop === "https";
 }
 
 export async function createDashboardAuthToken(claims = {}) {
