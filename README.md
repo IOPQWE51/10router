@@ -152,7 +152,7 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 │   ├── translator/         # 格式翻译（OpenAI ↔ Claude）
 │   ├── providers/          # Provider 注册 + 配置
 │   └── rtk/                # Token Saver 压缩引擎
-├── cli/                    # CLI launcher（npm: 9router）
+├── cli/                    # CLI launcher（npm: 10router）
 ├── tests/                  # 测试（vitest）
 ├── docs/                   # 架构文档
 └── .github/workflows/      # CI（Docker GHCR 构建）
@@ -163,7 +163,6 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 - [上游项目 9Router](https://github.com/decolua/9router)
 - [9Router 文档](https://9router.com)
 - [9Router fnOS 应用包](https://github.com/techysy/9router-fnos)
-- [10Router fnOS 应用包](https://github.com/techysy/10router-fnos)
 
 ## 贡献者
 
