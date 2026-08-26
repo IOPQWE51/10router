@@ -59,10 +59,14 @@
 - 重新导出 SQLite-layer request/usage APIs 通过 usageDb shim
 
 ## 工程清理
+- 移除上游 9Remote/9English 广告入口
+- 移除 NineRemoteButton.js、NineRemotePromoModal.js 组件
+- 移除 Sidebar 中 9Remote/9English 导航项
 - 移除上游 DockerHub 发布和 GitBook 文档站点
 - 清理开发 artifacts（workbuddy memory、npm 残留文件）
 - fnOS fpk 打包并入主仓库（fnos-packaging/）
 - README 重写为 10Router 版
+- 捐赠入口改为本地 donate.json（GitHub Sponsors + 微信 + 支付宝）
 
 ## 文档
 - 修复 contributor 链接
