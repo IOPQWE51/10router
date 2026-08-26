@@ -2,24 +2,23 @@
 
 <img width="3818" height="1901" alt="image" src="https://github.com/user-attachments/assets/790507c7-68be-4111-a907-32ca6303f141" />
 
+# 🚀 10Router
 
-  # 10Router
+[![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
+[![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![10Router](https://img.shields.io/badge/10Router-v1.0.0-orange.svg)](https://github.com/techysy/10router)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 
-  [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
-  [![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-  [![10Router](https://img.shields.io/badge/10Router-v1.0.0-orange.svg)](https://github.com/techysy/10router)
-  [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
+基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
 
-  基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
-
-  **单一 commit 历史，无上游提交污染，便于 cherry-pick 同步上游新功能。**
+**✨ 单一 commit 历史，无上游提交污染，便于 cherry-pick 同步上游新功能。**
 
 </div>
 
 ---
 
-## 简介
+## 📖 简介
 
 10Router 是 [9Router](https://github.com/decolua/9router) 的精简优化版本。在上游 v0.5.55 基础上合并了若干本地验证过的修复，排除未完成的实验性功能，保持干净的 git 历史便于持续同步上游。
 
@@ -45,7 +44,7 @@
 └──────────────────────────────────────────┘
 ```
 
-## 与上游的差异
+## 🆚 与上游的差异
 
 | 修复 | 文件 | 说明 |
 |------|------|------|
@@ -57,16 +56,16 @@
 | **配额按 connection 隔离** | `usage/components/ProviderLimits/utils.js` | 多账号场景下每个 connection 独立计算配额，互不干扰 |
 | **arm64 Docker 支持** | `docker-publish.yml` | 镜像同时构建 linux/amd64 + linux/arm64，支持树莓派等 ARM 设备 |
 
-### 已在 fork分支 的改动（不再重复）
+### 📦 已在 fork分支 的改动（不再重复）
 
 - 货币本地化（¥/NT$/₩/₫）— fork分支 v0.5.50+
 - 配额包按 connection 独立 — fork分支 v0.5.50+
 - 拓扑 toggle — fork分支 v0.5.50+
 - Cloudflare 修复 — fork分支 v0.5.50+
 
-## 快速开始
+## 🚀 快速开始
 
-### Docker 部署
+### 🐳 Docker 部署
 
 ```bash
 docker pull ghcr.io/techysy/10router:latest
@@ -79,7 +78,7 @@ docker run -d \
 
 支持 `linux/amd64` 和 `linux/arm64`。
 
-### fnOS fpk 安装
+### 📦 fnOS fpk 安装
 
 从 [Releases](https://github.com/techysy/10router/releases) 下载对应架构的 `.fpk` 文件：
 
@@ -92,7 +91,7 @@ docker run -d \
 
 安装：App Center → 手动安装 → 选择 fpk。
 
-### Standalone Server
+### 💻 Standalone Server
 
 ```bash
 tar xzf 10router-server.tar.gz -C /opt/10router
@@ -100,7 +99,7 @@ cd /opt/10router
 node custom-server.js --port 20128
 ```
 
-### 源码开发
+### 🛠 源码开发
 
 ```bash
 git clone https://github.com/techysy/10router.git
@@ -121,7 +120,7 @@ PORT=20128 HOSTNAME=0.0.0.0 npm run start
 - API endpoint: `http://localhost:20128/v1`
 - 初始密码: `123456`（登录后请修改）
 
-## 同步上游
+## 🔄 同步上游
 
 本项目 git 历史已重写（仅保留 techysy/ShiYanG Yu 的提交），同步上游时请用 cherry-pick 避免把上游历史带回来：
 
@@ -139,7 +138,7 @@ curl -L https://github.com/decolua/9router/archive/refs/heads/master.tar.gz \
 git add -A && git commit -m "chore: sync upstream v0.5.xx"
 ```
 
-## 项目结构
+## 📁 项目结构
 
 ```
 10router/
@@ -158,18 +157,18 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 └── .github/workflows/      # CI（Docker GHCR 构建）
 ```
 
-## 相关链接
+## 🔗 相关链接
 
 - [上游项目 9Router](https://github.com/decolua/9router)
 - [9Router 文档](https://9router.com)
 - [9Router fnOS 应用包](https://github.com/techysy/9router-fnos)
 
-## 贡献者
+## 👥 贡献者
 
 - [techysy](https://github.com/techysy) — 主要维护者
 - [shiyangyuda](https://github.com/shiyangyuda) — 代码优化
 - [monkey2jack](https://github.com/monkey2jack) — arm64 Docker 支持
 
-## License
+## 📄 License
 
 MIT — 与 [decolua/9router](https://github.com/decolua/9router) 一致
