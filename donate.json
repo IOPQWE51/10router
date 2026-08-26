@@ -1,0 +1,28 @@
+{
+  "title": "Support 10Router",
+  "message": "If you find 10Router useful, consider supporting its development!",
+  "channels": [
+    {
+      "id": "github",
+      "label": "GitHub Sponsors",
+      "description": "Support via GitHub Sponsors",
+      "icon": "favorite",
+      "color": "#db61a2",
+      "url": "https://github.com/sponsors/techysy"
+    },
+    {
+      "id": "wechat",
+      "label": "WeChat Pay",
+      "description": "Scan QR code to tip",
+      "icon": "qr_code",
+      "color": "#07c160"
+    },
+    {
+      "id": "alipay",
+      "label": "Alipay",
+      "description": "Scan QR code to tip",
+      "icon": "qr_code",
+      "color": "#1677ff"
+    }
+  ]
+}
