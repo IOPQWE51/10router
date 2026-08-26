@@ -75,11 +75,8 @@ jobs:
         run: |
           set -euo pipefail
           cd fnos-packaging
-          node -e "
-            const fs=require('fs');
-            const c=fs.readFileSync('app/ui/config','utf8');
-            fs.writeFileSync('app/ui/config', c.replace(/\\\\\\\"type\\\\\\\"\\\\s*:\\\\s*\\\\\\\"[a-z]*\\\\\\\"/, '\\\\\\\"type\\\\\\\": \\\\\\\"url\\\\\\\"'));
-          "
+          jq '.".url"."10router.Application".type = "url"' app/ui/config > app/ui/config.tmp
+          mv app/ui/config.tmp app/ui/config
           rm -f *.fpk
           fnpack build -d .
           [ -f 10router.fpk ] || { echo "ERROR: fnpack build url failed"; exit 1; }
@@ -91,11 +88,8 @@ jobs:
         run: |
           set -euo pipefail
           cd fnos-packaging
-          node -e "
-            const fs=require('fs');
-            const c=fs.readFileSync('app/ui/config','utf8');
-            fs.writeFileSync('app/ui/config', c.replace(/\\\\\\\"type\\\\\\\"\\\\s*:\\\\s*\\\\\\\"[a-z]*\\\\\\\"/, '\\\\\\\"type\\\\\\\": \\\\\\\"iframe\\\\\\\"'));
-          "
+          jq '.".url"."10router.Application".type = "iframe"' app/ui/config > app/ui/config.tmp
+          mv app/ui/config.tmp app/ui/config
           rm -f *.fpk
           fnpack build -d .
           [ -f 10router.fpk ] || { echo "ERROR: fnpack build iframe failed"; exit 1; }
