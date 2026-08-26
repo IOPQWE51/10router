@@ -163,6 +163,12 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 - [9Router 文档](https://9router.com)
 - [9Router fnOS 应用包](https://github.com/techysy/9router-fnos)
 
+## 👥 交流群
+
+**9+1 Router 飞书交流群** — 扫码加入：
+
+![飞书交流群二维码](assets/feishu-qr.png)
+
 ## 👥 贡献者
 
 - [techysy](https://github.com/techysy) — 主要维护者
