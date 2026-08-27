@@ -81,20 +81,14 @@ export async function getOpencodeGoUsage(apiKey = null, proxyOptions = null) {
     }
 
     const usage = data.usage && typeof data.usage === "object" ? data.usage : {};
-    const rolling = usage.rolling && typeof usage.rolling === "object" ? usage.rolling : {};
     const quotas = {};
 
-    if (rolling.weekly && typeof rolling.weekly === "object") {
-      const q = percentQuota("Weekly", rolling.weekly.percent, rolling.weekly.resetsAt);
-      if (q) quotas["Weekly"] = q;
-    }
-    if (rolling.monthly && typeof rolling.monthly === "object") {
-      const q = percentQuota("Monthly", rolling.monthly.percent, rolling.monthly.resetsAt);
-      if (q) quotas["Monthly"] = q;
-    }
-    if (usage.percent !== undefined) {
-      const q = percentQuota("Plan", usage.percent, usage.resetsAt);
-      if (q) quotas["Plan"] = q;
+    // Flat windows: rolling / weekly / monthly each carry { status, percent, resetsAt }.
+    for (const [key, label] of [["rolling", "Rolling"], ["weekly", "Weekly"], ["monthly", "Monthly"]]) {
+      if (usage[key] && typeof usage[key] === "object") {
+        const q = percentQuota(label, usage[key]);
+        if (q) quotas[label] = q;
+      }
     }
 
     if (Object.keys(quotas).length === 0) {
