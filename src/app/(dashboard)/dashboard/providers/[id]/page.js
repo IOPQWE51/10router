@@ -529,12 +529,18 @@ export default function ProviderDetailPage() {
     }
   };
 
-  const handleAddCustomModel = async (modelId, type = "llm", providerAliasOverride = providerStorageAlias) => {
+  const handleAddCustomModel = async (modelId, type = "llm", providerAliasOverride = providerStorageAlias, caps = {}) => {
     try {
+      const body = { providerAlias: providerAliasOverride, id: modelId, type };
+      if (caps && typeof caps === "object") {
+        for (const k of ["vision", "reasoning", "contextWindow", "maxOutput", "thinkingFormat"]) {
+          if (caps[k] !== undefined) body[k] = caps[k];
+        }
+      }
       const res = await fetch("/api/models/custom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerAlias: providerAliasOverride, id: modelId, type }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         await fetchCustomModels();
@@ -652,7 +658,8 @@ export default function ProviderDetailPage() {
         removedCount += 1;
       }
 
-      // 2) Add models in the JSON that don't exist yet (new).
+      // 2) Add/refresh models from the JSON. handleAddCustomModel upserts, so an
+      //    existing model gets its capability fields refreshed, not duplicated.
       let addedCount = 0;
       for (const model of models) {
         const modelId = model?.id;
@@ -664,9 +671,15 @@ export default function ProviderDetailPage() {
             entry.id === modelId &&
             (entry.kind || entry.type || "llm") === kind
         );
-        if (alreadyExists) continue;
-        await handleAddCustomModel(modelId, kind, providerStorageAlias);
-        addedCount += 1;
+        const caps = {
+          vision: model.vision,
+          reasoning: model.reasoning,
+          contextWindow: model.contextWindow,
+          maxOutput: model.maxOutput,
+          thinkingFormat: model.thinkingFormat,
+        };
+        await handleAddCustomModel(modelId, kind, providerStorageAlias, caps);
+        if (!alreadyExists) addedCount += 1;
       }
 
       const parts = [];
@@ -1170,8 +1183,12 @@ export default function ProviderDetailPage() {
       ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
     ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; });
     const disabledSet = new Set(disabledModelIds);
-    const displayModels = allModels.filter((m) => !disabledSet.has(m.id));
-    const disabledDisplayModels = allModels.filter((m) => disabledSet.has(m.id));
+    // Providers that publish a model JSON catalog treat it as the authoritative
+    // list: hide the built-in static models so the page reflects the JSON
+    // (new models appear, stale ones drop out) instead of a hardcoded set.
+    const useJsonCatalog = !!providerModelsJsonUrl;
+    const displayModels = useJsonCatalog ? [] : allModels.filter((m) => !disabledSet.has(m.id));
+    const disabledDisplayModels = useJsonCatalog ? [] : allModels.filter((m) => disabledSet.has(m.id));
     const customModelRows = getProviderCustomModelRows({
       customModels,
       modelAliases,
@@ -1204,7 +1221,15 @@ export default function ProviderDetailPage() {
             isTesting={testingModelIds.has(model.id)}
             isCustom
             isFree={false}
-            caps={getCaps(`${providerId}/${model.id}`)}
+            caps={{
+              ...(getCaps(`${providerId}/${model.id}`) || {}),
+              // Custom models imported from a JSON catalog carry their own
+              // capability metadata — prefer it over the static lookup.
+              ...(model.vision === undefined ? {} : { vision: model.vision }),
+              ...(model.reasoning === undefined ? {} : { reasoning: model.reasoning }),
+              ...(model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow }),
+              ...(model.maxOutput === undefined ? {} : { maxOutput: model.maxOutput }),
+            }}
             thinkingSuffix={resolveThinkingSuffix(model.id)}
           />
         ))}

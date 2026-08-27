@@ -10,7 +10,14 @@ import { getProviderConnections } from "@/models";
 // latest model list without waiting for a code release.
 //
 // JSON format:
-//   { "models": [ { "id": "...", "name": "...", "type": "llm" }, ... ] }
+//   { "models": [ { "id": "...", "name": "...", "type": "llm",
+//                   "vision": true, "reasoning": true,
+//                   "contextWindow": 200000, "maxOutput": 48000,
+//                   "thinkingFormat": "openai" }, ... ] }
+//
+// Capability fields (vision/reasoning/contextWindow/maxOutput/thinkingFormat)
+// are passed through so the UI can show modality/context info for models that
+// aren't in the built-in static catalog.
 //
 // Only works for providers that declare a `modelsJsonUrl` in their registry entry.
 export async function GET(request, { params }) {
@@ -53,14 +60,23 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Invalid model JSON: expected { models: [...] }" }, { status: 502 });
     }
 
-    // Normalize entries and drop invalid ones.
+    // Normalize entries and drop invalid ones. Preserve optional capability
+    // fields (coerce to the expected types) so the client can display them.
     const models = data.models
       .filter((m) => m && typeof m === "object" && typeof m.id === "string" && m.id.trim() !== "")
-      .map((m) => ({
-        id: m.id.trim(),
-        name: (typeof m.name === "string" && m.name.trim()) ? m.name.trim() : m.id.trim(),
-        type: (typeof m.type === "string" && m.type.trim()) ? m.type.trim() : "llm",
-      }));
+      .map((m) => {
+        const out = {
+          id: m.id.trim(),
+          name: (typeof m.name === "string" && m.name.trim()) ? m.name.trim() : m.id.trim(),
+          type: (typeof m.type === "string" && m.type.trim()) ? m.type.trim() : "llm",
+        };
+        if (typeof m.vision === "boolean") out.vision = m.vision;
+        if (typeof m.reasoning === "boolean") out.reasoning = m.reasoning;
+        if (typeof m.contextWindow === "number" && Number.isFinite(m.contextWindow)) out.contextWindow = m.contextWindow;
+        if (typeof m.maxOutput === "number" && Number.isFinite(m.maxOutput)) out.maxOutput = m.maxOutput;
+        if (typeof m.thinkingFormat === "string" && m.thinkingFormat.trim()) out.thinkingFormat = m.thinkingFormat.trim();
+        return out;
+      });
 
     return NextResponse.json({ models, source: modelsJsonUrl });
   } catch (error) {

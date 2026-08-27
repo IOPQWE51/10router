@@ -35,6 +35,19 @@ describe("providers/*.json model catalogs", () => {
       expect(new Set(ids).size).toBe(ids.length);
     }
   });
+
+  it("models carry capability fields (vision/reasoning/contextWindow)", () => {
+    const { data } = loadProviderModelsJson("codebuddy-cn");
+    for (const m of data.models) {
+      // vision is optional (only vision-capable models carry it); reasoning and
+      // contextWindow are expected on every entry.
+      if ("vision" in m) expect(typeof m.vision).toBe("boolean");
+      expect(typeof m.reasoning).toBe("boolean");
+      expect(typeof m.contextWindow).toBe("number");
+    }
+    // At least one vision-capable model exists (e.g. glm-5v-turbo, kimi-*).
+    expect(data.models.some((m) => m.vision === true)).toBe(true);
+  });
 });
 
 describe("provider registry declares modelsJsonUrl", () => {

@@ -29,6 +29,12 @@ export function getProviderCustomModelRows({
       fullModel,
       source: "custom",
       type: rowType,
+      // Pass through capability fields (if the custom model carries them, e.g.
+      // from a model-JSON import) so the UI can show modality/context badges.
+      ...(model.vision === undefined ? {} : { vision: model.vision }),
+      ...(model.reasoning === undefined ? {} : { reasoning: model.reasoning }),
+      ...(model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow }),
+      ...(model.maxOutput === undefined ? {} : { maxOutput: model.maxOutput }),
     });
   }
 
