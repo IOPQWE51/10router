@@ -1184,11 +1184,22 @@ export default function ProviderDetailPage() {
     ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; });
     const disabledSet = new Set(disabledModelIds);
     // Providers that publish a model JSON catalog treat it as the authoritative
-    // list: hide the built-in static models so the page reflects the JSON
-    // (new models appear, stale ones drop out) instead of a hardcoded set.
+    // list. The imported customModels carry the JSON models; the built-in static
+    // models that are NOT in the JSON are treated as stale and surfaced in the
+    // "Disabled models" section so they stay visible/restorable instead of
+    // silently vanishing.
     const useJsonCatalog = !!providerModelsJsonUrl;
-    const displayModels = useJsonCatalog ? [] : allModels.filter((m) => !disabledSet.has(m.id));
-    const disabledDisplayModels = useJsonCatalog ? [] : allModels.filter((m) => disabledSet.has(m.id));
+    const jsonModelIds = new Set(
+      customModels
+        .filter((c) => c.providerAlias === providerStorageAlias)
+        .map((c) => c.id)
+    );
+    const displayModels = useJsonCatalog
+      ? []
+      : allModels.filter((m) => !disabledSet.has(m.id));
+    const disabledDisplayModels = useJsonCatalog
+      ? allModels.filter((m) => !jsonModelIds.has(m.id))
+      : allModels.filter((m) => disabledSet.has(m.id));
     const customModelRows = getProviderCustomModelRows({
       customModels,
       modelAliases,
