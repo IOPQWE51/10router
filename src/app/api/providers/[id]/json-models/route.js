@@ -34,7 +34,21 @@ async function fetchRawCatalog(id) {
   if (!response.ok) {
     throw Object.assign(new Error(`Model JSON returned HTTP ${response.status}`), { status: 502 });
   }
-  const data = await response.json().catch(() => null);
+  const raw = await response.json().catch(() => null);
+  if (!raw) {
+    throw Object.assign(new Error("Invalid model JSON response"), { status: 502 });
+  }
+  // GitHub Contents API returns { content: <base64>, encoding: "base64" }.
+  // Decode it so a GitHub API URL works the same as a raw JSON URL.
+  let data = raw;
+  if (raw && typeof raw.content === "string" && raw.encoding === "base64") {
+    try {
+      const decoded = Buffer.from(raw.content, "base64").toString("utf8");
+      data = JSON.parse(decoded);
+    } catch (e) {
+      throw Object.assign(new Error("Failed to decode GitHub API model JSON"), { status: 502 });
+    }
+  }
   if (!data || !Array.isArray(data.models)) {
     throw Object.assign(new Error("Invalid model JSON: expected { models: [...] }"), { status: 502 });
   }

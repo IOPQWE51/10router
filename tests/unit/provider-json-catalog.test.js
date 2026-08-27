@@ -51,15 +51,15 @@ describe("providers/*.json model catalogs", () => {
 });
 
 describe("provider registry declares modelsJsonUrl", () => {
-  it("codebuddy-cn registry points at the GitHub JSON", async () => {
+  it("codebuddy-cn registry points at the GitHub API JSON", async () => {
     const mod = await import("../../open-sse/providers/registry/codebuddy-cn.js");
     const entry = mod.default;
-    expect(entry.modelsJsonUrl).toMatch(/raw\.githubusercontent\.com\/techysy\/10router\/main\/providers\/codebuddy-cn\.json/);
+    expect(entry.modelsJsonUrl).toMatch(/api\.github\.com\/repos\/techysy\/10router\/contents\/providers\/codebuddy-cn\.json/);
   });
 
-  it("codebuddy-intl registry points at the GitHub JSON", async () => {
+  it("codebuddy-intl registry points at the GitHub API JSON", async () => {
     const mod = await import("../../open-sse/providers/registry/codebuddy-intl.js");
     const entry = mod.default;
-    expect(entry.modelsJsonUrl).toMatch(/raw\.githubusercontent\.com\/techysy\/10router\/main\/providers\/codebuddy-intl\.json/);
+    expect(entry.modelsJsonUrl).toMatch(/api\.github\.com\/repos\/techysy\/10router\/contents\/providers\/codebuddy-intl\.json/);
   });
 });
