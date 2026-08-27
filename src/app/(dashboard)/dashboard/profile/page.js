@@ -882,13 +882,6 @@ export default function ProfilePage() {
             </div>
             <Toggle checked={regional} onChange={toggleCurrency} />
           </div>
-          <div className="flex items-center justify-between gap-4 mt-3 p-3 rounded-lg bg-bg border border-border">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium">Fetch models from GitHub JSON</p>
-              <p className="text-xs text-text-muted">Show a Fetch Models button on providers that publish a model JSON catalog</p>
-            </div>
-            <Toggle checked={modelJsonImport} onChange={toggleModelJsonImport} />
-          </div>
         </Card>
 
         {/* Security */}
@@ -1555,6 +1548,17 @@ export default function ProfilePage() {
                 ? ` Combos rotate after ${settings.comboStickyRoundRobinLimit || 1} call${(settings.comboStickyRoundRobinLimit || 1) === 1 ? "" : "s"} per model.`
                 : " Combos always start with their first model."}
             </p>
+
+            {/* Fetch models from GitHub JSON — feature toggle (provider detail page) */}
+            <div className="flex items-start sm:items-center justify-between gap-4 pt-4 border-t border-border/50">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm sm:text-base">Fetch models from GitHub JSON</p>
+                <p className="text-xs sm:text-sm text-text-muted">
+                  Show a Fetch Models button on providers that publish a model JSON catalog
+                </p>
+              </div>
+              <Toggle checked={modelJsonImport} onChange={toggleModelJsonImport} />
+            </div>
           </div>
         </Card>
 

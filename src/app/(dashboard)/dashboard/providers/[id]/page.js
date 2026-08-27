@@ -616,8 +616,8 @@ export default function ProviderDetailPage() {
   };
 
   // Generic "Fetch Models from GitHub JSON" — pulls the catalog declared in the
-  // provider's `modelsJsonUrl` and merges new models into customModels. Gated by
-  // the global model-JSON-import toggle (see profile settings).
+  // provider's `modelsJsonUrl` and REPLACES the provider's customModels so stale
+  // entries drop out. Gated by the global model-JSON-import toggle.
   const handleImportJsonModels = async () => {
     if (importingJsonModels) return;
     setImportingJsonModels(true);
@@ -634,9 +634,28 @@ export default function ProviderDetailPage() {
         return;
       }
 
-      let importedCount = 0;
+      // Build the authoritative target set: providerAlias → model key.
+      const targetKeys = new Set();
       for (const model of models) {
-        const modelId = model.id;
+        if (!model?.id) continue;
+        const kind = model.type || "llm";
+        targetKeys.add(`${providerStorageAlias}|${model.id}|${kind}`);
+      }
+
+      // 1) Remove customModels of this provider that are NOT in the JSON (stale).
+      let removedCount = 0;
+      for (const entry of customModels) {
+        if (entry.providerAlias !== providerStorageAlias) continue;
+        const key = `${entry.providerAlias}|${entry.id}|${entry.kind || entry.type || "llm"}`;
+        if (targetKeys.has(key)) continue;
+        await handleDeleteCustomModel(entry.id, entry.kind || entry.type || "llm", entry.providerAlias);
+        removedCount += 1;
+      }
+
+      // 2) Add models in the JSON that don't exist yet (new).
+      let addedCount = 0;
+      for (const model of models) {
+        const modelId = model?.id;
         if (!modelId) continue;
         const kind = model.type || "llm";
         const alreadyExists = customModels.some(
@@ -644,17 +663,19 @@ export default function ProviderDetailPage() {
             entry.providerAlias === providerStorageAlias &&
             entry.id === modelId &&
             (entry.kind || entry.type || "llm") === kind
-        ) || Object.values(modelAliases).includes(`${providerStorageAlias}/${modelId}`);
+        );
         if (alreadyExists) continue;
-
         await handleAddCustomModel(modelId, kind, providerStorageAlias);
-        importedCount += 1;
+        addedCount += 1;
       }
 
-      if (importedCount === 0) {
-        alert(translate("All models already exist, no new models added"));
+      const parts = [];
+      if (addedCount > 0) parts.push(`${addedCount} ${translate("added")}`);
+      if (removedCount > 0) parts.push(`${removedCount} ${translate("removed")}`);
+      if (parts.length === 0) {
+        alert(translate("Models already up to date, nothing changed"));
       } else {
-        alert(translate("Successfully added") + ` ${importedCount} ` + translate("models"));
+        alert(translate("Sync complete") + ": " + parts.join(", "));
       }
     } catch (error) {
       console.log("Error importing models from JSON:", error);
