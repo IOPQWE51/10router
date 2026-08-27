@@ -9,18 +9,31 @@ import {
   updateProviderJsonModelEnabled,
 } from "@/models";
 
-// Parse a catalog from a fetched response body. Supports both plain JSON
-// ({ models: [...] }) and GitHub Contents API ({ content: base64 }).
+// Parse a catalog from a fetched response body. Supports:
+//   - plain JSON            { models: [...] }        (CodeBuddy-style static file)
+//   - GitHub Contents API   { content: <base64> }    (api.github.com)
+//   - OpenAI list           { data: [{ id, ... }] }  (live provider /v1/models)
 function parseCatalogFromRaw(raw) {
   let data = raw;
   if (raw && typeof raw.content === "string" && raw.encoding === "base64") {
     const decoded = Buffer.from(raw.content, "base64").toString("utf8");
     data = JSON.parse(decoded);
   }
-  if (!data || !Array.isArray(data.models)) {
-    throw Object.assign(new Error("Invalid model JSON: expected { models: [...] }"), { status: 502 });
+  let models;
+  if (data && Array.isArray(data.models)) {
+    models = data.models;
+  } else if (data && Array.isArray(data.data)) {
+    // OpenAI-style list — map data[] entries (id/object/owned_by).
+    models = data.data.map((m) =>
+      typeof m === "string" ? { id: m } : m
+    );
+  } else {
+    throw Object.assign(
+      new Error("Invalid model JSON: expected { models: [...] } or { data: [...] }"),
+      { status: 502 },
+    );
   }
-  return data.models
+  return models
     .filter((m) => m && typeof m === "object" && typeof m.id === "string" && m.id.trim() !== "")
     .map((m) => {
       const out = {
@@ -38,12 +51,16 @@ function parseCatalogFromRaw(raw) {
 }
 
 // Fetch and parse the catalog from a single URL. Throws on failure.
-async function fetchFromUrl(url, proxyOptions) {
+// authToken (optional) is sent as a Bearer Authorization header for
+// authenticated endpoints (e.g. a provider's own /v1/models).
+async function fetchFromUrl(url, proxyOptions, authToken = null) {
   let response;
+  const headers = { Accept: "application/json" };
+  if (authToken) headers.Authorization = `Bearer ${authToken}`;
   try {
     response = await proxyAwareFetch(
       url,
-      { method: "GET", headers: { Accept: "application/json" }, cache: "no-store" },
+      { method: "GET", headers, cache: "no-store" },
       proxyOptions,
     );
   } catch (e) {
@@ -73,16 +90,25 @@ async function fetchRawCatalog(id) {
     ? await resolveConnectionProxyConfig(conns[0].providerSpecificData || {})
     : {};
 
+  // Authenticated endpoints (e.g. a provider's own /v1/models) need the
+  // account's API key. Public GitHub/Gitee sources do not — only attach the
+  // key when the primary source is not one of those public hosts.
+  const isPublicSource =
+    modelsJsonUrl.startsWith("https://raw.githubusercontent.com") ||
+    modelsJsonUrl.startsWith("https://api.github.com") ||
+    modelsJsonUrl.startsWith("https://gitee.com");
+  const authToken = !isPublicSource && conns[0]?.apiKey ? conns[0].apiKey : null;
+
   // Try the primary source first.
   try {
-    const models = await fetchFromUrl(modelsJsonUrl, proxyOptions);
+    const models = await fetchFromUrl(modelsJsonUrl, proxyOptions, authToken);
     return { models, source: modelsJsonUrl };
   } catch (primaryErr) {
     // Fall back to the mirror (Gitee) if one is declared.
     const fallbackUrl = provider?.fallbackModelsJsonUrl;
     if (fallbackUrl) {
       try {
-        const models = await fetchFromUrl(fallbackUrl, proxyOptions);
+        const models = await fetchFromUrl(fallbackUrl, proxyOptions, authToken);
         return { models, source: fallbackUrl };
       } catch (fallbackErr) {
         throw Object.assign(

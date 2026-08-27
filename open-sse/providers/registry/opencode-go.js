@@ -22,6 +22,9 @@ export default {
     usage: true,
     usageApikey: true,
   },
+  // Live model list from OpenCode's own /v1/models endpoint (Bearer auth),
+  // pulled through the same JSON-catalog Fetch Models flow as CodeBuddy.
+  modelsJsonUrl: "https://opencode.ai/zen/go/v1/models",
   transport: {
     baseUrl: "https://opencode.ai/zen/go/v1/chat/completions",
     headers: {},

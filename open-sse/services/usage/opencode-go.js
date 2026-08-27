@@ -2,20 +2,16 @@
  * OpenCode Go usage — GET https://opencode.ai/zen/go/v1/usage
  * Auth: Bearer <apiKey>
  *
- * Response shape (from OpenCode console service source):
+ * Response shape (verified against opencode.ai/zen/go/v1/usage):
  * {
  *   "usage": {
- *     "rolling": {
- *       "weekly":  { "percent": 0,  "resetsAt": "..." },
- *       "monthly": { "percent": 3,  "resetsAt": "..." }
- *     },
- *     "status": "ok",
- *     "percent": 57,
- *     "resetsAt": "..."
- *   },
- *   "status": "ok"
+ *     "rolling": { "status": "ok", "percent": 0, "resetsAt": "..." },
+ *     "weekly":  { "status": "ok", "percent": 0, "resetsAt": "..." },
+ *     "monthly": { "status": "ok", "percent": 0, "resetsAt": "..." }
+ *   }
  * }
- * `percent` values are 0-100 of the allowance already consumed.
+ * Each window reports `percent` (0-100 of the allowance already consumed) and
+ * `resetsAt`. No single overall percent is returned — surface each window.
  */
 
 import { proxyAwareFetch } from "../../utils/proxyFetch.js";
@@ -25,20 +21,20 @@ const USAGE_URL = "https://opencode.ai/zen/go/v1/usage";
 
 // Clamp a 0-100 consumed percent into a QuotaTable-friendly entry where
 // `used` is the consumed share of a nominal 100-point budget.
-function percentQuota(label, percent, resetsAt) {
-  const consumed = Math.min(100, Math.max(0, toFiniteNumber(percent, 0)));
+function percentQuota(label, window) {
+  if (!window || typeof window !== "object") return null;
+  const consumed = Math.min(100, Math.max(0, toFiniteNumber(window.percent, 0)));
   const remaining = Math.round(100 - consumed);
-  const q = {
+  const resetsAt = parseResetTime(window.resetsAt);
+  if (window.percent === undefined && !resetsAt) return null;
+  return {
     used: consumed,
     total: 100,
     remainingPercentage: remaining,
-    resetAt: parseResetTime(resetsAt) || null,
+    resetAt: resetsAt || null,
     recurring: false,
+    name: label,
   };
-  // Only expose the row when there is a usable value or a reset window.
-  if (q.total === 0 && !q.resetAt) return null;
-  q.name = label;
-  return q;
 }
 
 /**
