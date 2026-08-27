@@ -2,25 +2,32 @@ import { AI_PROVIDERS } from "@/shared/constants/providers";
 
 /**
  * Collect every identifier (id and alias) of the built-in provider registry,
- * plus the local alias overrides. A custom-provider node prefix must not collide
- * with any of these, or model routing would resolve to the built-in provider
- * instead of the user's custom node.
+ * plus the local alias overrides, normalized to lowercase. A custom-provider
+ * node prefix must not collide with any of these (case-insensitively), or model
+ * routing would resolve to the built-in provider instead of the user's node.
  */
 export function getReservedProviderPrefixes() {
   const reserved = new Set();
+  const add = (v) => {
+    if (typeof v === "string" && v) reserved.add(v.toLowerCase());
+  };
   for (const p of Object.values(AI_PROVIDERS)) {
     if (!p) continue;
-    if (p.id) reserved.add(p.id);
-    if (p.alias) reserved.add(p.alias);
+    add(p.id);
+    add(p.alias);
   }
   // Local provider alias overrides (see src/sse/services/model.js).
-  reserved.add("xmtp");
-  reserved.add("xiaomi-tokenplan");
+  add("xmtp");
+  add("xiaomi-tokenplan");
   return reserved;
 }
 
 /**
  * Check whether a candidate prefix is usable for a custom provider node.
+ *
+ * Prefix comparison is case-insensitive: "CF" collides with reserved "cf" and
+ * "MyAPI" collides with an existing "myapi", so a prefix can't silently route
+ * to a built-in provider or shadow another node.
  *
  * @param {string} prefix        - The user-supplied prefix (trimmed).
  * @param {Array}  existingNodes - All provider nodes (from getProviderNodes()).
@@ -30,16 +37,17 @@ export function getReservedProviderPrefixes() {
 export function checkPrefixConflict(prefix, existingNodes, excludeNodeId = null) {
   const trimmed = (prefix || "").trim();
   if (!trimmed) return { error: "Prefix is required" };
+  const lower = trimmed.toLowerCase();
 
-  // Must not collide with a built-in provider id/alias.
+  // Must not collide (case-insensitively) with a built-in provider id/alias.
   const reserved = getReservedProviderPrefixes();
-  if (reserved.has(trimmed)) {
+  if (reserved.has(lower)) {
     return { error: `Prefix "${trimmed}" conflicts with a built-in provider` };
   }
 
-  // Must not collide with another custom node's prefix.
+  // Must not collide (case-insensitively) with another custom node's prefix.
   const dup = (existingNodes || []).find(
-    (n) => n.id !== excludeNodeId && String(n.prefix || "").trim() === trimmed
+    (n) => n.id !== excludeNodeId && String(n.prefix || "").trim().toLowerCase() === lower
   );
   if (dup) {
     return { error: `Prefix "${trimmed}" is already used by another custom provider` };
@@ -47,3 +55,4 @@ export function checkPrefixConflict(prefix, existingNodes, excludeNodeId = null)
 
   return null;
 }
+

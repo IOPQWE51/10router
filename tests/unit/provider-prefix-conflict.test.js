@@ -53,4 +53,23 @@ describe("checkPrefixConflict", () => {
     const nodes = [{ id: "node-1", prefix: "  myapi  " }];
     expect(checkPrefixConflict("myapi", nodes)).not.toBeNull();
   });
+
+  it("rejects a built-in id case-insensitively (OPENAI collides with openai)", () => {
+    const r = checkPrefixConflict("OPENAI", []);
+    expect(r).not.toBeNull();
+    expect(r.error).toMatch(/conflicts with a built-in provider/);
+  });
+
+  it("rejects a built-in alias case-insensitively (DS collides with ds)", () => {
+    const r = checkPrefixConflict("DS", []);
+    expect(r).not.toBeNull();
+    expect(r.error).toMatch(/conflicts with a built-in provider/);
+  });
+
+  it("rejects a duplicate node prefix case-insensitively (MyAPI vs myapi)", () => {
+    const nodes = [{ id: "node-1", prefix: "myapi" }];
+    const r = checkPrefixConflict("MyAPI", nodes);
+    expect(r).not.toBeNull();
+    expect(r.error).toMatch(/already used by another custom provider/);
+  });
 });

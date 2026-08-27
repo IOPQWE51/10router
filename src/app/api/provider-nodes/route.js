@@ -43,10 +43,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
     }
 
+    // Normalize prefix to lowercase so model routing is unambiguous and a node
+    // can't shadow a built-in provider via case tricks (e.g. "CF" vs "cf").
+    const normalizedPrefix = prefix.trim().toLowerCase();
+
     // Reject prefixes that collide with a built-in provider id/alias or another
     // custom node — otherwise model routing becomes ambiguous.
     const existingNodes = await getProviderNodes();
-    const conflict = checkPrefixConflict(prefix, existingNodes);
+    const conflict = checkPrefixConflict(normalizedPrefix, existingNodes);
     if (conflict) {
       return NextResponse.json(conflict, { status: 400 });
     }
@@ -62,7 +66,7 @@ export async function POST(request) {
       const node = await createProviderNode({
         id: `${OPENAI_COMPATIBLE_PREFIX}${apiType}-${generateId()}`,
         type: "openai-compatible",
-        prefix: prefix.trim(),
+        prefix: normalizedPrefix,
         apiType,
         baseUrl: (baseUrl || OPENAI_COMPATIBLE_DEFAULTS.baseUrl).trim(),
         name: name.trim(),
@@ -80,7 +84,7 @@ export async function POST(request) {
       const node = await createProviderNode({
         id: `${CUSTOM_EMBEDDING_PREFIX}${generateId()}`,
         type: "custom-embedding",
-        prefix: prefix.trim(),
+        prefix: normalizedPrefix,
         baseUrl: sanitizedBaseUrl,
         name: name.trim(),
       });

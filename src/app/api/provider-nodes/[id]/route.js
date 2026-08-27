@@ -22,10 +22,13 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
     }
 
+    // Normalize prefix to lowercase (see POST).
+    const normalizedPrefix = prefix.trim().toLowerCase();
+
     // Reject prefixes that collide with a built-in provider id/alias or another
     // custom node (ignoring this node itself), otherwise routing is ambiguous.
     const existingNodes = await getProviderNodes();
-    const conflict = checkPrefixConflict(prefix, existingNodes, id);
+    const conflict = checkPrefixConflict(normalizedPrefix, existingNodes, id);
     if (conflict) {
       return NextResponse.json(conflict, { status: 400 });
     }
@@ -59,7 +62,7 @@ export async function PUT(request, { params }) {
 
     const updates = {
       name: name.trim(),
-      prefix: prefix.trim(),
+      prefix: normalizedPrefix,
       baseUrl: sanitizedBaseUrl,
     };
 
@@ -74,7 +77,7 @@ export async function PUT(request, { params }) {
       updateProviderConnection(connection.id, {
         providerSpecificData: {
           ...(connection.providerSpecificData || {}),
-          prefix: prefix.trim(),
+          prefix: normalizedPrefix,
           apiType: node.type === "openai-compatible" ? apiType : undefined,
           baseUrl: sanitizedBaseUrl,
           nodeName: updated.name,
