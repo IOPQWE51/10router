@@ -624,47 +624,6 @@ export default function ProviderLimits() {
     updateQuotaVisibility(next, previous);
   }, [quotaVisibility, updateQuotaVisibility]);
 
-  // Hide every depleted (zero-balance) quota row across the current connections.
-  const handleHideDepletedQuotas = useCallback(() => {
-    const previous = quotaVisibility;
-    const next = { ...previous };
-    let changed = false;
-    for (const conn of sortedConnections) {
-      const rawQuotas = quotaData[conn.id]?.quotas || [];
-      if (rawQuotas.length === 0) continue;
-      const key = conn.id;
-      const entryVisibility = next[key] || {};
-      const hidden = new Set(entryVisibility.hidden || []);
-      for (const q of rawQuotas) {
-        const depleted =
-          q.total !== 0 && q.total !== null && (q.total - (q.used || 0)) <= 0;
-        if (depleted) {
-          const qk = getQuotaVisibilityKey(q);
-          if (qk && !hidden.has(qk)) hidden.add(qk);
-        }
-      }
-      if (hidden.size !== (entryVisibility.hidden || []).length) {
-        next[key] = { ...entryVisibility, hidden: [...hidden] };
-        changed = true;
-      }
-    }
-    if (changed) updateQuotaVisibility(next, previous);
-  }, [quotaVisibility, updateQuotaVisibility, sortedConnections, quotaData]);
-
-  // Un-hide every quota row across the current connections (show all packs).
-  const handleShowAllQuotas = useCallback(() => {
-    const previous = quotaVisibility;
-    const next = { ...previous };
-    let changed = false;
-    for (const conn of sortedConnections) {
-      if (next[conn.id]?.hidden?.length) {
-        next[conn.id] = { ...next[conn.id], hidden: [] };
-        changed = true;
-      }
-    }
-    if (changed) updateQuotaVisibility(next, previous);
-  }, [quotaVisibility, updateQuotaVisibility, sortedConnections]);
-
   // Auto-refresh interval
   useEffect(() => {
     if (!hasHydratedAutoRefresh || !autoRefresh) {
@@ -736,6 +695,47 @@ export default function ProviderLimits() {
       ),
     [connections, quotaData, expiringFirst, providerFilter, quotaSortMode],
   );
+
+  // Hide every depleted (zero-balance) quota row across the current connections.
+  const handleHideDepletedQuotas = useCallback(() => {
+    const previous = quotaVisibility;
+    const next = { ...previous };
+    let changed = false;
+    for (const conn of sortedConnections) {
+      const rawQuotas = quotaData[conn.id]?.quotas || [];
+      if (rawQuotas.length === 0) continue;
+      const key = conn.id;
+      const entryVisibility = next[key] || {};
+      const hidden = new Set(entryVisibility.hidden || []);
+      for (const q of rawQuotas) {
+        const depleted =
+          q.total !== 0 && q.total !== null && (q.total - (q.used || 0)) <= 0;
+        if (depleted) {
+          const qk = getQuotaVisibilityKey(q);
+          if (qk && !hidden.has(qk)) hidden.add(qk);
+        }
+      }
+      if (hidden.size !== (entryVisibility.hidden || []).length) {
+        next[key] = { ...entryVisibility, hidden: [...hidden] };
+        changed = true;
+      }
+    }
+    if (changed) updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility, sortedConnections, quotaData]);
+
+  // Un-hide every quota row across the current connections (show all packs).
+  const handleShowAllQuotas = useCallback(() => {
+    const previous = quotaVisibility;
+    const next = { ...previous };
+    let changed = false;
+    for (const conn of sortedConnections) {
+      if (next[conn.id]?.hidden?.length) {
+        next[conn.id] = { ...next[conn.id], hidden: [] };
+        changed = true;
+      }
+    }
+    if (changed) updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility, sortedConnections]);
 
   // Connection is depleted when any quota entry hit the threshold
   const isConnectionDepleted = (conn) => {

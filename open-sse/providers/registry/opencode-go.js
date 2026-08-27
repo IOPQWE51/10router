@@ -18,6 +18,10 @@ export default {
     },
   },
   category: "apikey",
+  features: {
+    usage: true,
+    usageApikey: true,
+  },
   transport: {
     baseUrl: "https://opencode.ai/zen/go/v1/chat/completions",
     headers: {},
