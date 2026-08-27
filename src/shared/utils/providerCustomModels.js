@@ -29,6 +29,7 @@ export function getProviderCustomModelRows({
       fullModel,
       source: "custom",
       type: rowType,
+      enabled: model.enabled !== false,
       // Pass through capability fields (if the custom model carries them, e.g.
       // from a model-JSON import) so the UI can show modality/context badges.
       ...(model.vision === undefined ? {} : { vision: model.vision }),

@@ -529,9 +529,10 @@ export default function ProviderDetailPage() {
     }
   };
 
-  const handleAddCustomModel = async (modelId, type = "llm", providerAliasOverride = providerStorageAlias, caps = {}) => {
+  const handleAddCustomModel = async (modelId, type = "llm", providerAliasOverride = providerStorageAlias, caps = {}, enabled) => {
     try {
       const body = { providerAlias: providerAliasOverride, id: modelId, type };
+      if (enabled !== undefined) body.enabled = enabled;
       if (caps && typeof caps === "object") {
         for (const k of ["vision", "reasoning", "contextWindow", "maxOutput", "thinkingFormat"]) {
           if (caps[k] !== undefined) body[k] = caps[k];
@@ -564,6 +565,23 @@ export default function ProviderDetailPage() {
       }
     } catch (error) {
       console.log("Error deleting custom model:", error);
+    }
+  };
+
+  // Toggle a custom model's enabled flag (PUT /api/models/custom).
+  const handleToggleCustomModel = async (modelId, enabled, type = "llm") => {
+    try {
+      const res = await fetch("/api/models/custom", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerAlias: providerStorageAlias, id: modelId, type, enabled }),
+      });
+      if (res.ok) {
+        await fetchCustomModels();
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("customModelChanged"));
+      }
+    } catch (error) {
+      console.log("Error toggling custom model:", error);
     }
   };
 
@@ -648,6 +666,14 @@ export default function ProviderDetailPage() {
         targetKeys.add(`${providerStorageAlias}|${model.id}|${kind}`);
       }
 
+      // Remember which of the provider's custom models are currently enabled, so
+      // a re-fetch keeps them active and new models default to disabled.
+      const historicallyActiveIds = new Set(
+        customModels
+          .filter((c) => c.providerAlias === providerStorageAlias && c.enabled !== false)
+          .map((c) => c.id)
+      );
+
       // 1) Remove customModels of this provider that are NOT in the JSON (stale).
       let removedCount = 0;
       for (const entry of customModels) {
@@ -678,7 +704,9 @@ export default function ProviderDetailPage() {
           maxOutput: model.maxOutput,
           thinkingFormat: model.thinkingFormat,
         };
-        await handleAddCustomModel(modelId, kind, providerStorageAlias, caps);
+        // Keep historically-active models enabled; new models default to disabled.
+        const enabled = historicallyActiveIds.has(modelId);
+        await handleAddCustomModel(modelId, kind, providerStorageAlias, caps, enabled);
         if (!alreadyExists) addedCount += 1;
       }
 
@@ -1207,11 +1235,13 @@ export default function ProviderDetailPage() {
       builtInModels: models,
       type: "llm",
     });
+    const disabledCustomRows = customModelRows.filter((m) => m.enabled === false);
 
     return (
       <div className="flex flex-wrap gap-3">
-        {/* Custom models first */}
-        {customModelRows.map((model) => (
+        {/* Custom models first — only enabled ones here; disabled customs are
+            listed in the Disabled section below */}
+        {customModelRows.filter((model) => model.enabled !== false).map((model) => (
           <ModelRow
             key={`${model.source}-${model.fullModel}`}
             model={{ id: model.id, name: model.name }}
@@ -1344,10 +1374,21 @@ export default function ProviderDetailPage() {
         })()}
 
         {/* Disabled models — restorable */}
-        {disabledDisplayModels.length > 0 && (
+        {(disabledCustomRows.length > 0 || disabledDisplayModels.length > 0) && (
           <div className="w-full mt-2">
-            <p className="text-xs text-text-muted mb-2">Disabled models ({disabledDisplayModels.length}):</p>
+            <p className="text-xs text-text-muted mb-2">Disabled models ({disabledCustomRows.length + disabledDisplayModels.length}):</p>
             <div className="flex flex-wrap gap-2">
+              {disabledCustomRows.map((m) => (
+                <button
+                  key={`custom-${m.id}`}
+                  onClick={() => handleToggleCustomModel(m.id, true, m.type)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  title="Restore model"
+                >
+                  <span className="material-symbols-outlined text-[13px]">add</span>
+                  {m.id}
+                </button>
+              ))}
               {disabledDisplayModels.map((m) => (
                 <button
                   key={m.id}

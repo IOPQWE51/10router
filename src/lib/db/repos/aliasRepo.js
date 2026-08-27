@@ -30,13 +30,14 @@ export async function getCustomModels() {
 }
 
 // Atomic check-then-insert inside transaction to prevent duplicate races
-export async function addCustomModel({ providerAlias, id, type = "llm", name, vision, reasoning, contextWindow, maxOutput, thinkingFormat }) {
+export async function addCustomModel({ providerAlias, id, type = "llm", name, vision, reasoning, contextWindow, maxOutput, thinkingFormat, enabled }) {
   const k = customKey(providerAlias, id, type);
   const db = await getAdapter();
   let added = false;
   const value = stringifyJson({
     providerAlias, id, type,
     name: name || id,
+    ...(enabled === undefined ? {} : { enabled }),
     ...(vision === undefined ? {} : { vision }),
     ...(reasoning === undefined ? {} : { reasoning }),
     ...(contextWindow === undefined ? {} : { contextWindow }),
@@ -46,7 +47,7 @@ export async function addCustomModel({ providerAlias, id, type = "llm", name, vi
   db.transaction(() => {
     const row = db.get(`SELECT 1 FROM kv WHERE scope = 'customModels' AND key = ?`, [k]);
     if (row) {
-      // Update capability fields on an existing custom model (e.g. JSON re-sync).
+      // Update capability/enabled fields on an existing custom model (e.g. JSON re-sync).
       db.run(`UPDATE kv SET value = ? WHERE scope = 'customModels' AND key = ?`, [value, k]);
       return;
     }

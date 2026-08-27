@@ -385,6 +385,9 @@ export async function buildModelsList(kindFilter, options = {}) {
 
     for (const customModel of customModels) {
       if (!customModel?.id || (customModel.type && customModel.type !== "llm")) continue;
+      // Disabled custom models (e.g. newly fetched from a JSON catalog) are not
+      // exposed to clients until the user enables them.
+      if (customModel.enabled === false) continue;
       // Custom models without active connection are LLM-only by current schema
       if (!kindFilter.includes(LLM_KIND)) continue;
       const providerAlias = customModel.providerAlias;
