@@ -54,7 +54,18 @@ export default function ProviderDetailPage() {
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [modelAliases, setModelAliases] = useState({});
   const [customModels, setCustomModels] = useState([]);
-  const [jsonModels, setJsonModels] = useState(null); // provider JSON catalog (null = not loaded/declared)
+  const [jsonModels, setJsonModels] = useState(() => {
+    // Seed from localStorage so a JSON-catalog provider shows its model list
+    // immediately (no 1-2s blank while fetchJsonModels loads). Refreshed on
+    // each successful fetch below.
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = window.localStorage.getItem(`jsonModels_${params.id}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  }); // provider JSON catalog (null = not loaded/declared)
   const [modelJsonImportEnabled, setModelJsonImportEnabled] = useState(false); // server-side toggle
   const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
@@ -293,7 +304,15 @@ export default function ProviderDetailPage() {
     try {
       const res = await fetch(`/api/providers/${providerId}/json-models`, { cache: "no-store" });
       const data = await res.json();
-      if (res.ok) setJsonModels(data.models || []);
+      if (res.ok) {
+        setJsonModels(data.models || []);
+        // Persist so the next visit renders instantly (no blank gap).
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(`jsonModels_${providerId}`, JSON.stringify(data.models || []));
+          } catch { /* storage may be unavailable */ }
+        }
+      }
     } catch (error) {
       console.log("Error fetching provider JSON models:", error);
     }

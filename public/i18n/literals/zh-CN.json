@@ -1426,5 +1426,8 @@
   "Fetch Models": "获取模型",
   "removed": "已移除",
   "Models already up to date, nothing changed": "模型已是最新，无变化",
-  "Sync complete": "同步完成"
+  "Sync complete": "同步完成",
+  "Rolling": "滚动",
+  "Weekly": "每周",
+  "Monthly": "每月"
 }
