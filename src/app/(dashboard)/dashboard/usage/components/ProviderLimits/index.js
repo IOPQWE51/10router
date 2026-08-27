@@ -624,6 +624,47 @@ export default function ProviderLimits() {
     updateQuotaVisibility(next, previous);
   }, [quotaVisibility, updateQuotaVisibility]);
 
+  // Hide every depleted (zero-balance) quota row across the current connections.
+  const handleHideDepletedQuotas = useCallback(() => {
+    const previous = quotaVisibility;
+    const next = { ...previous };
+    let changed = false;
+    for (const conn of sortedConnections) {
+      const rawQuotas = quotaData[conn.id]?.quotas || [];
+      if (rawQuotas.length === 0) continue;
+      const key = conn.id;
+      const entryVisibility = next[key] || {};
+      const hidden = new Set(entryVisibility.hidden || []);
+      for (const q of rawQuotas) {
+        const depleted =
+          q.total !== 0 && q.total !== null && (q.total - (q.used || 0)) <= 0;
+        if (depleted) {
+          const qk = getQuotaVisibilityKey(q);
+          if (qk && !hidden.has(qk)) hidden.add(qk);
+        }
+      }
+      if (hidden.size !== (entryVisibility.hidden || []).length) {
+        next[key] = { ...entryVisibility, hidden: [...hidden] };
+        changed = true;
+      }
+    }
+    if (changed) updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility, sortedConnections, quotaData]);
+
+  // Un-hide every quota row across the current connections (show all packs).
+  const handleShowAllQuotas = useCallback(() => {
+    const previous = quotaVisibility;
+    const next = { ...previous };
+    let changed = false;
+    for (const conn of sortedConnections) {
+      if (next[conn.id]?.hidden?.length) {
+        next[conn.id] = { ...next[conn.id], hidden: [] };
+        changed = true;
+      }
+    }
+    if (changed) updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility, sortedConnections]);
+
   // Auto-refresh interval
   useEffect(() => {
     if (!hasHydratedAutoRefresh || !autoRefresh) {
@@ -969,6 +1010,32 @@ export default function ProviderLimits() {
               check_circle
             </span>
             <span className="hidden sm:inline">Turn on Available</span>
+          </button>
+
+          {/* Bulk: show only quota rows with a balance */}
+          <button
+            type="button"
+            onClick={handleHideDepletedQuotas}
+            className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-blue-500/30 px-2 text-xs text-blue-500 transition-colors hover:bg-blue-500/10"
+            title="Hide depleted (zero-balance) quota packs across current connections"
+          >
+            <span className="material-symbols-outlined text-[14px]">
+              visibility
+            </span>
+            <span className="hidden sm:inline">Only with balance</span>
+          </button>
+
+          {/* Bulk: show all quota packs */}
+          <button
+            type="button"
+            onClick={handleShowAllQuotas}
+            className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 text-xs text-text-primary transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5"
+            title="Show all quota packs across current connections"
+          >
+            <span className="material-symbols-outlined text-[14px]">
+              visibility_off
+            </span>
+            <span className="hidden sm:inline">Show all</span>
           </button>
 
           {/* Auto-refresh toggle */}
