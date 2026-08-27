@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { deleteCustomModelsByProvider, deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, updateProviderConnection, updateProviderNode } from "@/models";
+import { deleteCustomModelsByProvider, deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, getProviderNodes, updateProviderConnection, updateProviderNode } from "@/models";
+import { checkPrefixConflict } from "@/shared/utils/providerPrefix";
 
 // PUT /api/provider-nodes/[id] - Update provider node
 export async function PUT(request, { params }) {
@@ -19,6 +20,14 @@ export async function PUT(request, { params }) {
 
     if (!prefix?.trim()) {
       return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
+    }
+
+    // Reject prefixes that collide with a built-in provider id/alias or another
+    // custom node (ignoring this node itself), otherwise routing is ambiguous.
+    const existingNodes = await getProviderNodes();
+    const conflict = checkPrefixConflict(prefix, existingNodes, id);
+    if (conflict) {
+      return NextResponse.json(conflict, { status: 400 });
     }
 
     // Only validate apiType for OpenAI Compatible nodes
