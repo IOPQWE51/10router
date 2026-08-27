@@ -10,6 +10,7 @@ import { APP_CONFIG } from "@/shared/constants/config";
 import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { LOCALE_FLAGS } from "@/shared/constants/locales";
 import { isRegionalCurrencyEnabled } from "@/shared/utils/currency";
+import { isModelJsonImportEnabled, setModelJsonImportEnabled } from "@/shared/utils/modelJsonImport";
 
 function getLocaleFromCookie() {
   if (typeof document === "undefined") return "en";
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [locale, setLocale] = useState(() => getLocaleFromCookie());
   const [regional, setRegional] = useState(true);
+  const [modelJsonImport, setModelJsonImport] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -86,6 +88,7 @@ export default function ProfilePage() {
   useEffect(() => {
     setLocale(getLocaleFromCookie());
     setRegional(isRegionalCurrencyEnabled());
+    setModelJsonImport(isModelJsonImportEnabled());
   }, [langOpen]);
 
   const toggleCurrency = () => {
@@ -94,6 +97,12 @@ export default function ProfilePage() {
       localStorage.setItem("useRegionalCurrency", next ? "1" : "0");
     }
     setRegional(next);
+  };
+
+  const toggleModelJsonImport = () => {
+    const next = !isModelJsonImportEnabled();
+    setModelJsonImportEnabled(next);
+    setModelJsonImport(next);
   };
 
   useEffect(() => {
@@ -872,6 +881,13 @@ export default function ProfilePage() {
               <p className="text-xs text-text-muted">Show costs in local currency (¥/NT$/₩/₫); off → $</p>
             </div>
             <Toggle checked={regional} onChange={toggleCurrency} />
+          </div>
+          <div className="flex items-center justify-between gap-4 mt-3 p-3 rounded-lg bg-bg border border-border">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Fetch models from GitHub JSON</p>
+              <p className="text-xs text-text-muted">Show a Fetch Models button on providers that publish a model JSON catalog</p>
+            </div>
+            <Toggle checked={modelJsonImport} onChange={toggleModelJsonImport} />
           </div>
         </Card>
 

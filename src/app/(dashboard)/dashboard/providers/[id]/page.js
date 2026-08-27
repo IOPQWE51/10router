@@ -14,6 +14,7 @@ import { useModelCaps } from "@/shared/hooks/useModelCaps";
 import { translate } from "@/i18n/runtime";
 import { fetchSuggestedModels } from "@/shared/utils/providerModelsFetcher";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
+import { isModelJsonImportEnabled } from "@/shared/utils/modelJsonImport";
 import ModelRow from "./ModelRow";
 import PassthroughModelsSection from "./PassthroughModelsSection";
 import CompatibleModelsSection from "./CompatibleModelsSection";
@@ -79,6 +80,7 @@ export default function ProviderDetailPage() {
   const [oneByOneSummary, setOneByOneSummary] = useState(null);
   const stopOneByOneRef = useRef(false);
   const [importingQoderModels, setImportingQoderModels] = useState(false);
+  const [importingJsonModels, setImportingJsonModels] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
   const AG_RISK_STORAGE_KEY = "ag_risk_confirmed";
@@ -139,6 +141,8 @@ export default function ProviderDetailPage() {
         type: providerNode.type,
       }
     : (OAUTH_PROVIDERS[providerId] || APIKEY_PROVIDERS[providerId] || FREE_PROVIDERS[providerId] || FREE_TIER_PROVIDERS[providerId] || WEB_COOKIE_PROVIDERS[providerId]);
+  // GitHub JSON model source declared in the provider registry (nullable).
+  const providerModelsJsonUrl = providerInfo?.modelsJsonUrl;
   const authModes = providerInfo?.authModes || [];
   const isOAuth = !!OAUTH_PROVIDERS[providerId] || !!FREE_PROVIDERS[providerId] || authModes.includes("oauth");
   const supportsApiKeyAuth = !!APIKEY_PROVIDERS[providerId] || authModes.includes("apikey");
@@ -608,6 +612,55 @@ export default function ProviderDetailPage() {
       alert(translate("Error fetching models") + ": " + error.message);
     } finally {
       setImportingQoderModels(false);
+    }
+  };
+
+  // Generic "Fetch Models from GitHub JSON" — pulls the catalog declared in the
+  // provider's `modelsJsonUrl` and merges new models into customModels. Gated by
+  // the global model-JSON-import toggle (see profile settings).
+  const handleImportJsonModels = async () => {
+    if (importingJsonModels) return;
+    setImportingJsonModels(true);
+    try {
+      const res = await fetch(`/api/providers/${providerId}/json-models`);
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || translate("Failed to fetch models"));
+        return;
+      }
+      const models = data.models || [];
+      if (models.length === 0) {
+        alert(translate("No models returned"));
+        return;
+      }
+
+      let importedCount = 0;
+      for (const model of models) {
+        const modelId = model.id;
+        if (!modelId) continue;
+        const kind = model.type || "llm";
+        const alreadyExists = customModels.some(
+          (entry) =>
+            entry.providerAlias === providerStorageAlias &&
+            entry.id === modelId &&
+            (entry.kind || entry.type || "llm") === kind
+        ) || Object.values(modelAliases).includes(`${providerStorageAlias}/${modelId}`);
+        if (alreadyExists) continue;
+
+        await handleAddCustomModel(modelId, kind, providerStorageAlias);
+        importedCount += 1;
+      }
+
+      if (importedCount === 0) {
+        alert(translate("All models already exist, no new models added"));
+      } else {
+        alert(translate("Successfully added") + ` ${importedCount} ` + translate("models"));
+      }
+    } catch (error) {
+      console.log("Error importing models from JSON:", error);
+      alert(translate("Error fetching models") + ": " + error.message);
+    } finally {
+      setImportingJsonModels(false);
     }
   };
 
@@ -1182,6 +1235,21 @@ export default function ProviderDetailPage() {
               {importingQoderModels ? "progress_activity" : "download"}
             </span>
             {importingQoderModels ? translate("Fetching...") : translate("Fetch Qoder Models")}
+          </button>
+        )}
+
+        {/* Generic "Fetch Models from GitHub JSON" — shown when the provider
+            declares a modelsJsonUrl AND the global toggle is enabled */}
+        {isModelJsonImportEnabled() && providerModelsJsonUrl && connections.some((conn) => conn.isActive !== false) && (
+          <button
+            onClick={handleImportJsonModels}
+            disabled={importingJsonModels}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-blue-500/40 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 transition-colors hover:border-blue-500 hover:bg-blue-500/5 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="material-symbols-outlined text-sm" style={importingJsonModels ? { animation: "spin 1s linear infinite" } : undefined}>
+              {importingJsonModels ? "progress_activity" : "download"}
+            </span>
+            {importingJsonModels ? translate("Fetching...") : translate("Fetch Models")}
           </button>
         )}
 

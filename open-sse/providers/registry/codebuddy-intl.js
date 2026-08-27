@@ -7,6 +7,9 @@ export default {
   uiAlias: "cbai",
   hidden: false,
   priority: 90,
+  // GitHub-hosted model catalog JSON — surfaced as a "Fetch Models" button on
+  // the provider detail page (behind the global model-JSON-import toggle).
+  modelsJsonUrl: "https://raw.githubusercontent.com/techysy/10router/main/providers/codebuddy-intl.json",
   display: {
     name: "CodeBuddy",
     icon: "smart_toy",
