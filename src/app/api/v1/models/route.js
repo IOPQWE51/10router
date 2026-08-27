@@ -301,12 +301,22 @@ export async function buildModelsList(kindFilter, options = {}) {
   }
 
   // A customModel's providerAlias is legitimate when it resolves to a real
-  // provider (built-in id or alias) OR to an existing provider node. Anything
-  // else is an orphan pointing at a deleted node and must not surface in /v1/models.
-  const isValidCustomAlias = (alias) =>
+  // provider (built-in id or alias) OR to a custom provider node that both
+  // exists AND has an active connection. Anything else is an orphan (deleted
+  // node) or a dead node (connection disabled) and must not surface in /v1/models.
+  const isCompatibleNodeId = (alias) =>
     typeof alias === "string" &&
-    alias.trim() !== "" &&
-    (validProviderIds.has(alias.trim()) || validNodeIds.has(alias.trim()));
+    (alias.startsWith("openai-compatible-") || alias.startsWith("anthropic-compatible-"));
+  const isValidCustomAlias = (alias) => {
+    if (typeof alias !== "string" || alias.trim() === "") return false;
+    const a = alias.trim();
+    if (validProviderIds.has(a)) return true;
+    if (isCompatibleNodeId(a)) {
+      // Custom node: must exist AND have an active connection to expose models.
+      return validNodeIds.has(a) && activeConnectionByProvider.has(a);
+    }
+    return false;
+  };
 
   let modelAliases = {};
   try {

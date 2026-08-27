@@ -143,4 +143,29 @@ describe("buildModelsList — empty-connection behavior", () => {
     expect(ids).toContain("oc/mimo-v2.5-free");
     expect(ids).not.toContain("openai-compatible-chat-deletednode-8888/kimi-k3");
   });
+
+  it("filters custom models of a node whose connection is disabled", async () => {
+    // The node exists but its only connection is disabled (isActive=false), so
+    // its customModels must not surface in /v1/models (dead node).
+    mocks.getProviderConnections.mockResolvedValue([
+      {
+        id: "conn-disabled",
+        provider: "openai-compatible-chat-disablednode-1111",
+        authType: "apikey",
+        isActive: false, // disabled connection
+        providerSpecificData: { baseUrl: "https://example.com/v1", prefix: "dd" },
+      },
+    ]);
+    mocks.getProviderNodes.mockResolvedValue([
+      { id: "openai-compatible-chat-disablednode-1111", type: "openai-compatible", name: "Dead" },
+    ]);
+    mocks.getCustomModels.mockResolvedValue([
+      { providerAlias: "openai-compatible-chat-disablednode-1111", id: "claude-4.8-opus", type: "llm", name: "claude-4.8-opus" },
+    ]);
+
+    const models = await buildModelsList([LLM_KIND]);
+    const ids = models.map((m) => m.id);
+
+    expect(ids).not.toContain("openai-compatible-chat-disablednode-1111/claude-4.8-opus");
+  });
 });
