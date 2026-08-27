@@ -9,51 +9,18 @@ import {
   updateProviderJsonModelEnabled,
 } from "@/models";
 
-// Fetch the raw model catalog from a provider's modelsJsonUrl (a GitHub-hosted
-// JSON) using the connection proxy, if any.
-async function fetchRawCatalog(id) {
-  const provider = AI_PROVIDERS[id];
-  const modelsJsonUrl = provider?.modelsJsonUrl;
-  if (!modelsJsonUrl) {
-    throw Object.assign(new Error("Provider does not expose a model JSON source"), { status: 400 });
-  }
-  const conns = await getProviderConnections({ provider: id, isActive: true });
-  const proxyOptions = conns.length
-    ? await resolveConnectionProxyConfig(conns[0].providerSpecificData || {})
-    : {};
-  let response;
-  try {
-    response = await proxyAwareFetch(
-      modelsJsonUrl,
-      { method: "GET", headers: { Accept: "application/json" }, cache: "no-store" },
-      proxyOptions,
-    );
-  } catch (e) {
-    throw Object.assign(new Error(`Failed to reach model JSON: ${e.message}`), { status: 502 });
-  }
-  if (!response.ok) {
-    throw Object.assign(new Error(`Model JSON returned HTTP ${response.status}`), { status: 502 });
-  }
-  const raw = await response.json().catch(() => null);
-  if (!raw) {
-    throw Object.assign(new Error("Invalid model JSON response"), { status: 502 });
-  }
-  // GitHub Contents API returns { content: <base64>, encoding: "base64" }.
-  // Decode it so a GitHub API URL works the same as a raw JSON URL.
+// Parse a catalog from a fetched response body. Supports both plain JSON
+// ({ models: [...] }) and GitHub Contents API ({ content: base64 }).
+function parseCatalogFromRaw(raw) {
   let data = raw;
   if (raw && typeof raw.content === "string" && raw.encoding === "base64") {
-    try {
-      const decoded = Buffer.from(raw.content, "base64").toString("utf8");
-      data = JSON.parse(decoded);
-    } catch (e) {
-      throw Object.assign(new Error("Failed to decode GitHub API model JSON"), { status: 502 });
-    }
+    const decoded = Buffer.from(raw.content, "base64").toString("utf8");
+    data = JSON.parse(decoded);
   }
   if (!data || !Array.isArray(data.models)) {
     throw Object.assign(new Error("Invalid model JSON: expected { models: [...] }"), { status: 502 });
   }
-  // Normalize entries. Preserve optional capability fields.
-  const models = data.models
+  return data.models
     .filter((m) => m && typeof m === "object" && typeof m.id === "string" && m.id.trim() !== "")
     .map((m) => {
       const out = {
@@ -68,7 +35,64 @@ async function fetchRawCatalog(id) {
       if (typeof m.thinkingFormat === "string" && m.thinkingFormat.trim()) out.thinkingFormat = m.thinkingFormat.trim();
       return out;
     });
-  return { models, source: modelsJsonUrl };
+}
+
+// Fetch and parse the catalog from a single URL. Throws on failure.
+async function fetchFromUrl(url, proxyOptions) {
+  let response;
+  try {
+    response = await proxyAwareFetch(
+      url,
+      { method: "GET", headers: { Accept: "application/json" }, cache: "no-store" },
+      proxyOptions,
+    );
+  } catch (e) {
+    throw Object.assign(new Error(`Failed to reach model JSON: ${e.message}`), { status: 502 });
+  }
+  if (!response.ok) {
+    throw Object.assign(new Error(`Model JSON returned HTTP ${response.status}`), { status: 502 });
+  }
+  const raw = await response.json().catch(() => null);
+  if (!raw) {
+    throw Object.assign(new Error("Invalid model JSON response"), { status: 502 });
+  }
+  return parseCatalogFromRaw(raw);
+}
+
+// Fetch the raw model catalog for a provider, trying the primary source
+// (modelsJsonUrl, e.g. GitHub API) and falling back to the mirror
+// (fallbackModelsJsonUrl, e.g. Gitee) when the primary is unreachable.
+async function fetchRawCatalog(id) {
+  const provider = AI_PROVIDERS[id];
+  const modelsJsonUrl = provider?.modelsJsonUrl;
+  if (!modelsJsonUrl) {
+    throw Object.assign(new Error("Provider does not expose a model JSON source"), { status: 400 });
+  }
+  const conns = await getProviderConnections({ provider: id, isActive: true });
+  const proxyOptions = conns.length
+    ? await resolveConnectionProxyConfig(conns[0].providerSpecificData || {})
+    : {};
+
+  // Try the primary source first.
+  try {
+    const models = await fetchFromUrl(modelsJsonUrl, proxyOptions);
+    return { models, source: modelsJsonUrl };
+  } catch (primaryErr) {
+    // Fall back to the mirror (Gitee) if one is declared.
+    const fallbackUrl = provider?.fallbackModelsJsonUrl;
+    if (fallbackUrl) {
+      try {
+        const models = await fetchFromUrl(fallbackUrl, proxyOptions);
+        return { models, source: fallbackUrl };
+      } catch (fallbackErr) {
+        throw Object.assign(
+          new Error(`Primary source failed (${primaryErr.message}); fallback also failed (${fallbackErr.message})`),
+          { status: 502 },
+        );
+      }
+    }
+    throw primaryErr;
+  }
 }
 
 // GET /api/providers/[id]/json-models

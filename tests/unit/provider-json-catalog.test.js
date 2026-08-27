@@ -55,11 +55,13 @@ describe("provider registry declares modelsJsonUrl", () => {
     const mod = await import("../../open-sse/providers/registry/codebuddy-cn.js");
     const entry = mod.default;
     expect(entry.modelsJsonUrl).toMatch(/api\.github\.com\/repos\/techysy\/10router\/contents\/providers\/codebuddy-cn\.json/);
+    expect(entry.fallbackModelsJsonUrl).toMatch(/gitee\.com\/techysy\/10router\/raw\/main\/providers\/codebuddy-cn\.json/);
   });
 
   it("codebuddy-intl registry points at the GitHub API JSON", async () => {
     const mod = await import("../../open-sse/providers/registry/codebuddy-intl.js");
     const entry = mod.default;
     expect(entry.modelsJsonUrl).toMatch(/api\.github\.com\/repos\/techysy\/10router\/contents\/providers\/codebuddy-intl\.json/);
+    expect(entry.fallbackModelsJsonUrl).toMatch(/gitee\.com\/techysy\/10router\/raw\/main\/providers\/codebuddy-intl\.json/);
   });
 });
