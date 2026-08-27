@@ -5,7 +5,7 @@ import {
   isAnthropicCompatibleProvider,
   isOpenAICompatibleProvider,
 } from "@/shared/constants/providers";
-import { getProviderConnections, getProviderNodes, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
+import { getProviderConnections, getProviderNodes, getCombos, getCustomModels, getModelAliases, getProviderJsonModels } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -426,15 +426,43 @@ export async function buildModelsList(kindFilter, options = {}) {
       let liveModelKindById = new Map();
       let liveCapabilitiesById = new Map();
 
-      let rawModelIds = hasExplicitEnabledModels
-        ? Array.from(
-            new Set(
-              enabledModels.filter(
-                (modelId) => typeof modelId === "string" && modelId.trim() !== "",
+      // If this provider uses a JSON model catalog (modelsJsonUrl) and the user
+      // has imported it, that list is authoritative: only enabled models are
+      // exposed, with kind/caps read from the imported entries.
+      const jsonCatalog = AI_PROVIDERS[providerId]?.modelsJsonUrl
+        ? await getProviderJsonModels(providerId)
+        : null;
+      const jsonEnabled = (jsonCatalog || []).filter((m) => m.enabled !== false);
+      let rawModelIds;
+      if (jsonCatalog && jsonEnabled.length > 0) {
+        liveModelKindById = new Map(
+          jsonEnabled.filter((m) => m.id).map((m) => [m.id, modelKind(m)])
+        );
+        liveCapabilitiesById = new Map(
+          jsonEnabled
+            .filter((m) => m?.id)
+            .map((m) => [
+              m.id,
+              {
+                ...(m.vision === undefined ? {} : { vision: m.vision }),
+                ...(m.reasoning === undefined ? {} : { reasoning: m.reasoning }),
+                ...(m.contextWindow === undefined ? {} : { contextWindow: m.contextWindow }),
+                ...(m.maxOutput === undefined ? {} : { maxOutput: m.maxOutput }),
+              },
+            ])
+        );
+        rawModelIds = jsonEnabled.map((m) => m.id);
+      } else {
+        rawModelIds = hasExplicitEnabledModels
+          ? Array.from(
+              new Set(
+                enabledModels.filter(
+                  (modelId) => typeof modelId === "string" && modelId.trim() !== "",
+                ),
               ),
-            ),
-          )
-        : providerModels.map((model) => model.id);
+            )
+          : providerModels.map((model) => model.id);
+      }
 
       if (isCompatibleProvider && rawModelIds.length === 0 && !skipDynamicFetch) {
         rawModelIds = await fetchCompatibleModelIds(conn);
@@ -481,7 +509,12 @@ export async function buildModelsList(kindFilter, options = {}) {
         .filter((modelId) => typeof modelId === "string" && modelId.trim() !== "");
 
       const customModelKindById = new Map();
-      const customModelIds = customModels
+      // For JSON-catalog providers the imported list is authoritative; legacy
+      // customModels (which used to back the JSON import) are ignored to avoid
+      // duplication and stale entries.
+      const customModelIds = (jsonCatalog && jsonEnabled.length > 0)
+        ? []
+        : customModels
         .filter((m) => {
           if (!m?.id) return false;
           const kind = getModelKind(m) || LLM_KIND;
