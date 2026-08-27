@@ -48,6 +48,15 @@ export async function deleteCustomModel({ providerAlias, id, type = "llm" }) {
   await customKv.remove(customKey(providerAlias, id, type));
 }
 
+// Remove every custom model registered under a providerAlias (used when a custom
+// provider node is deleted — its customModels would otherwise linger in the kv
+// table and pollute /v1/models with orphan entries pointing at a gone node).
+// Key format: `${providerAlias}|${id}|${type}` so a prefix match clears them all.
+export async function deleteCustomModelsByProvider(providerAlias) {
+  const db = await getAdapter();
+  db.run(`DELETE FROM kv WHERE scope = 'customModels' AND key LIKE ?`, [`${providerAlias}|%`]);
+}
+
 // mitmAlias: key=toolName, value=mappings object
 export async function getMitmAlias(toolName) {
   if (toolName) {

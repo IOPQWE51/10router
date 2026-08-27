@@ -1,3 +1,11 @@
+# v1.0.1 (2026-08-27)
+
+## Bug Fixes
+
+- **修复 /v1/models 返回孤儿自定义模型**：从旧 9router 数据库导入后，`kv` 表里残留了大量引用已删除自定义节点（providerNodes）的 customModels，导致 `/v1/models` 对每个客户端（如 dsh、CLI 工具）返回成百上千个无效模型。
+  - `/v1/models` 现在会过滤掉 `providerAlias` 指向不存在节点的孤儿模型（保留内置 provider 与现存节点下的模型）。
+  - 删除自定义节点时，同步清理其下的 customModels，避免再次产生孤儿。
+
 # v1.0.0 (2026-08-26)
 
 ## ⚠️ Breaking Changes

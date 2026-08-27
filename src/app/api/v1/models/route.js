@@ -5,7 +5,7 @@ import {
   isAnthropicCompatibleProvider,
   isOpenAICompatibleProvider,
 } from "@/shared/constants/providers";
-import { getProviderConnections, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
+import { getProviderConnections, getProviderNodes, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -277,6 +277,37 @@ export async function buildModelsList(kindFilter, options = {}) {
     console.log("Could not fetch custom models");
   }
 
+  // Valid custom-provider node IDs (openai/anthropic-compatible nodes). Used to
+  // filter orphan customModels whose providerAlias points at a node that no
+  // longer exists (the node was deleted but its customModels were left behind,
+  // e.g. after importing an older 9router DB). Those orphans would otherwise be
+  // dumped into /v1/models for every client.
+  let providerNodes = [];
+  try {
+    providerNodes = await getProviderNodes();
+  } catch (e) {
+    console.log("Could not fetch provider nodes");
+  }
+  const validNodeIds = new Set(providerNodes.map((n) => n.id));
+
+  // Every valid provider identifier (id or alias) from the static registry, so a
+  // customModel keyed by either form is treated as legitimate (e.g. noAuth free
+  // provider `oc` = opencode alias).
+  const validProviderIds = new Set();
+  for (const p of Object.values(AI_PROVIDERS)) {
+    if (!p) continue;
+    if (p.id) validProviderIds.add(p.id);
+    if (p.alias) validProviderIds.add(p.alias);
+  }
+
+  // A customModel's providerAlias is legitimate when it resolves to a real
+  // provider (built-in id or alias) OR to an existing provider node. Anything
+  // else is an orphan pointing at a deleted node and must not surface in /v1/models.
+  const isValidCustomAlias = (alias) =>
+    typeof alias === "string" &&
+    alias.trim() !== "" &&
+    (validProviderIds.has(alias.trim()) || validNodeIds.has(alias.trim()));
+
   let modelAliases = {};
   try {
     modelAliases = await getModelAliases();
@@ -347,7 +378,7 @@ export async function buildModelsList(kindFilter, options = {}) {
       // Custom models without active connection are LLM-only by current schema
       if (!kindFilter.includes(LLM_KIND)) continue;
       const providerAlias = customModel.providerAlias;
-      if (!providerAlias) continue;
+      if (!isValidCustomAlias(providerAlias)) continue;
 
       const modelId = String(customModel.id).trim();
       if (!modelId) continue;
@@ -570,6 +601,10 @@ export async function buildModelsList(kindFilter, options = {}) {
       if (!kindFilter.includes(kind)) continue;
       const alias = String(customModel.providerAlias || "").trim();
       if (!alias || connectedAliases.has(alias)) continue;
+      // Drop customModels whose alias points at a deleted provider node (orphan
+      // left behind by a failed import or node deletion). Keep only those tied
+      // to a real provider or an existing node.
+      if (!isValidCustomAlias(alias)) continue;
       const modelId = String(customModel.id).trim();
       if (!modelId) continue;
       if (isDisabled(alias, modelId)) continue;
