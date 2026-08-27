@@ -5,7 +5,7 @@ import {
   isAnthropicCompatibleProvider,
   isOpenAICompatibleProvider,
 } from "@/shared/constants/providers";
-import { getProviderConnections, getProviderNodes, getCombos, getCustomModels, getModelAliases, getProviderJsonModels } from "@/lib/localDb";
+import { getProviderConnections, getProviderNodes, getCombos, getCustomModels, getModelAliases, getProviderJsonModels, getSettings } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -246,6 +246,15 @@ export async function buildModelsList(kindFilter, options = {}) {
   // 10router instance's fetchCompatibleModelIds — skip dynamic fetch to break
   // cross-instance recursive loops.
   const skipDynamicFetch = options.skipDynamicFetch === true;
+  // Server-side toggle: when OFF, providers with a JSON model catalog fall back
+  // to their static model list instead of the imported JSON.
+  let modelJsonImportEnabled = false;
+  try {
+    const settings = await getSettings();
+    modelJsonImportEnabled = settings.modelJsonImport === true;
+  } catch (e) {
+    modelJsonImportEnabled = false;
+  }
   let connections = [];
   // Distinguish "DB healthy but with no connections" from "DB unavailable".
   // `getProviderConnections()` returns [] for a healthy DB with no provider
@@ -426,10 +435,11 @@ export async function buildModelsList(kindFilter, options = {}) {
       let liveModelKindById = new Map();
       let liveCapabilitiesById = new Map();
 
-      // If this provider uses a JSON model catalog (modelsJsonUrl) and the user
-      // has imported it, that list is authoritative: only enabled models are
-      // exposed, with kind/caps read from the imported entries.
-      const jsonCatalog = AI_PROVIDERS[providerId]?.modelsJsonUrl
+      // If this provider uses a JSON model catalog (modelsJsonUrl) AND the
+      // global toggle is ON, the imported list is authoritative: only enabled
+      // models are exposed, with kind/caps read from the imported entries.
+      // When the toggle is OFF, fall back to the static model list.
+      const jsonCatalog = (modelJsonImportEnabled && AI_PROVIDERS[providerId]?.modelsJsonUrl)
         ? await getProviderJsonModels(providerId)
         : null;
       const jsonEnabled = (jsonCatalog || []).filter((m) => m.enabled !== false);

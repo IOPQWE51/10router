@@ -14,7 +14,6 @@ import { useModelCaps } from "@/shared/hooks/useModelCaps";
 import { translate } from "@/i18n/runtime";
 import { fetchSuggestedModels } from "@/shared/utils/providerModelsFetcher";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
-import { isModelJsonImportEnabled } from "@/shared/utils/modelJsonImport";
 import ModelRow from "./ModelRow";
 import PassthroughModelsSection from "./PassthroughModelsSection";
 import CompatibleModelsSection from "./CompatibleModelsSection";
@@ -56,6 +55,7 @@ export default function ProviderDetailPage() {
   const [modelAliases, setModelAliases] = useState({});
   const [customModels, setCustomModels] = useState([]);
   const [jsonModels, setJsonModels] = useState(null); // provider JSON catalog (null = not loaded/declared)
+  const [modelJsonImportEnabled, setModelJsonImportEnabled] = useState(false); // server-side toggle
   const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
@@ -476,6 +476,19 @@ export default function ProviderDetailPage() {
     fetchDisabledModels();
     fetchJsonModels();
   }, [fetchConnections, fetchAliases, fetchCustomModels, fetchDisabledModels, fetchJsonModels]);
+
+  // Read the server-side model-JSON-import toggle (persisted in DB, so it's
+  // consistent across devices/browsers — not localStorage).
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.modelJsonImport === "boolean") {
+          setModelJsonImportEnabled(data.modelJsonImport);
+        }
+      })
+      .catch((e) => console.log("Error reading settings:", e));
+  }, []);
 
   // Cursor's model availability is account-specific and changes frequently.
   // Load the active account's live catalog for the dashboard; the static
@@ -1178,9 +1191,9 @@ export default function ProviderDetailPage() {
     ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; });
     const disabledSet = new Set(disabledModelIds);
     // Providers that publish a model JSON catalog treat the imported JSON as the
-    // authoritative model list: models are enabled/disabled (not deleted), and
-    // stale static models that aren't in the JSON are simply absent.
-    const useJsonCatalog = !!providerModelsJsonUrl;
+    // authoritative model list when the global toggle is ON. When it's OFF (or
+    // no catalog declared), fall back to the static model list.
+    const useJsonCatalog = modelJsonImportEnabled && !!providerModelsJsonUrl;
     const jsonEnabledModels = useJsonCatalog
       ? (jsonModels || []).filter((m) => m.enabled !== false)
       : [];
@@ -1317,7 +1330,7 @@ export default function ProviderDetailPage() {
 
         {/* Generic "Fetch Models from GitHub JSON" — shown when the provider
             declares a modelsJsonUrl AND the global toggle is enabled */}
-        {isModelJsonImportEnabled() && providerModelsJsonUrl && connections.some((conn) => conn.isActive !== false) && (
+        {modelJsonImportEnabled && providerModelsJsonUrl && connections.some((conn) => conn.isActive !== false) && (
           <button
             onClick={handleImportJsonModels}
             disabled={importingJsonModels}

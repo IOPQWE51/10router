@@ -10,7 +10,6 @@ import { APP_CONFIG } from "@/shared/constants/config";
 import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { LOCALE_FLAGS } from "@/shared/constants/locales";
 import { isRegionalCurrencyEnabled } from "@/shared/utils/currency";
-import { isModelJsonImportEnabled, setModelJsonImportEnabled } from "@/shared/utils/modelJsonImport";
 
 function getLocaleFromCookie() {
   if (typeof document === "undefined") return "en";
@@ -25,7 +24,6 @@ export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [locale, setLocale] = useState(() => getLocaleFromCookie());
   const [regional, setRegional] = useState(true);
-  const [modelJsonImport, setModelJsonImport] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -88,7 +86,6 @@ export default function ProfilePage() {
   useEffect(() => {
     setLocale(getLocaleFromCookie());
     setRegional(isRegionalCurrencyEnabled());
-    setModelJsonImport(isModelJsonImportEnabled());
   }, [langOpen]);
 
   const toggleCurrency = () => {
@@ -99,10 +96,21 @@ export default function ProfilePage() {
     setRegional(next);
   };
 
-  const toggleModelJsonImport = () => {
-    const next = !isModelJsonImportEnabled();
-    setModelJsonImportEnabled(next);
-    setModelJsonImport(next);
+  const toggleModelJsonImport = async () => {
+    const next = !(settings.modelJsonImport === true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelJsonImport: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+      }
+    } catch (error) {
+      console.log("Error toggling model JSON import:", error);
+    }
   };
 
   useEffect(() => {
@@ -1557,7 +1565,7 @@ export default function ProfilePage() {
                   Show a Fetch Models button on providers that publish a model JSON catalog
                 </p>
               </div>
-              <Toggle checked={modelJsonImport} onChange={toggleModelJsonImport} />
+              <Toggle checked={settings.modelJsonImport === true} onChange={toggleModelJsonImport} />
             </div>
           </div>
         </Card>
