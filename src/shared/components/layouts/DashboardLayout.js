@@ -33,6 +33,20 @@ function getToastStyle(type) {
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop sidebar can be collapsed to free up viewport (persisted).
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("sidebarCollapsed") === "1";
+  });
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("sidebarCollapsed", next ? "1" : "0");
+      }
+      return next;
+    });
+  };
   const pathname = usePathname();
   const notifications = useNotificationStore((state) => state.notifications);
   const removeNotification = useNotificationStore((state) => state.removeNotification);
@@ -76,8 +90,8 @@ export default function DashboardLayout({ children }) {
         />
       )}
 
-      {/* Sidebar - Desktop */}
-      <div className="hidden lg:flex">
+      {/* Sidebar - Desktop (collapsible to free viewport) */}
+      <div className={`${sidebarCollapsed ? "hidden" : "hidden lg:flex"}`}>
         <Sidebar />
       </div>
 
@@ -94,7 +108,7 @@ export default function DashboardLayout({ children }) {
       <main className="flex flex-col flex-1 h-full min-w-0 relative transition-colors duration-300 isolate">
         {/* Faint grid background */}
         <div className="landing-grid absolute inset-0 pointer-events-none -z-10" aria-hidden="true" />
-        <Header key={pathname} onMenuClick={() => setSidebarOpen(true)} />
+        <Header key={pathname} onMenuClick={() => setSidebarOpen(true)} onDesktopMenuClick={toggleSidebarCollapsed} />
         <div className={`flex-1 overflow-y-auto custom-scrollbar ${pathname === "/dashboard/basic-chat" ? "" : "p-6 lg:p-10"} ${pathname === "/dashboard/basic-chat" ? "flex flex-col overflow-hidden" : ""}`}>
           <div className={`${pathname === "/dashboard/basic-chat" ? "flex-1 w-full h-full flex flex-col" : "max-w-7xl mx-auto"}`}>{children}</div>
         </div>
