@@ -22,9 +22,12 @@ export default {
     usage: true,
     usageApikey: true,
   },
-  // Live model list from OpenCode's own /v1/models endpoint (Bearer auth),
-  // pulled through the same JSON-catalog Fetch Models flow as CodeBuddy.
-  modelsJsonUrl: "https://opencode.ai/zen/go/v1/models",
+  // Live model list is in the repo's providers/opencode-go.json (contextWindow
+  // and capability fields — the /v1/models endpoint returns neither). Same
+  // JSON-catalog flow as CodeBuddy: Fetch Models pulls this file from GitHub.
+  modelsJsonUrl: "https://api.github.com/repos/techysy/10router/contents/providers/opencode-go.json",
+  // Gitee mirror fallback — used when the GitHub source is unreachable/slow
+  fallbackModelsJsonUrl: "https://gitee.com/techysy/10router/raw/main/providers/opencode-go.json",
   transport: {
     baseUrl: "https://opencode.ai/zen/go/v1/chat/completions",
     headers: {},
