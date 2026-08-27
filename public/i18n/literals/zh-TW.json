@@ -196,5 +196,10 @@
   "Endpoint is exposed without an API key.": "端點未設定 API 金鑰即對外暴露。",
   "Rolling": "滾動",
   "Weekly": "每週",
-  "Monthly": "每月"
+  "Monthly": "每月",
+  "Turn off Empty": "關閉空帳號",
+  "Turn on Available": "開啟可用帳號",
+  "Only with balance": "只看有餘額",
+  "Show all": "顯示全部",
+  "Auto-refresh": "自動重新整理"
 }
