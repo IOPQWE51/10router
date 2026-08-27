@@ -7,7 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
 [![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![10Router](https://img.shields.io/badge/10Router-v1.0.0-orange.svg)](https://github.com/techysy/10router)
+[![10Router](https://img.shields.io/badge/10Router-v1.0.1-orange.svg)](https://github.com/techysy/10router)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 
 基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
@@ -55,6 +55,16 @@
 | **多币种本地化显示** | `shared/utils/currency.js` | CNY ¥ / TWD NT$ / JPY ¥ / KRW ₩ / VND ₫，Profile 页可切换 |
 | **配额按 connection 隔离** | `usage/components/ProviderLimits/utils.js` | 多账号场景下每个 connection 独立计算配额，互不干扰 |
 | **arm64 Docker 支持** | `docker-publish.yml` | 镜像同时构建 linux/amd64 + linux/arm64，支持树莓派等 ARM 设备 |
+
+#### v1.0.1 新增
+
+| 功能 | 说明 |
+|------|------|
+| **孤儿模型过滤** | `/v1/models` 不再返回已删除节点/停用连接下的残留 customModels |
+| **前缀唯一性检测** | 自定义节点 prefix 与内置 provider 冲突时拒绝创建/编辑 |
+| **CodeBuddy prompt 修复** | 不再误删自家 Agent（Hermes 等）的 system prompt，保留记忆/身份 |
+| **模型 JSON 目录** | provider 可从 GitHub（主）+ Gitee（备）拉取最新模型清单，无需发版 |
+| **启用/禁用语义** | JSON 拉取的模型按启用/禁用管理（非删除），`/v1/models` 只暴露启用的 |
 
 ### 📦 已在 fork分支 的改动（不再重复）
 
@@ -159,6 +169,8 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 
 ## 🔗 相关链接
 
+- [GitHub 仓库](https://github.com/techysy/10router) — 主仓库
+- [Gitee 镜像](https://gitee.com/techysy/10router) — 国内镜像
 - [上游项目 9Router](https://github.com/decolua/9router)
 - [9Router 文档](https://9router.com)
 - [9Router fnOS 应用包](https://github.com/techysy/9router-fnos)
