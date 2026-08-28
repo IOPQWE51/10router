@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getProviderConnections: vi.fn(),
+  getProviderNodes: vi.fn(),
   getCombos: vi.fn(),
   getCustomModels: vi.fn(),
   getModelAliases: vi.fn(),
@@ -10,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/localDb", () => ({
   getProviderConnections: mocks.getProviderConnections,
+  getProviderNodes: mocks.getProviderNodes,
   getCombos: mocks.getCombos,
   getCustomModels: mocks.getCustomModels,
   getModelAliases: mocks.getModelAliases,
@@ -28,6 +30,7 @@ const LLM_KIND = "llm";
 describe("buildModelsList — empty-connection behavior", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getProviderNodes.mockResolvedValue([]);
     mocks.getCombos.mockResolvedValue([]);
     mocks.getCustomModels.mockResolvedValue([]);
     mocks.getModelAliases.mockResolvedValue({});
@@ -86,5 +89,83 @@ describe("buildModelsList — empty-connection behavior", () => {
     // Static catalog is not dumped wholesale when a connection exists.
     const ids = models.map((m) => m.id);
     expect(ids).not.toContain("alicode-intl/qwen3.5-plus");
+  });
+
+  it("filters orphan custom models whose providerAlias points at a deleted node", async () => {
+    // Some connections exist (so the connected branch runs). One customModel is
+    // keyed to a provider node that no longer exists (deleted / failed import).
+    mocks.getProviderConnections.mockResolvedValue([
+      {
+        id: "conn-1",
+        provider: "openai-compatible-chat-validnode-1234",
+        authType: "apikey",
+        isActive: true,
+        providerSpecificData: { baseUrl: "https://example.com/v1", prefix: "ok" },
+      },
+    ]);
+    mocks.getProviderNodes.mockResolvedValue([
+      { id: "openai-compatible-chat-validnode-1234", type: "openai-compatible", name: "Valid" },
+    ]);
+    mocks.getCustomModels.mockResolvedValue([
+      // Valid: alias is a real provider (noAuth opencode alias `oc`)
+      { providerAlias: "oc", id: "mimo-v2.5-free", type: "llm", name: "mimo-v2.5-free" },
+      // Valid: alias is an existing provider node id
+      { providerAlias: "openai-compatible-chat-validnode-1234", id: "glm-5.2", type: "llm", name: "glm-5.2" },
+      // Orphan: alias references a node that has been deleted
+      { providerAlias: "openai-compatible-chat-deletednode-9999", id: "qwen-3", type: "llm", name: "qwen-3" },
+    ]);
+    global.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [] }), { status: 200 })
+    );
+
+    const models = await buildModelsList([LLM_KIND]);
+    const ids = models.map((m) => m.id);
+
+    // Valid custom models exposed (connected node uses its prefix `ok`)
+    expect(ids).toContain("oc/mimo-v2.5-free");
+    expect(ids).toContain("ok/glm-5.2");
+    // Orphan pointing at a deleted node is NOT exposed
+    expect(ids).not.toContain("openai-compatible-chat-deletednode-9999/qwen-3");
+  });
+
+  it("filters orphan custom models even when there are zero active connections", async () => {
+    // Zero connections (healthy DB). The orphan custom-model branch runs and
+    // must still drop entries whose alias references a deleted node.
+    mocks.getProviderConnections.mockResolvedValue([]);
+    mocks.getCustomModels.mockResolvedValue([
+      { providerAlias: "oc", id: "mimo-v2.5-free", type: "llm", name: "mimo-v2.5-free" },
+      { providerAlias: "openai-compatible-chat-deletednode-8888", id: "kimi-k3", type: "llm", name: "kimi-k3" },
+    ]);
+
+    const models = await buildModelsList([LLM_KIND]);
+    const ids = models.map((m) => m.id);
+
+    expect(ids).toContain("oc/mimo-v2.5-free");
+    expect(ids).not.toContain("openai-compatible-chat-deletednode-8888/kimi-k3");
+  });
+
+  it("filters custom models of a node whose connection is disabled", async () => {
+    // The node exists but its only connection is disabled (isActive=false), so
+    // its customModels must not surface in /v1/models (dead node).
+    mocks.getProviderConnections.mockResolvedValue([
+      {
+        id: "conn-disabled",
+        provider: "openai-compatible-chat-disablednode-1111",
+        authType: "apikey",
+        isActive: false, // disabled connection
+        providerSpecificData: { baseUrl: "https://example.com/v1", prefix: "dd" },
+      },
+    ]);
+    mocks.getProviderNodes.mockResolvedValue([
+      { id: "openai-compatible-chat-disablednode-1111", type: "openai-compatible", name: "Dead" },
+    ]);
+    mocks.getCustomModels.mockResolvedValue([
+      { providerAlias: "openai-compatible-chat-disablednode-1111", id: "claude-4.8-opus", type: "llm", name: "claude-4.8-opus" },
+    ]);
+
+    const models = await buildModelsList([LLM_KIND]);
+    const ids = models.map((m) => m.id);
+
+    expect(ids).not.toContain("openai-compatible-chat-disablednode-1111/claude-4.8-opus");
   });
 });

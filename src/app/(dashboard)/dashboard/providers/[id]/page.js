@@ -54,6 +54,19 @@ export default function ProviderDetailPage() {
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [modelAliases, setModelAliases] = useState({});
   const [customModels, setCustomModels] = useState([]);
+  const [jsonModels, setJsonModels] = useState(() => {
+    // Seed from localStorage so a JSON-catalog provider shows its model list
+    // immediately (no 1-2s blank while fetchJsonModels loads). Refreshed on
+    // each successful fetch below.
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = window.localStorage.getItem(`jsonModels_${params.id}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  }); // provider JSON catalog (null = not loaded/declared)
+  const [modelJsonImportEnabled, setModelJsonImportEnabled] = useState(false); // server-side toggle
   const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
@@ -79,6 +92,7 @@ export default function ProviderDetailPage() {
   const [oneByOneSummary, setOneByOneSummary] = useState(null);
   const stopOneByOneRef = useRef(false);
   const [importingQoderModels, setImportingQoderModels] = useState(false);
+  const [importingJsonModels, setImportingJsonModels] = useState(false);
   const { copied, copy } = useCopyToClipboard();
 
   const AG_RISK_STORAGE_KEY = "ag_risk_confirmed";
@@ -139,6 +153,8 @@ export default function ProviderDetailPage() {
         type: providerNode.type,
       }
     : (OAUTH_PROVIDERS[providerId] || APIKEY_PROVIDERS[providerId] || FREE_PROVIDERS[providerId] || FREE_TIER_PROVIDERS[providerId] || WEB_COOKIE_PROVIDERS[providerId]);
+  // GitHub JSON model source declared in the provider registry (nullable).
+  const providerModelsJsonUrl = providerInfo?.modelsJsonUrl;
   const authModes = providerInfo?.authModes || [];
   const isOAuth = !!OAUTH_PROVIDERS[providerId] || !!FREE_PROVIDERS[providerId] || authModes.includes("oauth");
   const supportsApiKeyAuth = !!APIKEY_PROVIDERS[providerId] || authModes.includes("apikey");
@@ -280,6 +296,27 @@ export default function ProviderDetailPage() {
       console.log("Error fetching custom models:", error);
     }
   }, []);
+
+  // Load the provider's JSON catalog (modelsJsonUrl) — only for providers that
+  // declare one. Returns stored enabled states via the GET handler.
+  const fetchJsonModels = useCallback(async () => {
+    if (!providerModelsJsonUrl) return;
+    try {
+      const res = await fetch(`/api/providers/${providerId}/json-models`, { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) {
+        setJsonModels(data.models || []);
+        // Persist so the next visit renders instantly (no blank gap).
+        if (typeof window !== "undefined") {
+          try {
+            window.localStorage.setItem(`jsonModels_${providerId}`, JSON.stringify(data.models || []));
+          } catch { /* storage may be unavailable */ }
+        }
+      }
+    } catch (error) {
+      console.log("Error fetching provider JSON models:", error);
+    }
+  }, [providerId, providerModelsJsonUrl]);
 
   // Fetch free models from Kilo API for kilocode provider
   useEffect(() => {
@@ -456,7 +493,21 @@ export default function ProviderDetailPage() {
     fetchAliases();
     fetchCustomModels();
     fetchDisabledModels();
-  }, [fetchConnections, fetchAliases, fetchCustomModels, fetchDisabledModels]);
+    fetchJsonModels();
+  }, [fetchConnections, fetchAliases, fetchCustomModels, fetchDisabledModels, fetchJsonModels]);
+
+  // Read the server-side model-JSON-import toggle (persisted in DB, so it's
+  // consistent across devices/browsers — not localStorage).
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.modelJsonImport === "boolean") {
+          setModelJsonImportEnabled(data.modelJsonImport);
+        }
+      })
+      .catch((e) => console.log("Error reading settings:", e));
+  }, []);
 
   // Cursor's model availability is account-specific and changes frequently.
   // Load the active account's live catalog for the dashboard; the static
@@ -525,12 +576,19 @@ export default function ProviderDetailPage() {
     }
   };
 
-  const handleAddCustomModel = async (modelId, type = "llm", providerAliasOverride = providerStorageAlias) => {
+  const handleAddCustomModel = async (modelId, type = "llm", providerAliasOverride = providerStorageAlias, caps = {}, enabled) => {
     try {
+      const body = { providerAlias: providerAliasOverride, id: modelId, type };
+      if (enabled !== undefined) body.enabled = enabled;
+      if (caps && typeof caps === "object") {
+        for (const k of ["vision", "reasoning", "contextWindow", "maxOutput", "thinkingFormat"]) {
+          if (caps[k] !== undefined) body[k] = caps[k];
+        }
+      }
       const res = await fetch("/api/models/custom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerAlias: providerAliasOverride, id: modelId, type }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         await fetchCustomModels();
@@ -554,6 +612,23 @@ export default function ProviderDetailPage() {
       }
     } catch (error) {
       console.log("Error deleting custom model:", error);
+    }
+  };
+
+  // Toggle a custom model's enabled flag (PUT /api/models/custom).
+  const handleToggleCustomModel = async (modelId, enabled, type = "llm") => {
+    try {
+      const res = await fetch("/api/models/custom", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerAlias: providerStorageAlias, id: modelId, type, enabled }),
+      });
+      if (res.ok) {
+        await fetchCustomModels();
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("customModelChanged"));
+      }
+    } catch (error) {
+      console.log("Error toggling custom model:", error);
     }
   };
 
@@ -608,6 +683,44 @@ export default function ProviderDetailPage() {
       alert(translate("Error fetching models") + ": " + error.message);
     } finally {
       setImportingQoderModels(false);
+    }
+  };
+
+  // Generic "Fetch Models from GitHub JSON" — POSTs the catalog to the provider's
+  // JSON model store (enabled/disabled semantics, not customModels). Gated by the
+  // global model-JSON-import toggle.
+  const handleImportJsonModels = async () => {
+    if (importingJsonModels) return;
+    setImportingJsonModels(true);
+    try {
+      const res = await fetch(`/api/providers/${providerId}/json-models`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || translate("Failed to fetch models"));
+        return;
+      }
+      await fetchJsonModels();
+      const total = data.total || data.models?.length || 0;
+      alert(translate("Sync complete") + ` (${total} ${translate("models")})`);
+    } catch (error) {
+      console.log("Error importing models from JSON:", error);
+      alert(translate("Error fetching models") + ": " + error.message);
+    } finally {
+      setImportingJsonModels(false);
+    }
+  };
+
+  // Toggle one JSON-catalog model's enabled flag (PUT /api/providers/[id]/json-models).
+  const handleToggleJsonModel = async (modelId, enabled) => {
+    try {
+      const res = await fetch(`/api/providers/${providerId}/json-models`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelId, enabled }),
+      });
+      if (res.ok) await fetchJsonModels();
+    } catch (error) {
+      console.log("Error toggling JSON model:", error);
     }
   };
 
@@ -1096,20 +1209,37 @@ export default function ProviderDetailPage() {
       ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
     ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; });
     const disabledSet = new Set(disabledModelIds);
-    const displayModels = allModels.filter((m) => !disabledSet.has(m.id));
-    const disabledDisplayModels = allModels.filter((m) => disabledSet.has(m.id));
-    const customModelRows = getProviderCustomModelRows({
-      customModels,
-      modelAliases,
-      providerAlias: providerStorageAlias,
-      builtInModels: models,
-      type: "llm",
-    });
+    // Providers that publish a model JSON catalog treat the imported JSON as the
+    // authoritative model list when the global toggle is ON. When it's OFF (or
+    // no catalog declared), fall back to the static model list.
+    const useJsonCatalog = modelJsonImportEnabled && !!providerModelsJsonUrl;
+    const jsonEnabledModels = useJsonCatalog
+      ? (jsonModels || []).filter((m) => m.enabled !== false)
+      : [];
+    const jsonDisabledModels = useJsonCatalog
+      ? (jsonModels || []).filter((m) => m.enabled === false)
+      : [];
+    const displayModels = useJsonCatalog
+      ? []
+      : allModels.filter((m) => !disabledSet.has(m.id));
+    const disabledDisplayModels = useJsonCatalog
+      ? []
+      : allModels.filter((m) => disabledSet.has(m.id));
+    const customModelRows = useJsonCatalog
+      ? []
+      : getProviderCustomModelRows({
+          customModels,
+          modelAliases,
+          providerAlias: providerStorageAlias,
+          builtInModels: models,
+          type: "llm",
+        });
 
     return (
       <div className="flex flex-wrap gap-3">
-        {/* Custom models first */}
-        {customModelRows.map((model) => (
+        {/* Custom models first — only enabled ones here; disabled customs are
+            listed in the Disabled section below */}
+        {customModelRows.filter((model) => model.enabled !== false).map((model) => (
           <ModelRow
             key={`${model.source}-${model.fullModel}`}
             model={{ id: model.id, name: model.name }}
@@ -1130,8 +1260,40 @@ export default function ProviderDetailPage() {
             isTesting={testingModelIds.has(model.id)}
             isCustom
             isFree={false}
-            caps={getCaps(`${providerId}/${model.id}`)}
+            caps={{
+              ...(getCaps(`${providerId}/${model.id}`) || {}),
+              // Custom models imported from a JSON catalog carry their own
+              // capability metadata — prefer it over the static lookup.
+              ...(model.vision === undefined ? {} : { vision: model.vision }),
+              ...(model.reasoning === undefined ? {} : { reasoning: model.reasoning }),
+              ...(model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow }),
+              ...(model.maxOutput === undefined ? {} : { maxOutput: model.maxOutput }),
+            }}
             thinkingSuffix={resolveThinkingSuffix(model.id)}
+          />
+        ))}
+
+        {/* JSON-catalog enabled models (disable → moves to Disabled) */}
+        {jsonEnabledModels.map((m) => (
+          <ModelRow
+            key={`json-${m.id}`}
+            model={{ id: m.id, name: m.name }}
+            fullModel={`${providerDisplayAlias}/${m.id}`}
+            copied={copied}
+            onCopy={copy}
+            testStatus={modelTestResults[m.id]}
+            onTest={connections.length > 0 || isFreeNoAuth ? () => handleTestModel(m.id) : undefined}
+            isTesting={testingModelIds.has(m.id)}
+            onDisable={() => handleToggleJsonModel(m.id, false)}
+            isFree={false}
+            caps={{
+              ...(getCaps(`${providerId}/${m.id}`) || {}),
+              ...(m.vision === undefined ? {} : { vision: m.vision }),
+              ...(m.reasoning === undefined ? {} : { reasoning: m.reasoning }),
+              ...(m.contextWindow === undefined ? {} : { contextWindow: m.contextWindow }),
+              ...(m.maxOutput === undefined ? {} : { maxOutput: m.maxOutput }),
+            }}
+            thinkingSuffix={resolveThinkingSuffix(m.id)}
           />
         ))}
 
@@ -1185,6 +1347,21 @@ export default function ProviderDetailPage() {
           </button>
         )}
 
+        {/* Generic "Fetch Models from GitHub JSON" — shown when the provider
+            declares a modelsJsonUrl AND the global toggle is enabled */}
+        {modelJsonImportEnabled && providerModelsJsonUrl && connections.some((conn) => conn.isActive !== false) && (
+          <button
+            onClick={handleImportJsonModels}
+            disabled={importingJsonModels}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-blue-500/40 px-3 py-2 text-xs text-blue-600 dark:text-blue-400 transition-colors hover:border-blue-500 hover:bg-blue-500/5 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="material-symbols-outlined text-sm" style={importingJsonModels ? { animation: "spin 1s linear infinite" } : undefined}>
+              {importingJsonModels ? "progress_activity" : "download"}
+            </span>
+            {importingJsonModels ? translate("Fetching...") : translate("Fetch Models")}
+          </button>
+        )}
+
         {/* Suggested models from provider API — show only models not yet added */}
         {suggestedModels.length > 0 && (() => {
           const addedFullModels = new Set([
@@ -1218,11 +1395,22 @@ export default function ProviderDetailPage() {
           );
         })()}
 
-        {/* Disabled models — restorable */}
-        {disabledDisplayModels.length > 0 && (
+        {/* Disabled models — restorable (JSON-catalog + static disabled) */}
+        {(jsonDisabledModels.length > 0 || disabledDisplayModels.length > 0) && (
           <div className="w-full mt-2">
-            <p className="text-xs text-text-muted mb-2">Disabled models ({disabledDisplayModels.length}):</p>
+            <p className="text-xs text-text-muted mb-2">Disabled models ({jsonDisabledModels.length + disabledDisplayModels.length}):</p>
             <div className="flex flex-wrap gap-2">
+              {jsonDisabledModels.map((m) => (
+                <button
+                  key={`json-${m.id}`}
+                  onClick={() => handleToggleJsonModel(m.id, true)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-black/10 dark:border-white/10 text-xs text-text-muted hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                  title="Restore model"
+                >
+                  <span className="material-symbols-outlined text-[13px]">add</span>
+                  {m.id}
+                </button>
+              ))}
               {disabledDisplayModels.map((m) => (
                 <button
                   key={m.id}

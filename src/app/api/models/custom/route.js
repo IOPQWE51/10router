@@ -17,15 +17,30 @@ export async function GET() {
 // POST /api/models/custom - Add custom model
 export async function POST(request) {
   try {
-    const { providerAlias, id, type, name } = await request.json();
+    const { providerAlias, id, type, name, vision, reasoning, contextWindow, maxOutput, thinkingFormat, enabled } = await request.json();
     if (!providerAlias || !id) {
       return NextResponse.json({ error: "providerAlias and id required" }, { status: 400 });
     }
-    const added = await addCustomModel({ providerAlias, id, type: type || "llm", name });
+    const added = await addCustomModel({ providerAlias, id, type: type || "llm", name, vision, reasoning, contextWindow, maxOutput, thinkingFormat, enabled });
     return NextResponse.json({ success: true, added });
   } catch (error) {
     console.log("Error adding custom model:", error);
     return NextResponse.json({ error: "Failed to add custom model" }, { status: 500 });
+  }
+}
+
+// PUT /api/models/custom - Update custom model (e.g. toggle enabled)
+export async function PUT(request) {
+  try {
+    const { providerAlias, id, type, enabled } = await request.json();
+    if (!providerAlias || !id) {
+      return NextResponse.json({ error: "providerAlias and id required" }, { status: 400 });
+    }
+    await addCustomModel({ providerAlias, id, type: type || "llm", enabled });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.log("Error updating custom model:", error);
+    return NextResponse.json({ error: "Failed to update custom model" }, { status: 500 });
   }
 }
 

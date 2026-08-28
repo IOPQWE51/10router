@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, updateProviderConnection, updateProviderNode } from "@/models";
+import { deleteCustomModelsByProvider, deleteProviderConnectionsByProvider, deleteProviderNode, getProviderConnections, getProviderNodeById, getProviderNodes, updateProviderConnection, updateProviderNode } from "@/models";
+import { checkPrefixConflict } from "@/shared/utils/providerPrefix";
 
 // PUT /api/provider-nodes/[id] - Update provider node
 export async function PUT(request, { params }) {
@@ -19,6 +20,17 @@ export async function PUT(request, { params }) {
 
     if (!prefix?.trim()) {
       return NextResponse.json({ error: "Prefix is required" }, { status: 400 });
+    }
+
+    // Normalize prefix to lowercase (see POST).
+    const normalizedPrefix = prefix.trim().toLowerCase();
+
+    // Reject prefixes that collide with a built-in provider id/alias or another
+    // custom node (ignoring this node itself), otherwise routing is ambiguous.
+    const existingNodes = await getProviderNodes();
+    const conflict = checkPrefixConflict(normalizedPrefix, existingNodes, id);
+    if (conflict) {
+      return NextResponse.json(conflict, { status: 400 });
     }
 
     // Only validate apiType for OpenAI Compatible nodes
@@ -50,7 +62,7 @@ export async function PUT(request, { params }) {
 
     const updates = {
       name: name.trim(),
-      prefix: prefix.trim(),
+      prefix: normalizedPrefix,
       baseUrl: sanitizedBaseUrl,
     };
 
@@ -65,7 +77,7 @@ export async function PUT(request, { params }) {
       updateProviderConnection(connection.id, {
         providerSpecificData: {
           ...(connection.providerSpecificData || {}),
-          prefix: prefix.trim(),
+          prefix: normalizedPrefix,
           apiType: node.type === "openai-compatible" ? apiType : undefined,
           baseUrl: sanitizedBaseUrl,
           nodeName: updated.name,
@@ -91,6 +103,7 @@ export async function DELETE(request, { params }) {
     }
 
     await deleteProviderConnectionsByProvider(id);
+    await deleteCustomModelsByProvider(id);
     await deleteProviderNode(id);
 
     return NextResponse.json({ success: true });

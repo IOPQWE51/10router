@@ -27,6 +27,12 @@ export class CodeBuddyExecutor extends DefaultExecutor {
     // flatten before matching and preserve the original shape on replacement.
     const NEUTRAL_PROMPT = "You are a helpful AI assistant that helps with software engineering tasks.";
     const AGENT_PATTERN = /you are claude code|claude.?code.+official.+cli|anthropic.+official.+cli|anxthxropic.+official.+cli|you are (?:cursor|windsurf|cline|aider|continue|copilot|cody)|you are an? (?:ai )?(?:coding |code )?agent|cc_entrypoint\s*=\s*(?:cli|vscode|jetbrains|gui)|claude.?code.+issues|give feedback.+claude.?code|you are .{0,30}(?:powerful )?ai agent|orchestration capabilities|OhMyOpenCode|<agent-identity>|<Role>|<Behavior_Instructions>/i;
+    // Whitelist: system prompts belonging to our own agents/gateways must pass
+    // through untouched. Without this, the length catch-all + AGENT_PATTERN below
+    // wipe the agent's full identity/role/tool memory on every new session
+    // ("失忆"). Match on unique markers that won't appear in an attacker-controlled
+    // prompt (product names, official-signature phrases).
+    const WHITELIST_PATTERN = /hermes|10router|9router|\bclaude code by anthropic\b|anthropic's official cli|\bsystem instructions\b|你的身份|你的角色设定/i;
     const flatten = (content) =>
       typeof content === "string"
         ? content
@@ -38,7 +44,12 @@ export class CodeBuddyExecutor extends DefaultExecutor {
         if (!message || message.role !== "system") return message;
         const text = flatten(message.content);
         if (!text) return message;
-        if (text.length > 2000 || AGENT_PATTERN.test(text)) {
+        // Agent prompts we explicitly own pass through untouched.
+        if (WHITELIST_PATTERN.test(text)) return message;
+        // Only replace when the prompt actually matches agent identity markers.
+        // The former `text.length > 2000` catch-all is removed — a long prompt
+        // alone must not be silently wiped (that's what caused agent amnesia).
+        if (AGENT_PATTERN.test(text)) {
           return typeof message.content === "string"
             ? { ...message, content: NEUTRAL_PROMPT }
             : { ...message, content: [{ type: "text", text: NEUTRAL_PROMPT }] };

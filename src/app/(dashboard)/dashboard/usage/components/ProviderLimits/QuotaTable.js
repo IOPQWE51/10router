@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatResetTime, getRemainingPercentage } from "./utils";
+import { translate } from "@/i18n/runtime";
 
 const PAGE_SIZE = 10;
 
@@ -168,7 +169,7 @@ export default function QuotaTable({
               <div className="flex w-36 min-w-0 items-center gap-1.5">
                 <span className="text-[10px] shrink-0">{colors.emoji}</span>
                 <span className={`${nameText} font-medium text-text-primary truncate`}>
-                  {quota.name}
+                  {translate(quota.name)}
                 </span>
               </div>
 

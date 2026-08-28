@@ -5,7 +5,7 @@ import {
   isAnthropicCompatibleProvider,
   isOpenAICompatibleProvider,
 } from "@/shared/constants/providers";
-import { getProviderConnections, getCombos, getCustomModels, getModelAliases } from "@/lib/localDb";
+import { getProviderConnections, getProviderNodes, getCombos, getCustomModels, getModelAliases, getProviderJsonModels, getSettings } from "@/lib/localDb";
 import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { resolveKiroModels } from "open-sse/services/kiroModels.js";
 import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
@@ -246,6 +246,15 @@ export async function buildModelsList(kindFilter, options = {}) {
   // 10router instance's fetchCompatibleModelIds — skip dynamic fetch to break
   // cross-instance recursive loops.
   const skipDynamicFetch = options.skipDynamicFetch === true;
+  // Server-side toggle: when OFF, providers with a JSON model catalog fall back
+  // to their static model list instead of the imported JSON.
+  let modelJsonImportEnabled = false;
+  try {
+    const settings = await getSettings();
+    modelJsonImportEnabled = settings.modelJsonImport === true;
+  } catch (e) {
+    modelJsonImportEnabled = false;
+  }
   let connections = [];
   // Distinguish "DB healthy but with no connections" from "DB unavailable".
   // `getProviderConnections()` returns [] for a healthy DB with no provider
@@ -276,6 +285,47 @@ export async function buildModelsList(kindFilter, options = {}) {
   } catch (e) {
     console.log("Could not fetch custom models");
   }
+
+  // Valid custom-provider node IDs (openai/anthropic-compatible nodes). Used to
+  // filter orphan customModels whose providerAlias points at a node that no
+  // longer exists (the node was deleted but its customModels were left behind,
+  // e.g. after importing an older 9router DB). Those orphans would otherwise be
+  // dumped into /v1/models for every client.
+  let providerNodes = [];
+  try {
+    providerNodes = await getProviderNodes();
+  } catch (e) {
+    console.log("Could not fetch provider nodes");
+  }
+  const validNodeIds = new Set(providerNodes.map((n) => n.id));
+
+  // Every valid provider identifier (id or alias) from the static registry, so a
+  // customModel keyed by either form is treated as legitimate (e.g. noAuth free
+  // provider `oc` = opencode alias).
+  const validProviderIds = new Set();
+  for (const p of Object.values(AI_PROVIDERS)) {
+    if (!p) continue;
+    if (p.id) validProviderIds.add(p.id);
+    if (p.alias) validProviderIds.add(p.alias);
+  }
+
+  // A customModel's providerAlias is legitimate when it resolves to a real
+  // provider (built-in id or alias) OR to a custom provider node that both
+  // exists AND has an active connection. Anything else is an orphan (deleted
+  // node) or a dead node (connection disabled) and must not surface in /v1/models.
+  const isCompatibleNodeId = (alias) =>
+    typeof alias === "string" &&
+    (alias.startsWith("openai-compatible-") || alias.startsWith("anthropic-compatible-"));
+  const isValidCustomAlias = (alias) => {
+    if (typeof alias !== "string" || alias.trim() === "") return false;
+    const a = alias.trim();
+    if (validProviderIds.has(a)) return true;
+    if (isCompatibleNodeId(a)) {
+      // Custom node: must exist AND have an active connection to expose models.
+      return validNodeIds.has(a) && activeConnectionByProvider.has(a);
+    }
+    return false;
+  };
 
   let modelAliases = {};
   try {
@@ -344,10 +394,13 @@ export async function buildModelsList(kindFilter, options = {}) {
 
     for (const customModel of customModels) {
       if (!customModel?.id || (customModel.type && customModel.type !== "llm")) continue;
+      // Disabled custom models (e.g. newly fetched from a JSON catalog) are not
+      // exposed to clients until the user enables them.
+      if (customModel.enabled === false) continue;
       // Custom models without active connection are LLM-only by current schema
       if (!kindFilter.includes(LLM_KIND)) continue;
       const providerAlias = customModel.providerAlias;
-      if (!providerAlias) continue;
+      if (!isValidCustomAlias(providerAlias)) continue;
 
       const modelId = String(customModel.id).trim();
       if (!modelId) continue;
@@ -382,15 +435,44 @@ export async function buildModelsList(kindFilter, options = {}) {
       let liveModelKindById = new Map();
       let liveCapabilitiesById = new Map();
 
-      let rawModelIds = hasExplicitEnabledModels
-        ? Array.from(
-            new Set(
-              enabledModels.filter(
-                (modelId) => typeof modelId === "string" && modelId.trim() !== "",
+      // If this provider uses a JSON model catalog (modelsJsonUrl) AND the
+      // global toggle is ON, the imported list is authoritative: only enabled
+      // models are exposed, with kind/caps read from the imported entries.
+      // When the toggle is OFF, fall back to the static model list.
+      const jsonCatalog = (modelJsonImportEnabled && AI_PROVIDERS[providerId]?.modelsJsonUrl)
+        ? await getProviderJsonModels(providerId)
+        : null;
+      const jsonEnabled = (jsonCatalog || []).filter((m) => m.enabled !== false);
+      let rawModelIds;
+      if (jsonCatalog && jsonEnabled.length > 0) {
+        liveModelKindById = new Map(
+          jsonEnabled.filter((m) => m.id).map((m) => [m.id, modelKind(m)])
+        );
+        liveCapabilitiesById = new Map(
+          jsonEnabled
+            .filter((m) => m?.id)
+            .map((m) => [
+              m.id,
+              {
+                ...(m.vision === undefined ? {} : { vision: m.vision }),
+                ...(m.reasoning === undefined ? {} : { reasoning: m.reasoning }),
+                ...(m.contextWindow === undefined ? {} : { contextWindow: m.contextWindow }),
+                ...(m.maxOutput === undefined ? {} : { maxOutput: m.maxOutput }),
+              },
+            ])
+        );
+        rawModelIds = jsonEnabled.map((m) => m.id);
+      } else {
+        rawModelIds = hasExplicitEnabledModels
+          ? Array.from(
+              new Set(
+                enabledModels.filter(
+                  (modelId) => typeof modelId === "string" && modelId.trim() !== "",
+                ),
               ),
-            ),
-          )
-        : providerModels.map((model) => model.id);
+            )
+          : providerModels.map((model) => model.id);
+      }
 
       if (isCompatibleProvider && rawModelIds.length === 0 && !skipDynamicFetch) {
         rawModelIds = await fetchCompatibleModelIds(conn);
@@ -437,7 +519,12 @@ export async function buildModelsList(kindFilter, options = {}) {
         .filter((modelId) => typeof modelId === "string" && modelId.trim() !== "");
 
       const customModelKindById = new Map();
-      const customModelIds = customModels
+      // For JSON-catalog providers the imported list is authoritative; legacy
+      // customModels (which used to back the JSON import) are ignored to avoid
+      // duplication and stale entries.
+      const customModelIds = (jsonCatalog && jsonEnabled.length > 0)
+        ? []
+        : customModels
         .filter((m) => {
           if (!m?.id) return false;
           const kind = getModelKind(m) || LLM_KIND;
@@ -570,6 +657,10 @@ export async function buildModelsList(kindFilter, options = {}) {
       if (!kindFilter.includes(kind)) continue;
       const alias = String(customModel.providerAlias || "").trim();
       if (!alias || connectedAliases.has(alias)) continue;
+      // Drop customModels whose alias points at a deleted provider node (orphan
+      // left behind by a failed import or node deletion). Keep only those tied
+      // to a real provider or an existing node.
+      if (!isValidCustomAlias(alias)) continue;
       const modelId = String(customModel.id).trim();
       if (!modelId) continue;
       if (isDisabled(alias, modelId)) continue;

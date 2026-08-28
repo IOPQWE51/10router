@@ -41,9 +41,14 @@ export {
 // Aliases (model + custom + mitm)
 export {
   getModelAliases, setModelAlias, deleteModelAlias,
-  getCustomModels, addCustomModel, deleteCustomModel,
+  getCustomModels, addCustomModel, deleteCustomModel, deleteCustomModelsByProvider,
   getMitmAlias, setMitmAliasAll,
 } from "./repos/aliasRepo.js";
+
+// Provider JSON model catalogs (fetched from modelsJsonUrl)
+export {
+  getProviderJsonModels, setProviderJsonModels, updateProviderJsonModelEnabled, clearProviderJsonModels,
+} from "./repos/providerJsonModelsRepo.js";
 
 // Pricing
 export {

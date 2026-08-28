@@ -39,6 +39,7 @@ import {
   QUOTA_SORT_OPTIONS,
 } from "./utils";
 import Card from "@/shared/components/Card";
+import { translate } from "@/i18n/runtime";
 import { ConfirmModal, EditConnectionModal } from "@/shared/components";
 import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
@@ -145,9 +146,22 @@ export default function ProviderLimits() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [proxyPools, setProxyPools] = useState([]);
-  const [providerFilter, setProviderFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState(() => {
+    if (typeof window === "undefined") return "all";
+    return window.localStorage.getItem("quotaProviderFilter") || "all";
+  });
   const [providerOptions, setProviderOptions] = useState([]);
-  const [accountFilter, setAccountFilter] = useState("all");
+  const [accountFilter, setAccountFilter] = useState(() => {
+    if (typeof window === "undefined") return "all";
+    return window.localStorage.getItem("quotaAccountFilter") || "all";
+  });
+  // Persist filter choices across visits/sessions.
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("quotaProviderFilter", providerFilter);
+  }, [providerFilter]);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("quotaAccountFilter", accountFilter);
+  }, [accountFilter]);
   const [quotaSortMode, setQuotaSortMode] = useState("default");
   const [quotaVisibility, setQuotaVisibility] = useState({});
   const [expiringFirst, setExpiringFirst] = useState(false);
@@ -696,13 +710,62 @@ export default function ProviderLimits() {
     [connections, quotaData, expiringFirst, providerFilter, quotaSortMode],
   );
 
-  // Connection is depleted when any quota entry hit the threshold
+  // Hide every depleted (zero-balance) quota row across the current connections.
+  const handleHideDepletedQuotas = useCallback(() => {
+    const previous = quotaVisibility;
+    const next = { ...previous };
+    let changed = false;
+    for (const conn of sortedConnections) {
+      const rawQuotas = quotaData[conn.id]?.quotas || [];
+      if (rawQuotas.length === 0) continue;
+      const key = conn.id;
+      const entryVisibility = next[key] || {};
+      const hidden = new Set(entryVisibility.hidden || []);
+      for (const q of rawQuotas) {
+        if (q.unlimited === true) continue; // genuinely unlimited rows stay visible
+        // Absolute zero-balance: 0/0 (no allowance) or used >= total.
+        const total = q.total || 0;
+        const depleted = total <= 0 || (q.used || 0) >= total;
+        if (depleted) {
+          const qk = getQuotaVisibilityKey(q);
+          if (qk && !hidden.has(qk)) hidden.add(qk);
+        }
+      }
+      if (hidden.size !== (entryVisibility.hidden || []).length) {
+        next[key] = { ...entryVisibility, hidden: [...hidden] };
+        changed = true;
+      }
+    }
+    if (changed) updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility, sortedConnections, quotaData]);
+
+  // Un-hide every quota row across the current connections (show all packs).
+  const handleShowAllQuotas = useCallback(() => {
+    const previous = quotaVisibility;
+    const next = { ...previous };
+    let changed = false;
+    for (const conn of sortedConnections) {
+      if (next[conn.id]?.hidden?.length) {
+        next[conn.id] = { ...next[conn.id], hidden: [] };
+        changed = true;
+      }
+    }
+    if (changed) updateQuotaVisibility(next, previous);
+  }, [quotaVisibility, updateQuotaVisibility, sortedConnections]);
+
+  // A connection is empty (depleted) only when EVERY quota row has an absolute
+  // zero balance — 0/0 (no allowance, e.g. Qoder) or used >= total. Any single
+  // row with remaining credit (e.g. a fresh Bonus Pack) keeps the account
+  // "available". Genuinely unlimited rows opt out via unlimited:true and don't
+  // count either way; accounts with only unlimited rows stay available.
   const isConnectionDepleted = (conn) => {
     const quotas = quotaData[conn.id]?.quotas;
     if (!quotas?.length) return false;
-    return quotas.some((q) => {
-      if (!q.total || q.total <= 0) return false;
-      return calculatePercentage(q.used, q.total) <= DEPLETED_QUOTA_THRESHOLD;
+    const judged = quotas.filter((q) => q.unlimited !== true);
+    if (judged.length === 0) return false;
+    return judged.every((q) => {
+      const total = q.total || 0;
+      return total <= 0 || (q.used || 0) >= total;
     });
   };
 
@@ -757,42 +820,36 @@ export default function ProviderLimits() {
   const isCustomPageSize = !ACCOUNT_PAGE_SIZE_OPTIONS.includes(pageSize);
   const pageSizeLabel = getPageSizeLabel(pageSize, isCustomPageSize);
 
-  if (!connectionsLoading && !hasEligibleConnections) {
-    return (
-      <Card padding="lg">
-        <div className="text-center py-12">
-          <span className="material-symbols-outlined text-[64px] text-text-muted opacity-20">
-            cloud_off
-          </span>
-          <h3 className="mt-4 text-lg font-semibold text-text-primary">
-            No Providers Connected
-          </h3>
-          <p className="mt-2 text-sm text-text-muted max-w-md mx-auto">
-            Connect to providers with OAuth to track your API quota limits and
-            usage.
-          </p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (!connectionsLoading && !hasVisibleConnections) {
-    return (
-      <Card padding="lg">
-        <div className="text-center py-12">
-          <span className="material-symbols-outlined text-[64px] text-text-muted opacity-20">
-            {emptyState.icon}
-          </span>
-          <h3 className="mt-4 text-lg font-semibold text-text-primary">
-            {emptyState.title}
-          </h3>
-          <p className="mt-2 text-sm text-text-muted max-w-md mx-auto">
-            {emptyState.description}
-          </p>
-        </div>
-      </Card>
-    );
-  }
+  const emptyStateNode = !connectionsLoading && !hasEligibleConnections ? (
+    <Card padding="lg">
+      <div className="text-center py-12">
+        <span className="material-symbols-outlined text-[64px] text-text-muted opacity-20">
+          cloud_off
+        </span>
+        <h3 className="mt-4 text-lg font-semibold text-text-primary">
+          No Providers Connected
+        </h3>
+        <p className="mt-2 text-sm text-text-muted max-w-md mx-auto">
+          Connect to providers with OAuth to track your API quota limits and
+          usage.
+        </p>
+      </div>
+    </Card>
+  ) : !connectionsLoading && !hasVisibleConnections ? (
+    <Card padding="lg">
+      <div className="text-center py-12">
+        <span className="material-symbols-outlined text-[64px] text-text-muted opacity-20">
+          {emptyState.icon}
+        </span>
+        <h3 className="mt-4 text-lg font-semibold text-text-primary">
+          {emptyState.title}
+        </h3>
+        <p className="mt-2 text-sm text-text-muted max-w-md mx-auto">
+          {emptyState.description}
+        </p>
+      </div>
+    </Card>
+  ) : null;
 
   return (
     <div className="space-y-6">
@@ -954,7 +1011,7 @@ export default function ProviderLimits() {
             title="Disable connections with depleted quota on the current page"
           >
             <span className="material-symbols-outlined text-[14px]">block</span>
-            <span className="hidden sm:inline">Turn off Empty</span>
+            <span className="hidden sm:inline">{translate("Turn off Empty")}</span>
           </button>
 
           {/* Bulk: enable available */}
@@ -968,7 +1025,33 @@ export default function ProviderLimits() {
             <span className="material-symbols-outlined text-[14px]">
               check_circle
             </span>
-            <span className="hidden sm:inline">Turn on Available</span>
+            <span className="hidden sm:inline">{translate("Turn on Available")}</span>
+          </button>
+
+          {/* Bulk: show only quota rows with a balance */}
+          <button
+            type="button"
+            onClick={handleHideDepletedQuotas}
+            className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-blue-500/30 px-2 text-xs text-blue-500 transition-colors hover:bg-blue-500/10"
+            title="Hide depleted (zero-balance) quota packs across current connections"
+          >
+            <span className="material-symbols-outlined text-[14px]">
+              visibility
+            </span>
+            <span className="hidden sm:inline">{translate("Only with balance")}</span>
+          </button>
+
+          {/* Bulk: show all quota packs */}
+          <button
+            type="button"
+            onClick={handleShowAllQuotas}
+            className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-black/10 px-2 text-xs text-text-primary transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/5"
+            title="Show all quota packs across current connections"
+          >
+            <span className="material-symbols-outlined text-[14px]">
+              visibility_off
+            </span>
+            <span className="hidden sm:inline">{translate("Show all")}</span>
           </button>
 
           {/* Auto-refresh toggle */}
@@ -1020,6 +1103,10 @@ export default function ProviderLimits() {
         </div>
       )}
 
+      {/* Empty state (filters matched nothing) — controls stay visible above */}
+      {emptyStateNode && <div className="pt-2">{emptyStateNode}</div>}
+
+      {!emptyStateNode && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {sortedConnections.map((conn) => {
           const quota = quotaData[conn.id];
@@ -1291,6 +1378,7 @@ export default function ProviderLimits() {
           );
         })}
       </div>
+      )}
 
       <div className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-white/10 dark:bg-white/[0.03]">
           <div className="flex flex-wrap items-center justify-between gap-2">

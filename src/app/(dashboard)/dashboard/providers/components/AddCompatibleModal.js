@@ -45,6 +45,7 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
 
   const [formData, setFormData] = useState(initialFormData);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [checkKey, setCheckKey] = useState("");
   const [checkModelId, setCheckModelId] = useState("");
   const [validating, setValidating] = useState(false);
@@ -58,12 +59,14 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
       setValidationResult(null);
       setCheckKey("");
       setCheckModelId("");
+      setSubmitError("");
     }
   }, [config.hasApiType ? formData.apiType : isOpen]);
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.prefix.trim() || !formData.baseUrl.trim()) return;
     setSubmitting(true);
+    setSubmitError("");
     try {
       const res = await fetch("/api/provider-nodes", {
         method: "POST",
@@ -82,9 +85,13 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
         setFormData(initialFormData());
         setCheckKey("");
         setValidationResult(null);
+        setSubmitError("");
+      } else {
+        setSubmitError(data?.error || "Failed to create provider");
       }
     } catch (error) {
       console.log(`Error creating ${config.errorLabel} node:`, error);
+      setSubmitError("Network error creating provider");
     } finally {
       setSubmitting(false);
     }
@@ -189,6 +196,11 @@ function AddCompatibleModal({ variant, isOpen, onClose, onCreated }) {
           </Button>
           {renderValidationResult()}
         </div>
+        {submitError && (
+          <div className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-500">
+            {submitError}
+          </div>
+        )}
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleSubmit}

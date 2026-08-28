@@ -179,7 +179,7 @@ const getPageInfo = (pathname) => {
   return { title: "", description: "", breadcrumbs: [] };
 };
 
-export default function Header({ onMenuClick, showMenuButton = true }) {
+export default function Header({ onMenuClick, onDesktopMenuClick, showMenuButton = true }) {
   const pathname = usePathname();
   const [displayName, setDisplayName] = useState("");
   const [loginMethod, setLoginMethod] = useState("");
@@ -239,6 +239,18 @@ export default function Header({ onMenuClick, showMenuButton = true }) {
           </button>
         )}
       </div>
+
+      {/* Desktop sidebar collapse button */}
+      {onDesktopMenuClick && (
+        <button
+          onClick={onDesktopMenuClick}
+          className="hidden lg:flex items-center justify-center p-2 shrink-0 text-text-main hover:text-primary transition-colors rounded-lg"
+          title="Toggle sidebar"
+          aria-label="Toggle sidebar"
+        >
+          <span className="material-symbols-outlined">menu_open</span>
+        </button>
+      )}
 
       {/* Page title with breadcrumbs */}
       <div className="flex flex-col min-w-0 flex-1">
@@ -369,5 +381,6 @@ function HeaderSearch() {
 
 Header.propTypes = {
   onMenuClick: PropTypes.func,
+  onDesktopMenuClick: PropTypes.func,
   showMenuButton: PropTypes.bool,
 };

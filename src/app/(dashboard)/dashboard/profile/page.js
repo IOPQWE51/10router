@@ -96,6 +96,23 @@ export default function ProfilePage() {
     setRegional(next);
   };
 
+  const toggleModelJsonImport = async () => {
+    const next = !(settings.modelJsonImport === true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelJsonImport: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+      }
+    } catch (error) {
+      console.log("Error toggling model JSON import:", error);
+    }
+  };
+
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
@@ -1539,6 +1556,17 @@ export default function ProfilePage() {
                 ? ` Combos rotate after ${settings.comboStickyRoundRobinLimit || 1} call${(settings.comboStickyRoundRobinLimit || 1) === 1 ? "" : "s"} per model.`
                 : " Combos always start with their first model."}
             </p>
+
+            {/* Fetch models from GitHub JSON — feature toggle (provider detail page) */}
+            <div className="flex items-start sm:items-center justify-between gap-4 pt-4 border-t border-border/50">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm sm:text-base">Fetch models from GitHub JSON</p>
+                <p className="text-xs sm:text-sm text-text-muted">
+                  Show a Fetch Models button on providers that publish a model JSON catalog
+                </p>
+              </div>
+              <Toggle checked={settings.modelJsonImport === true} onChange={toggleModelJsonImport} />
+            </div>
           </div>
         </Card>
 

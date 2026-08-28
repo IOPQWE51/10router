@@ -11,7 +11,7 @@ import {
   getBezierPath,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AI_PROVIDERS } from "@/shared/constants/providers";
+import { AI_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS } from "@/shared/constants/providers";
 import { getProviderIconSrc, markProviderIconMissing } from "@/shared/utils/providerIcon";
 
 // Force-stop FE animation if a provider stays active longer than this
@@ -291,11 +291,24 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
     draggable: false,
   });
 
-  const edgeStyle = (active, last, error) => {
-    if (error) return { stroke: "#ef4444", strokeWidth: 2.5, opacity: 0.9 };
-    if (active) return { stroke: "#22d3ee", strokeWidth: 3.5, opacity: 1 };
-    if (last) return { stroke: "#f59e0b", strokeWidth: 2, opacity: 0.7 };
-    return { stroke: "var(--color-border)", strokeWidth: 1, opacity: 0.3 };
+  const isFreeProvider = (providerId) =>
+    !!FREE_PROVIDERS[providerId] || !!FREE_TIER_PROVIDERS[providerId];
+
+  const edgeStyle = (active, last, error, isFree) => {
+    const base = error
+      ? { stroke: "#ef4444", strokeWidth: 2.5, opacity: 0.9 }
+      : active
+      ? { stroke: "#22d3ee", strokeWidth: 3.5, opacity: 1 }
+      : last
+      ? { stroke: "#f59e0b", strokeWidth: 2, opacity: 0.7 }
+      : { stroke: "var(--color-border)", strokeWidth: 1, opacity: 0.3 };
+    // Free/tiered providers render as a dashed link to distinguish them from
+    // paid/active upstreams at a glance.
+    if (isFree && !active) {
+      base.strokeDasharray = "4 4";
+      base.opacity = Math.max(base.opacity, 0.5);
+    }
+    return base;
   };
 
   providers.forEach((p, i) => {
@@ -347,7 +360,7 @@ function buildLayout(providers, activeSet, lastSet, errorSet) {
       // Built-in animated uses stroke-dasharray (CPU-heavy); use particle beam instead
       animated: false,
       data: { active },
-      style: edgeStyle(active, last, error),
+      style: edgeStyle(active, last, error, isFreeProvider(p.provider)),
     });
   });
 
