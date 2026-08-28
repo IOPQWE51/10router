@@ -7,6 +7,7 @@
     "dev": "next dev --port 20127",
     "dev:webpack": "next dev --webpack --port 20127",
     "build": "next build --webpack",
+    "prebuild:fpk": "node scripts/sync-manifest-version.mjs",
     "postbuild": "node scripts/copy-standalone-assets.mjs",
     "postbuild:bun": "node scripts/copy-standalone-assets.mjs",
     "start": "node custom-server.js --port 20127",
@@ -54,7 +55,7 @@
   "optionalDependencies": {
     "better-sqlite3": "^12.6.2"
   },
-  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools — sql.js is used as fallback at runtime",
+  "comment_better_sqlite3": "kept in optionalDependencies so npm install doesn't fail on systems without build tools \u2014 sql.js is used as fallback at runtime",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "eslint": "^9",
