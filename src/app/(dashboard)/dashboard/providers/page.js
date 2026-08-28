@@ -107,6 +107,7 @@ export default function ProvidersPage() {
   const [testingMode, setTestingMode] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [topologyVisibility, setTopologyVisibility] = useState({});
+  const [disabledLastSort, setDisabledLastSort] = useState(false);
   const notify = useNotificationStore();
   const searchQuery = useHeaderSearchStore((s) => s.query);
   const registerSearch = useHeaderSearchStore((s) => s.register);
@@ -121,6 +122,10 @@ export default function ProvidersPage() {
     !searchQuery.trim() ||
     name.toLowerCase().includes(searchQuery.trim().toLowerCase());
 
+  // Sorting: priority → connected-first → (optional) disabled-last → name.
+  // The disabled-last rule pushes providers whose connections are all
+  // disabled (isActive=false) behind providers with no connections at all,
+  // so live/unconfigured providers surface before switched-off ones.
   const sortByPriority = (entries, authType) =>
     [...entries].sort(([ka, a], [kb, b]) => {
       const pa = a.priority ?? 999;
@@ -131,6 +136,11 @@ export default function ProvidersPage() {
       const ca = sa.connected > 0 ? 1 : 0;
       const cb = sb.connected > 0 ? 1 : 0;
       if (ca !== cb) return cb - ca;
+      if (disabledLastSort) {
+        const da = sa.allDisabled ? 1 : 0;
+        const db = sb.allDisabled ? 1 : 0;
+        if (da !== db) return da - db;
+      }
       return (a.name || "").localeCompare(b.name || "");
     });
 
@@ -144,6 +154,11 @@ export default function ProvidersPage() {
       const ca = sa.connected > 0 ? 1 : 0;
       const cb = sb.connected > 0 ? 1 : 0;
       if (ca !== cb) return cb - ca;
+      if (disabledLastSort) {
+        const da = sa.allDisabled ? 1 : 0;
+        const db = sb.allDisabled ? 1 : 0;
+        if (da !== db) return da - db;
+      }
       return (a.name || "").localeCompare(b.name || "");
     });
 
@@ -163,6 +178,7 @@ export default function ProvidersPage() {
         if (settingsRes.ok) {
           const settingsData = await settingsRes.json();
           setTopologyVisibility(settingsData.topologyVisibility || {});
+          setDisabledLastSort(settingsData.providerDisabledLastSort === true);
         }
       } catch (error) {
         console.log("Error fetching data:", error);

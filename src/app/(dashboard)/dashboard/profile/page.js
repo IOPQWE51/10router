@@ -113,6 +113,23 @@ export default function ProfilePage() {
     }
   };
 
+  const toggleProviderDisabledLastSort = async () => {
+    const next = !(settings.providerDisabledLastSort === true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerDisabledLastSort: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+      }
+    } catch (error) {
+      console.log("Error toggling provider disabled-last sort:", error);
+    }
+  };
+
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
@@ -1556,6 +1573,31 @@ export default function ProfilePage() {
                 ? ` Combos rotate after ${settings.comboStickyRoundRobinLimit || 1} call${(settings.comboStickyRoundRobinLimit || 1) === 1 ? "" : "s"} per model.`
                 : " Combos always start with their first model."}
             </p>
+          </div>
+        </Card>
+
+        {/* Providers — provider list & catalog behavior */}
+        <Card>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 shrink-0">
+              <span className="material-symbols-outlined text-[20px]">hub</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-semibold">Providers</h3>
+          </div>
+          <div className="flex flex-col gap-4">
+            {/* Disabled providers sort last (behind no-connection providers) */}
+            <div className="flex items-start sm:items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm sm:text-base">Disabled providers sort last</p>
+                <p className="text-xs sm:text-sm text-text-muted">
+                  Push providers with all connections disabled behind those with no connections
+                </p>
+              </div>
+              <Toggle
+                checked={settings.providerDisabledLastSort === true}
+                onChange={toggleProviderDisabledLastSort}
+              />
+            </div>
 
             {/* Fetch models from GitHub JSON — feature toggle (provider detail page) */}
             <div className="flex items-start sm:items-center justify-between gap-4 pt-4 border-t border-border/50">
