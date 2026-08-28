@@ -19,6 +19,7 @@ fnos-packaging/
 
 ```bash
 # 0. 前置：本仓库 npm install && npm run build 已完成（生成 .next/standalone）
+#    构建前自动同步版本：npm run prebuild:fpk（manifest version ← package.json）
 
 # 1. 同步到 NAS 构建目录（骨架，server 产物单独传）
 tar czf /tmp/10rf-skel.tar -C fnos-packaging cmd config wizard manifest docs app/ui ICON.PNG ICON_256.PNG
