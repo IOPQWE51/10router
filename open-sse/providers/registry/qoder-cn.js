@@ -16,6 +16,12 @@ export default {
   authModes: ["oauth", "apikey"],
   hasOAuth: true,
   authHint: "Personal Access Token (pt-...) 来自 https://qoder.cn/account/integrations",
+  // Static JSON catalog — CN model list endpoint requires COSY signing, so
+  // pull the pre-extracted catalog through the JSON-catalog flow instead of
+  // the live /model/list endpoint. Same approach as CodeBuddy/opencode-go.
+  modelsJsonUrl: "https://api.github.com/repos/techysy/10router/contents/providers/qoder-cn.json",
+  // Gitee mirror fallback — used when the GitHub source is unreachable/slow
+  fallbackModelsJsonUrl: "https://gitee.com/techysy/10router/raw/main/providers/qoder-cn.json",
   transport: {
     baseUrl: "https://gateway.qoder.com.cn/algo/api/v2/service/pro/sse/agent_chat_generation",
     headers: {},

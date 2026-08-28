@@ -3,7 +3,7 @@ import {
   QODER_CN_DEVICE_TOKEN_URL,
   QODER_CN_LOGIN_URL,
   QODER_CN_USERINFO_URL,
-} from "../../../open-sse/shared/qoder/constants.js";
+} from "../../qoder/constants.js";
 
 // Qoder CN shares the global build's device flow (PKCE + nonce + machine_id,
 // poll until a `dt-...` token appears) but points at the qoder.com.cn hosts
@@ -84,13 +84,15 @@ const qoderCn = {
     const rawEmail = (tokens._qoderEmail || "").trim();
     const displayName = (tokens._qoderName || "").trim() || null;
     const userId = tokens._qoderUserId || "";
-    const email = rawEmail || (userId ? `qoder-cn-user-${userId}` : null);
+    // Prefer displayName for the connection name so users see a short
+    // recognizable label (e.g. "yu_shiyang") instead of the UUID fallback.
+    const email = rawEmail || displayName || (userId ? `qoder-cn-user-${userId}` : null);
     return {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token || null,
       expiresIn: tokens.expires_in,
       email,
-      displayName,
+      displayName: displayName || rawEmail || (userId ? `qoder-cn-user-${userId}` : null),
       providerSpecificData: {
         authMethod: "device",
         userId,
