@@ -146,9 +146,22 @@ export default function ProviderLimits() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [proxyPools, setProxyPools] = useState([]);
-  const [providerFilter, setProviderFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState(() => {
+    if (typeof window === "undefined") return "all";
+    return window.localStorage.getItem("quotaProviderFilter") || "all";
+  });
   const [providerOptions, setProviderOptions] = useState([]);
-  const [accountFilter, setAccountFilter] = useState("all");
+  const [accountFilter, setAccountFilter] = useState(() => {
+    if (typeof window === "undefined") return "all";
+    return window.localStorage.getItem("quotaAccountFilter") || "all";
+  });
+  // Persist filter choices across visits/sessions.
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("quotaProviderFilter", providerFilter);
+  }, [providerFilter]);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("quotaAccountFilter", accountFilter);
+  }, [accountFilter]);
   const [quotaSortMode, setQuotaSortMode] = useState("default");
   const [quotaVisibility, setQuotaVisibility] = useState({});
   const [expiringFirst, setExpiringFirst] = useState(false);
@@ -709,8 +722,10 @@ export default function ProviderLimits() {
       const entryVisibility = next[key] || {};
       const hidden = new Set(entryVisibility.hidden || []);
       for (const q of rawQuotas) {
-        const depleted =
-          q.total !== 0 && q.total !== null && (q.total - (q.used || 0)) <= 0;
+        if (q.unlimited === true) continue; // genuinely unlimited rows stay visible
+        // Absolute zero-balance: 0/0 (no allowance) or used >= total.
+        const total = q.total || 0;
+        const depleted = total <= 0 || (q.used || 0) >= total;
         if (depleted) {
           const qk = getQuotaVisibilityKey(q);
           if (qk && !hidden.has(qk)) hidden.add(qk);
@@ -738,22 +753,19 @@ export default function ProviderLimits() {
     if (changed) updateQuotaVisibility(next, previous);
   }, [quotaVisibility, updateQuotaVisibility, sortedConnections]);
 
-  // Connection is depleted when any quota entry hit the threshold, or when
-  // every row reports zero balance (0/0 — e.g. Qoder returns total=0 with no
-  // active allowance, which must not be mistaken for "unlimited"). Rows that
-  // are genuinely unlimited opt out explicitly via `unlimited: true`.
+  // A connection is empty (depleted) only when EVERY quota row has an absolute
+  // zero balance — 0/0 (no allowance, e.g. Qoder) or used >= total. Any single
+  // row with remaining credit (e.g. a fresh Bonus Pack) keeps the account
+  // "available". Genuinely unlimited rows opt out via unlimited:true and don't
+  // count either way; accounts with only unlimited rows stay available.
   const isConnectionDepleted = (conn) => {
     const quotas = quotaData[conn.id]?.quotas;
     if (!quotas?.length) return false;
-    const judged = quotas.filter((q) => {
-      if (q.unlimited === true) return false;          // explicit unlimited: skip
-      if (!q.total || q.total <= 0) return true;       // 0/0 → zero balance
-      return calculatePercentage(q.used, q.total) <= DEPLETED_QUOTA_THRESHOLD;
-    });
-    if (judged.length === 0) return false;             // only unlimited rows
-    return judged.some((q) => {
-      if (!q.total || q.total <= 0) return true;
-      return calculatePercentage(q.used, q.total) <= DEPLETED_QUOTA_THRESHOLD;
+    const judged = quotas.filter((q) => q.unlimited !== true);
+    if (judged.length === 0) return false;
+    return judged.every((q) => {
+      const total = q.total || 0;
+      return total <= 0 || (q.used || 0) >= total;
     });
   };
 
