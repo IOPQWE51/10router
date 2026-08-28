@@ -1,0 +1,19 @@
+{
+  "provider": "qoder-cn",
+  "alias": "qdc",
+  "models": [
+    { "id": "ultimate", "name": "Ultimate", "type": "llm", "contextWindow": 200000, "maxOutput": 32000 },
+    { "id": "auto", "name": "Auto", "type": "llm", "contextWindow": 200000, "maxOutput": 32000 },
+    { "id": "performance", "name": "Performance", "type": "llm", "contextWindow": 200000, "maxOutput": 32000 },
+    { "id": "efficient", "name": "Efficient", "type": "llm", "contextWindow": 200000, "maxOutput": 32000 },
+    { "id": "qmodel_preview", "name": "Qwen3.8-Max-Preview", "type": "llm", "contextWindow": 200000, "maxOutput": 32000, "reasoning": true },
+    { "id": "qmodel_latest", "name": "Qwen3.7-Max", "type": "llm", "contextWindow": 200000, "maxOutput": 32000, "reasoning": true },
+    { "id": "qmodel", "name": "Qwen3.7-Plus", "type": "llm", "contextWindow": 200000, "maxOutput": 32000, "reasoning": true },
+    { "id": "kmodel_latest", "name": "Kimi-K3", "type": "llm", "contextWindow": 200000, "maxOutput": 32000, "reasoning": true },
+    { "id": "kmodel", "name": "Kimi-K2.7-Code", "type": "llm", "contextWindow": 200000, "maxOutput": 32000 },
+    { "id": "gm51model", "name": "GLM-5.2", "type": "llm", "contextWindow": 1000000, "maxOutput": 48000, "reasoning": true },
+    { "id": "dmodel", "name": "DeepSeek-V4-Pro", "type": "llm", "contextWindow": 200000, "maxOutput": 32000, "reasoning": true },
+    { "id": "dfmodel", "name": "DeepSeek-V4-Flash", "type": "llm", "contextWindow": 200000, "maxOutput": 32000, "reasoning": true },
+    { "id": "mmodel", "name": "MiniMax-M3", "type": "llm", "contextWindow": 200000, "maxOutput": 32000 }
+  ]
+}
