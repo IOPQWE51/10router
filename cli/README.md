@@ -40,11 +40,11 @@
 **Option 1 — npm (recommended for desktop):**
 
 ```bash
-npm install -g 10router
+npm install -g 10routerproxy
 10router
 
 # Or run directly with npx
-npx 10router
+npx 10routerproxy
 ```
 
 **Option 2 — Docker (server/VPS):**
