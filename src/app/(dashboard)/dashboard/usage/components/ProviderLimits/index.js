@@ -1038,7 +1038,7 @@ export default function ProviderLimits() {
             <span className="material-symbols-outlined text-[14px]">
               visibility
             </span>
-            <span className="hidden sm:inline">{translate("Only with balance")}</span>
+            <span className="hidden sm:inline">{translate("With balance")}</span>
           </button>
 
           {/* Bulk: show all quota packs */}

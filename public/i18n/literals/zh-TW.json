@@ -199,7 +199,7 @@
   "Monthly": "每月",
   "Turn off Empty": "關閉空帳號",
   "Turn on Available": "開啟可用帳號",
-  "Only with balance": "只看有餘額",
   "Show all": "顯示全部",
-  "Auto-refresh": "自動重新整理"
+  "Auto-refresh": "自動重新整理",
+  "With balance": "有餘額"
 }
