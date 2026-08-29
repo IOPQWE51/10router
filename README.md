@@ -56,7 +56,7 @@
 | **配额按 connection 隔离** | `usage/components/ProviderLimits/utils.js` | 多账号场景下每个 connection 独立计算配额，互不干扰 |
 | **arm64 Docker 支持** | `docker-publish.yml` | 镜像同时构建 linux/amd64 + linux/arm64，支持树莓派等 ARM 设备 |
 
-#### v1.0.1 新增
+#### v1.0.2 新增
 
 | 功能 | 说明 |
 |------|------|
@@ -105,10 +105,10 @@ docker run -d \
 
 | 文件 | 说明 |
 |------|------|
-| `10router-1.0.0-x86.fpk` | x86 URL 版 |
-| `10router-1.0.0-iframe-x86.fpk` | x86 IFRAME 版 |
-| `10router-1.0.0-arm.fpk` | ARM URL 版 |
-| `10router-1.0.0-iframe-arm.fpk` | ARM IFRAME 版 |
+| `10router-<版本>-x86.fpk` | x86 URL 版 |
+| `10router-<版本>-iframe-x86.fpk` | x86 IFRAME 版 |
+| `10router-<版本>-arm.fpk` | ARM URL 版 |
+| `10router-<版本>-iframe-arm.fpk` | ARM IFRAME 版 |
 
 安装：App Center → 手动安装 → 选择 fpk。
 
