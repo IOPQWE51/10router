@@ -1,6 +1,6 @@
 {
   "name": "10router-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "10Router CLI - Start and manage 10Router server",
   "bin": {
     "10router": "./cli.js"

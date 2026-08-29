@@ -1,6 +1,6 @@
 {
   "name": "10router-app",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "10Router web dashboard",
   "private": true,
   "scripts": {
@@ -52,7 +52,7 @@
     "uuid": "^13.0.0",
     "zustand": "^5.0.10"
   },
-  "comment_better_sqlite3": "deliberately NOT a dependency here. npm >= 11 blocks install scripts unless allowlisted, so it was silently skipped and never built anyway, and Next output tracing copies only its lib/*.js \u2014 never the .node binary \u2014 so no deployment ever ran it: the Docker image, the fpk and the standalone tarball are all on node:sqlite. src/lib/db/driver.js still tries it first, because the CLI installs it into ~/.10router/runtime (cli/hooks/sqliteRuntime.js, own pinned version) where it does work.",
+  "comment_better_sqlite3": "deliberately NOT a dependency here. npm >= 11 blocks install scripts unless allowlisted, so it was silently skipped and never built anyway, and Next output tracing copies only its lib/*.js — never the .node binary — so no deployment ever ran it: the Docker image, the fpk and the standalone tarball are all on node:sqlite. src/lib/db/driver.js still tries it first, because the CLI installs it into ~/.10router/runtime (cli/hooks/sqliteRuntime.js, own pinned version) where it does work.",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "eslint": "^9",
