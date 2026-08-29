@@ -89,7 +89,10 @@ try { ensureSqliteRuntime({ silent: true }); } catch {}
 try { ensureTrayRuntime({ silent: true }); } catch {}
 
 // Configuration constants
-const APP_NAME = pkg.name; // Use from package.json
+// Two different names, identical until the npm package was renamed to
+// 10router-cli: APP_NAME is what you install, BIN_NAME is what you then type.
+const APP_NAME = pkg.name;
+const BIN_NAME = Object.keys(pkg.bin ?? {})[0] ?? pkg.name;
 const INSTALL_CMD_LATEST = `npm i -g ${APP_NAME}@latest --prefer-online`;
 
 const DEFAULT_PORT = 20128;
@@ -141,7 +144,7 @@ for (let i = 0; i < args.length; i++) {
     process.env.TRAY_MODE = "1";
   } else if (args[i] === "--help" || args[i] === "-h") {
     console.log(`
-Usage: ${APP_NAME} [options]
+Usage: ${BIN_NAME} [options]
 
 Options:
   -p, --port <port>   Port to run the server (default: ${DEFAULT_PORT})
@@ -156,7 +159,7 @@ Options:
 Commands:
   xai video --prompt "..." --output video.mp4
                       Generate a Grok Imagine video via the running gateway
-                      (see: ${APP_NAME} xai video --help)
+                      (see: ${BIN_NAME} xai video --help)
 `);
     process.exit(0);
   } else if (args[i] === "--version" || args[i] === "-v") {
