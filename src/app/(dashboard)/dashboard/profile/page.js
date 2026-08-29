@@ -912,7 +912,7 @@ export default function ProfilePage() {
         {/* Security */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+            <div className="size-10 rounded-lg flex items-center justify-center bg-primary/10 text-primary shrink-0">
               <span className="material-symbols-outlined text-[20px]">shield</span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold">Security</h3>
@@ -998,7 +998,7 @@ export default function ProfilePage() {
             onClick={() => setOidcExpanded((v) => !v)}
             className="w-full flex items-center gap-3 text-left"
           >
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500 shrink-0">
+            <div className="size-10 rounded-lg flex items-center justify-center bg-indigo-500/10 text-indigo-500 shrink-0">
               <span className="material-symbols-outlined text-[20px]">lock_open</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -1488,7 +1488,7 @@ export default function ProfilePage() {
         {/* Routing Preferences */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500 shrink-0">
+            <div className="size-10 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-500 shrink-0">
               <span className="material-symbols-outlined text-[20px]">route</span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold">Routing Strategy</h3>
@@ -1579,7 +1579,7 @@ export default function ProfilePage() {
         {/* Providers — provider list & catalog behavior */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 shrink-0">
+            <div className="size-10 rounded-lg flex items-center justify-center bg-cyan-500/10 text-cyan-500 shrink-0">
               <span className="material-symbols-outlined text-[20px]">device_hub</span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold">Providers</h3>
@@ -1615,7 +1615,7 @@ export default function ProfilePage() {
         {/* Network */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500 shrink-0">
+            <div className="size-10 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500 shrink-0">
               <span className="material-symbols-outlined text-[20px]">wifi</span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold">Network</h3>
@@ -1687,7 +1687,7 @@ export default function ProfilePage() {
         {/* Observability Settings */}
         <Card>
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500 shrink-0">
+            <div className="size-10 rounded-lg flex items-center justify-center bg-orange-500/10 text-orange-500 shrink-0">
               <span className="material-symbols-outlined text-[20px]">monitoring</span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold">Observability</h3>
