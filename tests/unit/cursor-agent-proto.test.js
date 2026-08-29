@@ -19,6 +19,14 @@ import {
 // AgentService (agent.v1) codec tests — validate the production implementation
 // in cursorProtobuf.js + the executor's frame builders. Pure round-trip, no network.
 // Field numbers verified against Cursor's agent.proto (extracted via @oh-my-pi).
+//
+// SKIPPED: the AgentService/MCP feature these cover is not part of this fork —
+// it was among the unfinished upstream work left out (see README). Ten of the
+// twelve imports below don't exist, so all 35 cases failed on every run and
+// drowned out real signal. Un-skip if the feature is ever ported; the missing
+// exports are encodeAgentValue / decodeAgentValue, the encodeMcp* / decodeMcpArgs
+// family in cursorProtobuf.js, and isAgentCapableRequest / buildAgentRunFrame in
+// executors/cursor.js.
 
 const LEN = 2;
 // McpArgs.args map entry { field1: key, field2: Value }
@@ -28,7 +36,7 @@ const entry = (k, v) => Buffer.concat([
   )),
 ]);
 
-describe("Cursor AgentService codec (cursorProtobuf.js)", () => {
+describe.skip("Cursor AgentService codec (cursorProtobuf.js)", () => {
   describe("google.protobuf.Value round-trip", () => {
     const cases = [
       ["null", null],
@@ -197,7 +205,7 @@ describe("Cursor AgentService codec (cursorProtobuf.js)", () => {
   });
 });
 
-describe("Cursor AgentService executor helpers (cursor.js)", () => {
+describe.skip("Cursor AgentService executor helpers (cursor.js)", () => {
   describe("isAgentCapableRequest", () => {
     it("accepts plain text content", () => {
       expect(isAgentCapableRequest({ messages: [{ role: "user", content: "hi" }] })).toBe(true);
