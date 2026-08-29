@@ -33,6 +33,21 @@ export async function updateProviderJsonModelEnabled(providerId, modelId, enable
   return changed;
 }
 
+// Bulk flip the enabled flag of every model in the catalog (one write).
+export async function setAllProviderJsonModelsEnabled(providerId, enabled) {
+  const entry = await jsonModelsKv.get(providerId, null);
+  if (!entry || !Array.isArray(entry.models)) return false;
+  let changed = false;
+  for (const m of entry.models) {
+    if (m.enabled !== enabled) {
+      m.enabled = enabled;
+      changed = true;
+    }
+  }
+  if (changed) await jsonModelsKv.set(providerId, entry);
+  return changed;
+}
+
 export async function clearProviderJsonModels(providerId) {
   await jsonModelsKv.remove(providerId);
 }

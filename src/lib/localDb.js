@@ -15,7 +15,7 @@ export {
   createCombo, updateCombo, deleteCombo,
   getModelAliases, setModelAlias, deleteModelAlias,
   getCustomModels, addCustomModel, deleteCustomModel, deleteCustomModelsByProvider,
-  getProviderJsonModels, setProviderJsonModels, updateProviderJsonModelEnabled, clearProviderJsonModels,
+  getProviderJsonModels, setProviderJsonModels, updateProviderJsonModelEnabled, setAllProviderJsonModelsEnabled, clearProviderJsonModels,
   getMitmAlias, setMitmAliasAll,
   getPricing, getPricingForModel, updatePricing, resetPricing, resetAllPricing,
   exportDb, importDb,

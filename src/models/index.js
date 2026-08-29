@@ -32,6 +32,7 @@ export {
   getProviderJsonModels,
   setProviderJsonModels,
   updateProviderJsonModelEnabled,
+  setAllProviderJsonModelsEnabled,
   clearProviderJsonModels,
   getMitmAlias,
   setMitmAliasAll,

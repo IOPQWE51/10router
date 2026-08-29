@@ -7,6 +7,7 @@ import {
   getProviderJsonModels,
   setProviderJsonModels,
   updateProviderJsonModelEnabled,
+  setAllProviderJsonModelsEnabled,
 } from "@/models";
 
 // Parse a catalog from a fetched response body. Supports:
@@ -172,9 +173,17 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { modelId, enabled } = body;
-    if (!modelId || typeof enabled !== "boolean") {
-      return NextResponse.json({ error: "modelId and enabled (boolean) required" }, { status: 400 });
+    const { modelId, enabled, all } = body;
+    if (typeof enabled !== "boolean") {
+      return NextResponse.json({ error: "enabled (boolean) required" }, { status: 400 });
+    }
+    // Bulk flip: { all: true, enabled } toggles every model in the catalog.
+    if (all === true) {
+      const changed = await setAllProviderJsonModelsEnabled(id, enabled);
+      return NextResponse.json({ success: true, changed });
+    }
+    if (!modelId) {
+      return NextResponse.json({ error: "modelId required (or all: true for bulk)" }, { status: 400 });
     }
     const changed = await updateProviderJsonModelEnabled(id, modelId, enabled);
     return NextResponse.json({ success: true, changed });

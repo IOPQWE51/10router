@@ -724,6 +724,20 @@ export default function ProviderDetailPage() {
     }
   };
 
+  // Bulk enable/disable every model in the JSON catalog (PUT all:true).
+  const handleBulkJsonModels = async (enabled) => {
+    try {
+      const res = await fetch(`/api/providers/${providerId}/json-models`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true, enabled }),
+      });
+      if (res.ok) await fetchJsonModels();
+    } catch (error) {
+      console.log("Error bulk-toggling JSON models:", error);
+    }
+  };
+
   const handleRunOneByOneTest = async () => {
     if (oneByOneRunning || connections.length === 0) return;
 
@@ -1844,20 +1858,38 @@ export default function ProviderDetailPage() {
             )}
           </div>
           {!isCompatible && (() => {
+            // JSON-catalog providers: bulk buttons operate on the jsonModels enabled
+            // flags (the authoritative store); static providers keep the legacy
+            // disabledModelIds flow.
+            const useJson = modelJsonImportEnabled && !!providerModelsJsonUrl;
+            const jsonEnabledCount = (jsonModels || []).filter((m) => m.enabled !== false).length;
+            const jsonDisabledCount = (jsonModels || []).length - jsonEnabledCount;
             const allIds = [
               ...models,
               ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
             ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; }).map((m) => m.id);
             const activeIds = allIds.filter((id) => !disabledModelIds.includes(id));
+            const showEnableAll = useJson ? jsonDisabledCount > 0 : disabledModelIds.length > 0;
+            const showDisableAll = useJson ? jsonEnabledCount > 0 : activeIds.length > 0;
             return (
               <div className="flex gap-2">
-                {disabledModelIds.length > 0 && (
-                  <Button size="sm" variant="secondary" icon="restart_alt" onClick={handleEnableAll}>
+                {showEnableAll && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon="restart_alt"
+                    onClick={() => (useJson ? handleBulkJsonModels(true) : handleEnableAll())}
+                  >
                     Active All
                   </Button>
                 )}
-                {activeIds.length > 0 && (
-                  <Button size="sm" variant="secondary" icon="block" onClick={() => handleDisableAll(activeIds)}>
+                {showDisableAll && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon="block"
+                    onClick={() => (useJson ? handleBulkJsonModels(false) : handleDisableAll(activeIds))}
+                  >
                     Disable All
                   </Button>
                 )}

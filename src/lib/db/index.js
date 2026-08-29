@@ -47,7 +47,8 @@ export {
 
 // Provider JSON model catalogs (fetched from modelsJsonUrl)
 export {
-  getProviderJsonModels, setProviderJsonModels, updateProviderJsonModelEnabled, clearProviderJsonModels,
+  getProviderJsonModels, setProviderJsonModels, updateProviderJsonModelEnabled,
+  setAllProviderJsonModelsEnabled, clearProviderJsonModels,
 } from "./repos/providerJsonModelsRepo.js";
 
 // Pricing
