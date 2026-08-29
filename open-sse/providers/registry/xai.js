@@ -27,6 +27,14 @@ export default {
     refreshUrl: "https://auth.x.ai/oauth2/token",
   },
   models: [
+    // 4.1–4.5 added from the ids the other xAI entries in this repo already
+    // carry: registry/grok-cli.js (4.5 tiers), registry/grok-web.js (4.1/4.2)
+    // and registry/tokenrouter.js (4.3, 4.1-fast). This direct API-key list
+    // still topped out at Grok 4.
+    { id: "grok-4.5", name: "Grok 4.5" },
+    { id: "grok-4.3", name: "Grok 4.3" },
+    { id: "grok-4.2", name: "Grok 4.2" },
+    { id: "grok-4.1-fast", name: "Grok 4.1 Fast" },
     { id: "grok-4", name: "Grok 4" },
     { id: "grok-4-fast-reasoning", name: "Grok 4 Fast Reasoning" },
     { id: "grok-code-fast-1", name: "Grok Code Fast" },

@@ -21,7 +21,14 @@ export default {
       "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14",
     },
   },
+  // Current lineup mirrors registry/claude.js — same models, reached with an API
+  // key instead of the subscription OAuth flow. The older ids stay listed so
+  // existing combos and saved defaults keep resolving.
   models: [
+    { id: "claude-opus-5", name: "Claude Opus 5" },
+    { id: "claude-fable-5", name: "Claude Fable 5" },
+    { id: "claude-sonnet-5", name: "Claude Sonnet 5" },
+    { id: "claude-haiku-4-5-20251001", name: "Claude 4.5 Haiku" },
     { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
     { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
     { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
