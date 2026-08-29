@@ -1580,7 +1580,7 @@ export default function ProfilePage() {
         <Card>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 shrink-0">
-              <span className="material-symbols-outlined text-[20px]">hub</span>
+              <span className="material-symbols-outlined text-[20px]">device_hub</span>
             </div>
             <h3 className="text-base sm:text-lg font-semibold">Providers</h3>
           </div>

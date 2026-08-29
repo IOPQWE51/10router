@@ -359,9 +359,16 @@ export default function ProvidersPage() {
       if (pa !== pb) return pa - pb;
       const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
       if (noAuthDiff !== 0) return noAuthDiff;
-      const ca = getProviderStats(ka, dualAuthTypes(a, ka)).connected > 0 ? 0 : 1;
-      const cb = getProviderStats(kb, dualAuthTypes(b, kb)).connected > 0 ? 0 : 1;
+      const sa = getProviderStats(ka, dualAuthTypes(a, ka));
+      const sb = getProviderStats(kb, dualAuthTypes(b, kb));
+      const ca = sa.connected > 0 ? 0 : 1;
+      const cb = sb.connected > 0 ? 0 : 1;
       if (ca !== cb) return ca - cb;
+      if (disabledLastSort) {
+        const da = sa.allDisabled ? 1 : 0;
+        const db = sb.allDisabled ? 1 : 0;
+        if (da !== db) return da - db;
+      }
       return (a.name || "").localeCompare(b.name || "");
     });
   // API Key: connected providers first, then alphabetical by name
@@ -373,9 +380,16 @@ export default function ProvidersPage() {
         matchSearch(info.name),
     )
     .sort(([ka, a], [kb, b]) => {
-      const ca = getProviderStats(ka, "apikey").total > 0 ? 0 : 1;
-      const cb = getProviderStats(kb, "apikey").total > 0 ? 0 : 1;
+      const sa = getProviderStats(ka, "apikey");
+      const sb = getProviderStats(kb, "apikey");
+      const ca = sa.total > 0 ? 0 : 1;
+      const cb = sb.total > 0 ? 0 : 1;
       if (ca !== cb) return ca - cb;
+      if (disabledLastSort) {
+        const da = sa.allDisabled ? 1 : 0;
+        const db = sb.allDisabled ? 1 : 0;
+        if (da !== db) return da - db;
+      }
       return (a.name || "").localeCompare(b.name || "");
     });
   const isApikeySearching = !!searchQuery.trim();
