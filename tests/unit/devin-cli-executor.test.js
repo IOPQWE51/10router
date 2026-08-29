@@ -399,7 +399,12 @@ describe("DevinCliExecutor ACP session/new", () => {
 
   it("does not set XDG_CONFIG_HOME when DEVIN_MCP_SERVERS is absent", async () => {
     const { child } = await runExecute();
-    expect(child.opts.env.XDG_CONFIG_HOME).toBeUndefined();
+    // The executor spreads process.env and only assigns XDG_CONFIG_HOME for the
+    // throwaway MCP config dir, so "does not set" means "leaves the inherited
+    // value alone" — not "absent". Asserting undefined only held where the
+    // parent had no XDG_CONFIG_HOME: true on Windows, false on a Linux runner,
+    // which is why this passed locally and failed in CI.
+    expect(child.opts.env.XDG_CONFIG_HOME).toBe(process.env.XDG_CONFIG_HOME);
   });
 
   it("exposes body.tools as an MCP server (sets XDG_CONFIG_HOME + writes script)", async () => {
