@@ -52,7 +52,10 @@
     "uuid": "^13.0.0",
     "zustand": "^5.0.10"
   },
-  "comment_better_sqlite3": "deliberately NOT a dependency here. npm >= 11 blocks install scripts unless allowlisted, so it was silently skipped and never built anyway, and Next output tracing copies only its lib/*.js — never the .node binary — so no deployment ever ran it: the Docker image, the fpk and the standalone tarball are all on node:sqlite. src/lib/db/driver.js still tries it first, because the CLI installs it into ~/.10router/runtime (cli/hooks/sqliteRuntime.js, own pinned version) where it does work.",
+  "optionalDependencies": {
+    "better-sqlite3": "^12.6.2"
+  },
+  "comment_better_sqlite3": "REQUIRED AT BUILD TIME even though almost nothing loads it at runtime — do not remove. adapters/betterSqliteAdapter.js imports it statically and api/oauth/cursor/auto-import/route.js requires it, so webpack must resolve the specifier; serverExternalPackages only stops it being bundled, it does not make it optional to the build. Removing it fails `next build` with 'Module not found'. At runtime it usually is absent: npm >= 11 skips optionalDependencies whose install script isn't allowlisted, and Next output tracing copies only its lib/*.js, never the .node binary — so the Docker image, the fpk and the standalone tarball all fall through to node:sqlite. The npm CLI is the exception: cli/hooks/sqliteRuntime.js installs a working copy into ~/.10router/runtime.",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "eslint": "^9",
