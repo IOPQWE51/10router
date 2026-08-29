@@ -76,6 +76,17 @@ try {
 const cachedTargetIPs = {};
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * Resolve the real upstream IP via public DNS, bypassing our own hosts-file
+ * redirect (those hostnames now point at 127.0.0.1 — resolving them normally
+ * would loop straight back into this server).
+ *
+ * Callers dial the returned IP but always pass `servername: <hostname>`, so TLS
+ * verification still runs against the real hostname rather than the IP. Never
+ * disable that verification: these upstreams are all public-CA-issued, and
+ * without it a spoofed DNS answer would hand upstream OAuth tokens to whoever
+ * answered. Same reasoning as createBypassRequest() in open-sse/utils/proxyFetch.js.
+ */
 async function resolveTargetIP(hostname) {
   const cached = cachedTargetIPs[hostname];
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.ip;
@@ -161,7 +172,7 @@ async function negotiateAlpn(host) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect({
       host: ip, port: 443, servername: host,
-      ALPNProtocols: ["h2", "http/1.1"], rejectUnauthorized: false,
+      ALPNProtocols: ["h2", "http/1.1"],
     }, () => {
       const proto = socket.alpnProtocol || "http/1.1";
       alpnCache.set(host, proto);
@@ -194,7 +205,7 @@ async function passthroughHttp2(req, res, bodyBuffer, headers, targetHost, onRes
     const client = http2.connect(`https://${targetHost}`, {
       createConnection: () => tls.connect({
         host: targetIP, port: 443, servername: targetHost,
-        ALPNProtocols: ["h2"], rejectUnauthorized: false,
+        ALPNProtocols: ["h2"],
       }),
     });
     client.once("error", (e) => {
@@ -255,8 +266,7 @@ async function passthroughHttps(req, res, bodyBuffer, headers, targetHost, onRes
     path: req.url,
     method: req.method,
     headers,
-    servername: targetHost,
-    rejectUnauthorized: false
+    servername: targetHost
   }, (forwardRes) => {
     res.writeHead(forwardRes.statusCode, forwardRes.headers);
     if (dumper) dumper.writeHeader(forwardRes.statusCode, forwardRes.headers);
