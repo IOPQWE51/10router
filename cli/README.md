@@ -4,10 +4,10 @@
 
 **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
 
-[![npm](https://img.shields.io/npm/v/10router-cli.svg)](https://www.npmjs.com/package/10router-cli)
-[![Downloads](https://img.shields.io/npm/dm/10router-cli.svg)](https://www.npmjs.com/package/10router-cli)
+[![npm](https://img.shields.io/npm/v/@techysy/10router.svg)](https://www.npmjs.com/package/@techysy/10router)
+[![Downloads](https://img.shields.io/npm/dm/@techysy/10router.svg)](https://www.npmjs.com/package/@techysy/10router)
 [![GHCR](https://img.shields.io/badge/GHCR-techysy%2F10router-blue?logo=github)](https://github.com/techysy/10router/pkgs/container/10router)
-[![License](https://img.shields.io/npm/l/10router-cli.svg)](https://github.com/techysy/10router/blob/main/LICENSE)
+[![License](https://img.shields.io/npm/l/@techysy/10router.svg)](https://github.com/techysy/10router/blob/main/LICENSE)
 
 **English** | [简体中文](https://github.com/techysy/10router/blob/main/cli/README.zh-CN.md)
 
@@ -41,14 +41,14 @@
 *npm (recommended for desktop):*
 
 ```bash
-npm install -g 10router-cli
+npm install -g @techysy/10router
 10router
 
 # Or run directly with npx
-npx 10router-cli
+npx @techysy/10router
 ```
 
-> ⚠️ The package is **`10router-cli`**, not `10router` — that name belongs to an
+> ⚠️ The package is **`@techysy/10router`**, not `10router` — that name belongs to an
 > unrelated fork on npm.
 
 *Docker (server/VPS):*
@@ -103,7 +103,7 @@ works for npm installs.**
 **npm** — either use the dashboard button, or:
 
 ```bash
-npm i -g 10router-cli@latest
+npm i -g @techysy/10router@latest
 ```
 
 **Docker** — pull the new image and recreate the container. Your data lives in
@@ -126,7 +126,7 @@ centre.
 extract over the install directory.
 
 > ⚠️ **Docker / fpk / standalone users: don't press "Update now".** It runs
-> `npm i -g 10router-cli@latest` and relaunches through `npx`, which installs a
+> `npm i -g @techysy/10router@latest` and relaunches through `npx`, which installs a
 > *second* copy into your global npm prefix. The original install keeps running
 > the old version, and the two don't know about each other. Use the channel you
 > installed from. (There is no install-source check yet — tracked as a known

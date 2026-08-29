@@ -4,10 +4,10 @@
 
 **把所有 AI 编码工具（Claude Code、Cursor、Antigravity、Copilot、Codex、Gemini、OpenCode、Cline、OpenClaw…）接到 40+ 供应商、100+ 模型上。**
 
-[![npm](https://img.shields.io/npm/v/10router-cli.svg)](https://www.npmjs.com/package/10router-cli)
-[![Downloads](https://img.shields.io/npm/dm/10router-cli.svg)](https://www.npmjs.com/package/10router-cli)
+[![npm](https://img.shields.io/npm/v/@techysy/10router.svg)](https://www.npmjs.com/package/@techysy/10router)
+[![Downloads](https://img.shields.io/npm/dm/@techysy/10router.svg)](https://www.npmjs.com/package/@techysy/10router)
 [![GHCR](https://img.shields.io/badge/GHCR-techysy%2F10router-blue?logo=github)](https://github.com/techysy/10router/pkgs/container/10router)
-[![License](https://img.shields.io/npm/l/10router-cli.svg)](https://github.com/techysy/10router/blob/main/LICENSE)
+[![License](https://img.shields.io/npm/l/@techysy/10router.svg)](https://github.com/techysy/10router/blob/main/LICENSE)
 
 [English](https://github.com/techysy/10router/blob/main/cli/README.md) | **简体中文**
 
@@ -41,14 +41,14 @@
 *npm（桌面推荐）：*
 
 ```bash
-npm install -g 10router-cli
+npm install -g @techysy/10router
 10router
 
 # 或直接用 npx 运行
-npx 10router-cli
+npx @techysy/10router
 ```
 
-> ⚠️ 包名是 **`10router-cli`**，不是 `10router` —— 后者在 npm 上是一个与本项目无关的 fork。
+> ⚠️ 包名是 **`@techysy/10router`**，不是 `10router` —— 后者在 npm 上是一个与本项目无关的 fork。
 
 *Docker（服务器 / VPS）：*
 
@@ -100,7 +100,7 @@ Claude Code / Codex / OpenClaw / Cursor / Cline 设置：
 **npm** —— 用仪表盘按钮，或者：
 
 ```bash
-npm i -g 10router-cli@latest
+npm i -g @techysy/10router@latest
 ```
 
 **Docker** —— 拉新镜像并重建容器。数据在挂载卷里，不受影响：
@@ -117,7 +117,7 @@ docker run -d --name 10router -p 20128:20128 \
 
 **Standalone** —— 从 [Releases](https://github.com/techysy/10router/releases) 下载新的 `10router-server.tar.gz`，停止服务后覆盖解压到安装目录。
 
-> ⚠️ **Docker / fpk / standalone 用户请勿点击「立即更新」。** 该按钮执行的是 `npm i -g 10router-cli@latest` 并通过 `npx` 重新拉起，会在全局 npm 目录里装出**第二份**。原来那份仍跑着旧版本，两者互不知晓。请走你当初安装的渠道。（目前尚无安装来源判断，属于已知待办。）
+> ⚠️ **Docker / fpk / standalone 用户请勿点击「立即更新」。** 该按钮执行的是 `npm i -g @techysy/10router@latest` 并通过 `npx` 重新拉起，会在全局 npm 目录里装出**第二份**。原来那份仍跑着旧版本，两者互不知晓。请走你当初安装的渠道。（目前尚无安装来源判断，属于已知待办。）
 
 `~/.10router/` 中的数据在所有更新路径下都会保留，无需迁移操作。
 

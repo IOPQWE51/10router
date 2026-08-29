@@ -1,3 +1,20 @@
+# v1.0.3 (2026-08-29)
+
+## ⚠️ npm 包名变更为 `@techysy/10router`
+
+`npm i -g @techysy/10router`，可执行命令仍是 `10router`，其余渠道（Docker / fpk / standalone）不受影响。
+
+**为什么改**：npm 上的 `10router` 属于 `some-du6e/10router` —— 同为 `decolua/9router` 的 fork，且**早于本项目改名两周**发布，属于正当使用，无法争取。此前的权宜之计 `10router-cli` 又与项目名不一致，用户凭记忆敲 `npm i -g 10router` 会装错包。改用 scope 包后，`@techysy` 归本组织独占，任何人无法占用，同时拿回了确切的品牌名。
+
+**已装 `10router-cli` 的用户**：该包停止更新，请改装 `@techysy/10router`。数据目录 `~/.10router/` 不变，无需迁移。
+
+- 仪表盘的版本检查、「立即更新」拉起的 npx 命令、侧边栏安装命令、独立 updater 的兜底包名，均已同步指向新包名。
+
+## 📝 文档
+
+- **CLI README 新增「更新」章节**：分别说明 npm / Docker / fpk / standalone 四个渠道的更新方式，并明确警告 **非 npm 安装不要点击仪表盘的「立即更新」** —— 该按钮执行 `npm i -g` 并经 `npx` 重启，会在全局 npm 目录装出第二份，与原安装并存且互不知晓（更新入口目前无安装来源判断，属已知待办）。
+- 新增简体中文版 `cli/README.zh-CN.md`，两版顶部提供语言切换（npm 页面不解析相对链接，故使用绝对 URL）。
+
 # v1.0.2 (2026-08-29)
 
 > npm 上的 `10router-cli@1.0.1` 是首次发布的试水版本。npm 的 `name@version` 组合**永久不可重用**（即使 unpublish 也无法找回该版本号），因此正式版为 1.0.2。**建议 1.0.1 用户升级**：其内置的「检查更新」指向的是一个无关的第三方包。

@@ -10,9 +10,10 @@ const fs = require("fs");
 const os = require("os");
 
 // Normally passed in by spawnUpdaterAndExit from UPDATER_CONFIG. This standalone
-// script can't import that ESM config, so the fallback is duplicated — keep it as
-// `10router-cli`; the bare name belongs to an unrelated fork on npm.
-const packageName = process.env.UPDATER_PKG_NAME || "10router-cli";
+// script can't import that ESM config, so the fallback is duplicated — keep it in
+// step with UPDATER_CONFIG.npmPackageName; the bare `10router` on npm belongs to
+// an unrelated fork.
+const packageName = process.env.UPDATER_PKG_NAME || "@techysy/10router";
 const port = parseInt(process.env.UPDATER_PORT || "20129", 10);
 const tailLines = parseInt(process.env.UPDATER_TAIL_LINES || "8", 10);
 const maxRetries = parseInt(process.env.UPDATER_RETRIES || "3", 10);

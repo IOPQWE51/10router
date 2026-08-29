@@ -7,7 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
 [![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![10Router](https://img.shields.io/badge/10Router-v1.0.1-orange.svg)](https://github.com/techysy/10router)
+[![10Router](https://img.shields.io/badge/10Router-v1.0.3-orange.svg)](https://github.com/techysy/10router)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 
 基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
@@ -78,13 +78,13 @@
 ### 💻 npm 全局安装（桌面推荐）
 
 ```bash
-npm i -g 10router-cli
+npm i -g @techysy/10router
 10router
 ```
 
 装完后可执行命令是 `10router`，仪表盘默认在 `http://localhost:20128`。
 
-> ⚠️ 包名是 **`10router-cli`**，不是 `10router` —— 后者是 npm 上一个与本项目无关的 fork。
+> ⚠️ 包名是 **`@techysy/10router`**，不是 `10router` —— 后者是 npm 上一个与本项目无关的 fork。
 
 ### 🐳 Docker 部署
 
@@ -172,7 +172,7 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 │   ├── translator/         # 格式翻译（OpenAI ↔ Claude）
 │   ├── providers/          # Provider 注册 + 配置
 │   └── rtk/                # Token Saver 压缩引擎
-├── cli/                    # CLI launcher（npm: 10router）
+├── cli/                    # CLI launcher（npm: @techysy/10router）
 ├── tests/                  # 测试（vitest）
 ├── docs/                   # 架构文档
 └── .github/workflows/      # CI（Docker GHCR 构建）

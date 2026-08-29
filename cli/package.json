@@ -1,7 +1,10 @@
 {
-  "name": "10router-cli",
-  "version": "1.0.2",
+  "name": "@techysy/10router",
+  "version": "1.0.3",
   "description": "10Router CLI - Start and manage 10Router server",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "10router": "./cli.js"
   },
