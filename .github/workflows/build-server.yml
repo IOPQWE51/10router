@@ -20,10 +20,14 @@ jobs:
         run: |
           set -euo pipefail
           TAG_VERSION="${GITHUB_REF_NAME#v}"
+          # Compare only the MAJOR.MINOR.PATCH core. The fnOS manifest has no
+          # field for a semver prerelease suffix, so it stays at 1.0.1 while the
+          # tag is v1.0.1-rc.1 — a plain string compare rejected every RC tag.
+          TAG_CORE="${TAG_VERSION%%-*}"
           MANIFEST_VERSION="$(grep -E '^version[[:space:]]*=' fnos-packaging/manifest | head -1 | sed 's/.*=//;s/[[:space:]]//g')"
-          echo "tag=${TAG_VERSION} manifest=${MANIFEST_VERSION}"
-          if [ "${TAG_VERSION}" != "${MANIFEST_VERSION}" ]; then
-            echo "ERROR: tag ${GITHUB_REF_NAME} does not match fnos-packaging/manifest version ${MANIFEST_VERSION}"
+          echo "tag=${TAG_VERSION} core=${TAG_CORE} manifest=${MANIFEST_VERSION}"
+          if [ "${TAG_CORE}" != "${MANIFEST_VERSION}" ]; then
+            echo "ERROR: tag ${GITHUB_REF_NAME} (core ${TAG_CORE}) does not match fnos-packaging/manifest version ${MANIFEST_VERSION}"
             exit 1
           fi
 
