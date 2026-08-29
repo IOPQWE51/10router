@@ -12,6 +12,11 @@
 - **自动清理异常退出遗留的 hosts 条目**：清理钩子仅挂在 SIGTERM/SIGINT 上，SIGKILL、崩溃或断电后，被劫持的工具域名会持续指向 127.0.0.1 而无人监听，导致 Copilot/Cursor/Kiro 报出难以理解的错误，且此前没有任何机制会恢复。现在应用启动时会清理「当前不应生效」的残留条目（MITM 已关闭，或该工具 DNS 开关为关），正在运行的实例不受影响。
   - 检测为一次只读 hosts 读取，无残留时零开销，不会在每次启动触发 sudo 或 UAC 提示；确有残留但无提权时，会明确打印被搁浅的域名及处理方式，而非静默跳过。
 
+## 功能更新
+
+- **已禁用供应商排到最后**：Profile 设置页新增开关，开启后已禁用的供应商在列表中沉底，避免常用项被挤下去；Providers 页新增对应设置卡片。该排序同时覆盖 API Key 与免费商家分区。
+- **CommandCode 接入标准化 JSON 模型目录**：新增 `providers/commandcode.json`（62 个模型，含能力字段），并在注册表接入 Fetch Models。
+
 ## Bug Fixes
 
 - **修复 /v1/models 返回孤儿自定义模型**：从旧 9router 数据库导入后，`kv` 表里残留了大量引用已删除自定义节点（providerNodes）的 customModels，导致 `/v1/models` 对每个客户端（如 dsh、CLI 工具）返回成百上千个无效模型。
@@ -19,7 +24,15 @@
   - 删除自定义节点时，同步清理其下的 customModels，避免再次产生孤儿。
 - **自定义节点前缀唯一性检测**：创建/编辑自定义供应商节点时，若 prefix 与内置 provider 的 id/alias 冲突、或与其他自定义节点的 prefix 重复，将拒绝并返回明确错误（前端同步显示提示），避免模型路由歧义。
 - **修复 CodeBuddy 执行器误删 Agent system prompt**：原逻辑把超过 2000 字符或命中宽松 agent 正则的 system prompt 整段替换为中性文本，导致自家 Agent（Hermes/10Router）每次开新会话失忆。现加入自家 Agent 白名单（原样放行）、去掉长度一刀切，仅替换真正的外部 agent 签名以通过上游内容过滤。
-- **新增「从 GitHub JSON 获取模型」通用能力**：provider 可在注册表声明 `modelsJsonUrl`，详情页出现"Fetch Models"按钮，拉取该 JSON 并**替换**该 provider 的 customModels（新增 JSON 中的模型、清理已过时/不在 JSON 中的模型）。配套在设置页新增全局开关控制该功能（默认关闭）。首个接入：CodeBuddy CN / Intl（`providers/codebuddy-cn.json`、`providers/codebuddy-intl.json`）。
+- **新增「从 GitHub JSON 获取模型」通用能力**：provider 可在注册表声明 `modelsJsonUrl`，详情页出现"Fetch Models"按钮，拉取该 JSON 并**替换**该 provider 的 customModels（新增 JSON 中的模型、清理已过时/不在 JSON 中的模型）。配套在设置页新增全局开关控制该功能（默认关闭）。目前已接入：CodeBuddy CN / Intl、OpenCode Go、CommandCode（对应 `providers/*.json`）。目录本身也同步更新：CodeBuddy CN/Intl 补充 vision/reasoning/context 能力字段，并新增 `hy4-preview` 模型。
+- **Disable All / Active All 改为操作 JSON 目录的 enabled 标志**：此前这两个批量按钮不作用于通过 JSON 目录导入的模型，点击后界面状态与实际启用情况不一致。现改为对 JSON 目录发起批量 PUT（`all: true`），批量启停与单个模型开关走同一份状态。
+- **侧边栏版本号不再硬编码**：`APP_CONFIG.version` 此前写死 `1.0.0`，装上 1.0.1 后侧边栏仍显示 1.0.0。改为读取 `package.json` 中的版本号。
+
+## 工程与打包
+
+- ⚠️ **CLI npm 包改名为 `10routerproxy`**：原定的 `10router` 已被第三方 fork 占用，v1.0.0 更新日志中「npm 包名更新为 `10router`」一句就此作废。安装命令改为 `npm i -g 10routerproxy`，CLI 版本同步至 1.0.1。
+- fnOS 打包 manifest 版本改为从 `package.json` 自动同步（`prebuild:fpk`），并在打包 README 中说明；manifest 对齐 1.0.1。
+- 设置页卡片图标容器统一为方形 `size-10`（原为 `p-2` 矩形），并修正 Providers 卡片引用了字体中不存在的图标字形。
 
 # v1.0.0 (2026-08-26)
 
@@ -59,6 +72,7 @@
 - `docker-publish.yml`：tag 触发 → multi-platform Docker 镜像推送 GHCR
 - `build-fpk.yml`：matrix 构建 x86/arm → 双版本 fpk → 统一 Release 上传
 - `build-server.yml`：standalone tar.gz 构建 → Release 资产
+- CI Node 22 → 24，对齐 fnOS `nodejs_v24` 运行时；fnpack 1.2.1 固定 sha256 校验和
 
 ## 功能更新
 
@@ -80,6 +94,7 @@
 
 ### Auth
 - 登录 cookie Secure 标志按请求协议动态判断
+- 多跳反向代理下按 `x-forwarded-proto` 的第一跳判断协议，避免链路中后续跳把协议改写导致 cookie 标志判断错误
 
 ### Bug Fixes
 - 免费商家禁用文案 i18n 修复
@@ -87,6 +102,7 @@
 - 健康但无连接的数据库不 dump 完整内置目录
 - 修复使用量页面无数据（SQLite 层统一）
 - 重新导出 SQLite-layer request/usage APIs 通过 usageDb shim
+- /v1/models 过滤已禁用的孤儿自定义模型
 
 ## 工程清理
 - 移除上游 9Remote/9English 广告入口
