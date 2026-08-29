@@ -75,6 +75,17 @@
 
 ## 🚀 快速开始
 
+### 💻 npm 全局安装（桌面推荐）
+
+```bash
+npm i -g 10router-cli
+10router
+```
+
+装完后可执行命令是 `10router`，仪表盘默认在 `http://localhost:20128`。
+
+> ⚠️ 包名是 **`10router-cli`**，不是 `10router` —— 后者是 npm 上一个与本项目无关的 fork。
+
 ### 🐳 Docker 部署
 
 ```bash

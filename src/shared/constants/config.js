@@ -15,9 +15,12 @@ export const GITHUB_CONFIG = {
 
 // Updater configuration
 export const UPDATER_CONFIG = {
-  npmPackageName: "10router",
-  installCmd: "npm i -g 10router",
-  installCmdLatest: "npm i -g 10router@latest --prefer-online",
+  // `10router` on npm is an unrelated fork stuck at 0.6.0 — this project ships
+  // as `10router-cli`. Pointing any of these at the bare name would compare our
+  // version against a stranger's and hand users their package to install.
+  npmPackageName: "10router-cli",
+  installCmd: "npm i -g 10router-cli",
+  installCmdLatest: "npm i -g 10router-cli@latest --prefer-online",
   shutdownCountdownSec: 3,
   exitDelayMs: 500,
   statusPort: 20129,
