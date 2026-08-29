@@ -18,7 +18,12 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
+  // Windows may still hold the SQLite file open here, which surfaces as EPERM —
+  // `force` only swallows ENOENT. Retry, then leave it to the OS temp reaper
+  // rather than failing the whole file in teardown.
+  try {
+    if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  } catch { /* OS temp reaper will collect it */ }
   if (originalDataDir === undefined) delete process.env.DATA_DIR;
   else process.env.DATA_DIR = originalDataDir;
 });

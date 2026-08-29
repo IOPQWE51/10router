@@ -1,5 +1,18 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+
+// Prefer vitest when it's present so these cases are collected by the main
+// suite; fall back to node:test so the file still runs under `node --test`.
+// Written for node:test only, it was invisible to vitest ("No test suite
+// found") and its results never reached the pass/fail counts.
+// Same shim as unit/cli-build-artifacts.test.js.
+let testApi;
+try {
+  testApi = await import("vitest");
+} catch (error) {
+  if (error.code !== "ERR_MODULE_NOT_FOUND") throw error;
+  testApi = await import("node:test");
+}
+const { test } = testApi;
 import {
   formatX509Certificate,
   isSamlConfigured,

@@ -15,8 +15,20 @@
  * re-trigger upstream complaints about missing reasoning on the next
  * turn.
  */
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+
+// Prefer vitest so these cases land in the main suite; fall back to node:test
+// for `node --test`. Same shim as unit/cli-build-artifacts.test.js — written
+// for node:test alone, vitest reported "No test suite found" and the results
+// never reached the counts.
+let testApi;
+try {
+  testApi = await import("vitest");
+} catch (error) {
+  if (error.code !== "ERR_MODULE_NOT_FOUND") throw error;
+  testApi = await import("node:test");
+}
+const { describe, it } = testApi;
 
 import KimchiExecutor, { stripReasoningContent } from "../../open-sse/executors/kimchi.js";
 import DefaultExecutor from "../../open-sse/executors/default.js";
