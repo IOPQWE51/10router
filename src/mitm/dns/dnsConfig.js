@@ -141,6 +141,24 @@ function checkAllDNSStatus() {
 }
 
 /**
+ * Tools with at least one hosts entry still present.
+ *
+ * Unlike checkAllDNSStatus(), which reports a tool as active only when *every*
+ * one of its hosts is mapped, this catches partial residue — an interrupted
+ * write, or a host list that grew between versions.
+ */
+function listToolsWithDnsEntries() {
+  try {
+    const hostsContent = fs.readFileSync(HOSTS_FILE, "utf8");
+    return Object.entries(TOOL_HOSTS)
+      .filter(([, hosts]) => hosts.some(h => hostsContent.includes(h)))
+      .map(([tool]) => tool);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Add DNS entries for a specific tool
  */
 async function addDNSEntry(tool, sudoPassword) {
@@ -263,4 +281,5 @@ module.exports = {
   isSudoPasswordRequired,
   checkDNSEntry,
   checkAllDNSStatus,
+  listToolsWithDnsEntries,
 };
