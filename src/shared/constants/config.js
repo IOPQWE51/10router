@@ -4,7 +4,7 @@ import pkg from "../../../package.json" with { type: "json" };
 export const APP_CONFIG = {
   name: "10Router",
   description: "AI Infrastructure Management",
-  version: "1.0.0",
+  version: pkg.version,
 };
 
 // GitHub configuration
