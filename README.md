@@ -143,20 +143,16 @@ PORT=20128 HOSTNAME=0.0.0.0 npm run start
 
 ## 🔄 同步上游
 
-本项目 git 历史已重写（仅保留 techysy/ShiYanG Yu 的提交），同步上游时请用 cherry-pick 避免把上游历史带回来：
+上游新增功能时，**先学习、再自己写**：阅读上游对应实现理解思路，然后在本仓库用自己的代码和提交重写，移植后跑 `npx vitest run` + 三条 registry 基线确认无回归，并在 CHANGELOG.md 记录。
+
+> ⚠️ 不要直接 merge / cherry-pick 上游分支，也不要用 tarball 覆盖文件 —— 那会把上游提交和未验证的代码带进这条干净的单提交历史（contributor 目录就是这么被污染的）。
+
+上游 remote 仅用于阅读源码：
 
 ```bash
-# 添加上游 remote
 git remote add upstream https://github.com/decolua/9router.git
 git fetch upstream
-
-# cherry-pick 需要的提交
-git cherry-pick <commit-hash>
-
-# 或下载上游最新 tarball 覆盖文件后手动解决冲突
-curl -L https://github.com/decolua/9router/archive/refs/heads/master.tar.gz \
-  | tar xz --strip-components=1
-git add -A && git commit -m "chore: sync upstream v0.5.xx"
+git show upstream/master:<path>    # 阅读某文件的上游实现
 ```
 
 ## 📁 项目结构
