@@ -1,5 +1,19 @@
-import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
+
+// Prefer vitest so these cases land in the main suite; fall back to node:test
+// for `node --test`. Same shim as unit/cli-build-artifacts.test.js — written
+// for node:test alone, vitest reported "No test suite found" and the results
+// never reached the counts. node:test spells the one-time hook `before`,
+// vitest spells it `beforeAll`.
+let testApi;
+try {
+  testApi = await import("vitest");
+} catch (error) {
+  if (error.code !== "ERR_MODULE_NOT_FOUND") throw error;
+  testApi = await import("node:test");
+}
+const { describe, it } = testApi;
+const before = testApi.before ?? testApi.beforeAll;
 
 // Load the registry entry once for the suite so a load failure is reported
 // next to the failing test instead of cascading as "undefined" in every

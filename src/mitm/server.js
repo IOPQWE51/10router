@@ -76,6 +76,17 @@ try {
 const cachedTargetIPs = {};
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * Resolve the real upstream IP via public DNS, bypassing our own hosts-file
+ * redirect (those hostnames now point at 127.0.0.1 — resolving them normally
+ * would loop straight back into this server).
+ *
+ * Callers dial the returned IP but always pass `servername: <hostname>`, so TLS
+ * verification still runs against the real hostname rather than the IP. Never
+ * disable that verification: these upstreams are all public-CA-issued, and
+ * without it a spoofed DNS answer would hand upstream OAuth tokens to whoever
+ * answered. Same reasoning as createBypassRequest() in open-sse/utils/proxyFetch.js.
+ */
 async function resolveTargetIP(hostname) {
   const cached = cachedTargetIPs[hostname];
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.ip;
@@ -161,7 +172,7 @@ async function negotiateAlpn(host) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect({
       host: ip, port: 443, servername: host,
-      ALPNProtocols: ["h2", "http/1.1"], rejectUnauthorized: false,
+      ALPNProtocols: ["h2", "http/1.1"],
     }, () => {
       const proto = socket.alpnProtocol || "http/1.1";
       alpnCache.set(host, proto);
@@ -194,7 +205,7 @@ async function passthroughHttp2(req, res, bodyBuffer, headers, targetHost, onRes
     const client = http2.connect(`https://${targetHost}`, {
       createConnection: () => tls.connect({
         host: targetIP, port: 443, servername: targetHost,
-        ALPNProtocols: ["h2"], rejectUnauthorized: false,
+        ALPNProtocols: ["h2"],
       }),
     });
     client.once("error", (e) => {
@@ -255,8 +266,7 @@ async function passthroughHttps(req, res, bodyBuffer, headers, targetHost, onRes
     path: req.url,
     method: req.method,
     headers,
-    servername: targetHost,
-    rejectUnauthorized: false
+    servername: targetHost
   }, (forwardRes) => {
     res.writeHead(forwardRes.statusCode, forwardRes.headers);
     if (dumper) dumper.writeHeader(forwardRes.statusCode, forwardRes.headers);
@@ -342,40 +352,96 @@ const server = https.createServer(sslOptions, async (req, res) => {
   }
 });
 
-// Kill only processes LISTENING on LOCAL_PORT (not outbound connections)
-function killPort(port) {
+const PID_FILE = path.join(MITM_DIR, ".mitm.pid");
+
+/** Best-effort human-readable identity for a PID, for logs and error messages. */
+function describeProcess(pid) {
   try {
-    let pidList = [];
+    if (IS_WIN) {
+      const out = execSync(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, { encoding: "utf-8", windowsHide: true });
+      const m = out?.match(/"([^"]+)"/);
+      return m ? m[1] : "unknown";
+    }
+    return execSync(`ps -p ${pid} -o args=`, { encoding: "utf-8", windowsHide: true }).trim() || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
+ * True only when `pid` is a leftover MITM instance of our own — either the PID
+ * manager.js recorded when it spawned the previous run, or a process still
+ * running this very file.
+ */
+function isStaleMitmProcess(pid) {
+  try {
+    const saved = parseInt(fs.readFileSync(PID_FILE, "utf-8").trim(), 10);
+    if (saved && saved === pid) return true;
+  } catch { /* no pid file — fall through */ }
+  // Fall back to the command line, so a leftover is still recognised when the
+  // PID file was lost (crash, cleaned data dir, antivirus).
+  try {
+    const cmd = IS_WIN
+      ? `powershell -NonInteractive -WindowStyle Hidden -Command ` +
+        `"(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').CommandLine"`
+      : `ps -p ${pid} -o args=`;
+    if (execSync(cmd, { encoding: "utf-8", windowsHide: true }).includes(__filename)) return true;
+  } catch { /* process already gone, or no permission to inspect it */ }
+  return false;
+}
+
+/**
+ * Reclaim LOCAL_PORT from a stale instance of ourselves — and only from that.
+ *
+ * manager.js already resolves the "something else owns 443" case with the user
+ * (getPort443Owner → PORT_443_BUSY unless they opted into force-kill), so by the
+ * time we run, any listener should be our own leftover. Blind-killing whatever
+ * holds the port would silently SIGKILL an unrelated production HTTPS server, so
+ * an unrecognised owner aborts startup instead.
+ */
+function killPort(port) {
+  let pidList = [];
+  try {
     if (IS_WIN) {
       const psCmd = `powershell -NonInteractive -WindowStyle Hidden -Command ` +
         `"Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"`;
       const out = execSync(psCmd, { encoding: "utf-8", windowsHide: true }).trim();
       if (!out) return;
-      pidList = out.split(/\r?\n/).map(s => s.trim()).filter(p => p && Number(p) !== process.pid && Number(p) > 4);
+      pidList = out.split(/\r?\n/).map(s => Number(s.trim())).filter(p => p && p !== process.pid && p > 4);
     } else {
       const out = execSync(`${LSOF_BIN} -nP -iTCP:${port} -sTCP:LISTEN -t`, { encoding: "utf-8", windowsHide: true }).trim();
       if (!out) return;
-      pidList = out.split("\n").filter(p => p && Number(p) !== process.pid);
+      pidList = out.split("\n").map(s => Number(s.trim())).filter(p => p && p !== process.pid);
     }
-    if (pidList.length === 0) return;
-    pidList.forEach(pid => {
-      try {
-        if (IS_WIN) execSync(`taskkill /F /PID ${pid}`, { windowsHide: true });
-        else process.kill(Number(pid), "SIGKILL");
-      } catch (e) {
-        err(`Failed to kill PID ${pid}: ${e.message}`);
-      }
-    });
-    log(`Killed ${pidList.length} process(es) on port ${port}`);
   } catch (e) {
+    // lsof exits 1 when nothing is listening — that's the happy path.
     if (e.status !== 1) throw e;
+    return;
+  }
+  if (pidList.length === 0) return;
+
+  for (const pid of pidList) {
+    const name = describeProcess(pid);
+    if (!isStaleMitmProcess(pid)) {
+      throw new Error(
+        `port ${port} is held by "${name}" (PID ${pid}), which is not a 10Router MITM instance. ` +
+        `Refusing to kill it — stop that service yourself, or enable force-kill for port 443 in the dashboard.`
+      );
+    }
+    log(`Reclaiming port ${port} from stale MITM instance (PID ${pid})`);
+    try {
+      if (IS_WIN) execSync(`taskkill /F /PID ${pid}`, { windowsHide: true });
+      else process.kill(pid, "SIGKILL");
+    } catch (e) {
+      err(`Failed to kill PID ${pid}: ${e.message}`);
+    }
   }
 }
 
 try {
   killPort(LOCAL_PORT);
 } catch (e) {
-  err(`Cannot kill process on port ${LOCAL_PORT}: ${e.message}`);
+  err(`Cannot start MITM: ${e.message}`);
   process.exit(1);
 }
 

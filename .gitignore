@@ -14,8 +14,10 @@
 /coverage
 
 # next.js
-/.next/
-/.next-cli-build/
+# Glob rather than the two known names: NEXT_DIST_DIR is set per build
+# (.next-cli-build for the CLI, others ad hoc), and an unlisted one gets
+# committed by any `git add -A`.
+/.next*/
 /out/
 cli/.build-home/
 product

@@ -13,7 +13,7 @@ import {
   RESTART_COOLDOWN_MS, NETWORK_SETTLE_MS,
   WATCHDOG_INTERVAL_MS, NETWORK_CHECK_INTERVAL_MS, VIRTUAL_IFACE_REGEX,
 } from "@/lib/tunnel";
-import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks, restoreToolDNS, removeAllDNSEntriesSync } from "@/mitm/manager";
+import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks, restoreToolDNS, sweepStaleDnsEntries, removeAllDNSEntriesSync } from "@/mitm/manager";
 import { syncToJson as syncMitmAliasCache } from "@/lib/mitmAliasCache";
 import { killAllBridges } from "@/lib/mcp/stdioSseBridge";
 
@@ -98,6 +98,11 @@ async function runHeavyStartup() {
   }
 
   if (settings.tunnelEnabled) ensureCloudflared().catch(() => {});
+
+  // Drop hosts entries orphaned by an unclean shutdown before MITM re-claims
+  // the ones it still wants — otherwise they linger forever, since nothing else
+  // removes them and restoreToolDNS() only adds.
+  await sweepStaleDnsEntries().catch((e) => console.log("[InitApp] stale DNS sweep failed:", e.message));
 
   if (settings.mitmEnabled) {
     // Sync mitmAlias DB → JSON cache so standalone MITM server can read it.

@@ -7,7 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
 [![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![10Router](https://img.shields.io/badge/10Router-v1.0.1-orange.svg)](https://github.com/techysy/10router)
+[![10Router](https://img.shields.io/badge/10Router-v1.0.3-orange.svg)](https://github.com/techysy/10router)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 
 基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
@@ -56,7 +56,7 @@
 | **配额按 connection 隔离** | `usage/components/ProviderLimits/utils.js` | 多账号场景下每个 connection 独立计算配额，互不干扰 |
 | **arm64 Docker 支持** | `docker-publish.yml` | 镜像同时构建 linux/amd64 + linux/arm64，支持树莓派等 ARM 设备 |
 
-#### v1.0.1 新增
+#### v1.0.2 新增
 
 | 功能 | 说明 |
 |------|------|
@@ -74,6 +74,17 @@
 - Cloudflare 修复 — fork分支 v0.5.50+
 
 ## 🚀 快速开始
+
+### 💻 npm 全局安装（桌面推荐）
+
+```bash
+npm i -g @techysy/10router
+10router
+```
+
+装完后可执行命令是 `10router`，仪表盘默认在 `http://localhost:20128`。
+
+> ⚠️ 包名是 **`@techysy/10router`**，不是 `10router` —— 后者是 npm 上一个与本项目无关的 fork。
 
 ### 🐳 Docker 部署
 
@@ -94,10 +105,10 @@ docker run -d \
 
 | 文件 | 说明 |
 |------|------|
-| `10router-1.0.0-x86.fpk` | x86 URL 版 |
-| `10router-1.0.0-iframe-x86.fpk` | x86 IFRAME 版 |
-| `10router-1.0.0-arm.fpk` | ARM URL 版 |
-| `10router-1.0.0-iframe-arm.fpk` | ARM IFRAME 版 |
+| `10router-<版本>-x86.fpk` | x86 URL 版 |
+| `10router-<版本>-iframe-x86.fpk` | x86 IFRAME 版 |
+| `10router-<版本>-arm.fpk` | ARM URL 版 |
+| `10router-<版本>-iframe-arm.fpk` | ARM IFRAME 版 |
 
 安装：App Center → 手动安装 → 选择 fpk。
 
@@ -161,7 +172,7 @@ git add -A && git commit -m "chore: sync upstream v0.5.xx"
 │   ├── translator/         # 格式翻译（OpenAI ↔ Claude）
 │   ├── providers/          # Provider 注册 + 配置
 │   └── rtk/                # Token Saver 压缩引擎
-├── cli/                    # CLI launcher（npm: 10router）
+├── cli/                    # CLI launcher（npm: @techysy/10router）
 ├── tests/                  # 测试（vitest）
 ├── docs/                   # 架构文档
 └── .github/workflows/      # CI（Docker GHCR 构建）

@@ -15,9 +15,14 @@ export const GITHUB_CONFIG = {
 
 // Updater configuration
 export const UPDATER_CONFIG = {
-  npmPackageName: "10router",
-  installCmd: "npm i -g 10router",
-  installCmdLatest: "npm i -g 10router@latest --prefer-online",
+  // Scoped, so the name can't be taken: `10router` on npm belongs to an
+  // unrelated 9router fork (some-du6e) that predates this project's rename, and
+  // `10router-cli` was the stopgap before the @techysy org existed. Pointing any
+  // of these at the bare name would compare our version against a stranger's and
+  // hand users their package to install.
+  npmPackageName: "@techysy/10router",
+  installCmd: "npm i -g @techysy/10router",
+  installCmdLatest: "npm i -g @techysy/10router@latest --prefer-online",
   shutdownCountdownSec: 3,
   exitDelayMs: 500,
   statusPort: 20129,

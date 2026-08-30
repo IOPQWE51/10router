@@ -68,9 +68,14 @@ vi.mock("../../open-sse/rtk/index.js", () => ({
   formatRtkLog: vi.fn(() => ""),
 }));
 
+// Must cover every export chatCore.js imports — a factory mock replaces the
+// module wholesale, so anything omitted throws "No export is defined" rather
+// than falling through to the real implementation.
 vi.mock("../../open-sse/rtk/headroom.js", () => ({
   compressWithHeadroom: vi.fn(async () => null),
   formatHeadroomLog: vi.fn(() => ""),
+  formatHeadroomSizeLog: vi.fn(() => ""),
+  isHeadroomPhantomSavings: vi.fn(() => false),
 }));
 
 vi.mock("../../open-sse/providers/capabilities.js", () => ({

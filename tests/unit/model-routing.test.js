@@ -17,7 +17,13 @@ async function setupDb() {
     createProviderNode,
     getModelInfo,
     cleanup() {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      // Windows may still hold the SQLite file open as the test ends, which
+      // surfaces as EPERM — `force` only swallows ENOENT. Retry, then give up
+      // rather than failing an otherwise-passing test over a temp dir the OS
+      // reaper will collect anyway.
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+      } catch { /* leave it to the OS temp reaper */ }
     },
   };
 }

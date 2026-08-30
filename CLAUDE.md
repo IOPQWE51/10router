@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two published artifacts live in this one repo:
 - The **dashboard + gateway** (root `package.json`, `10router-app`) — the Next.js server that does the actual routing.
-- The **CLI launcher** (`cli/`, published to npm as `10routerproxy`) — a separate package that installs/starts the server and manages the tray. It has its own `package.json`, version, and build.
+- The **CLI launcher** (`cli/`, published to npm as `@techysy/10router`) — a separate package that installs/starts the server and manages the tray. It has its own `package.json`, version, and build.
 
 The code lives in `src/` (Next.js app + dashboard/compat APIs), `open-sse/` (the provider-agnostic routing/translation engine), `cli/` (the launcher package), and `tests/`.
 
@@ -40,13 +40,18 @@ npx vitest run unit/capabilities.test.js   # single file (path relative to tests
 ```
 > The committed `tests/package.json` `test` script hardcodes Unix paths (`NODE_PATH=/tmp/node_modules …`) — a shared-install workaround from upstream. On Windows (or anywhere), ignore it and use the `npx vitest` form above; `vitest.config.js` resolves the `open-sse`/`@/` aliases from the repo root regardless of where vitest lives.
 >
-> **The suite is NOT expected to be all-green on a plain checkout.** ~938 pass, ~64 fail. Judge regressions with `tests/__baseline__/verify-no-regression.mjs`, not a raw run. Expected red:
-> - 26 catalogued in `tests/__baseline__/known-fails.txt` (rtk, oauth-cursor-auto-import, translator-request-normalization, …).
+> **The suite is NOT expected to be all-green on a plain checkout.** ~1872 pass, ~41 fail. Judge regressions with `tests/__baseline__/verify-no-regression.mjs <results.json>`, not a raw run — it passes as long as nothing that passed in the baseline now fails. Produce the report with `npx vitest run --reporter=json --outputFile=…`. Expected red:
+> - All 41 catalogued in `tests/__baseline__/known-fails.txt` (golden snapshot drift, windsurf URL, network-dependent fetches, `db-concurrent`, …). Re-baseline deliberately with `node tests/__baseline__/snapshot-known-fails.mjs <results.json>` — it marks *every* failure in that report as expected, so read the gate output first.
 > - `unit/embeddings.cloud.test.js` imports `cloud/src/handlers/embeddings.js` — the `cloud/` worker dir is **not in this repo**, so it always fails here.
-> - `unit/xai-oauth-service.test.js` times out (5s) when the xAI endpoint-discovery fetch isn't reachable/mocked.
+> - `unit/db-benchmark.test.js` imports `lowdb`, the DB layer that SQLite replaced — it is no longer a dependency.
 > - `real/*.real.test.js` make live provider calls — need credentials, skip otherwise.
+>
+> Suite-level failures (`numFailedTestSuites`) are counted separately from assertion failures: a file whose cases all pass can still fail on import or teardown. Check both.
+>
+> Four files (`auth/saml`, `unit/kimchi*`, `unit/cli-build-artifacts`) are written against **`node:test`**, not vitest. They carry a shim that prefers `vitest` when importable and falls back to `node:test`; without it vitest reports "No test suite found" and their results silently reach no count. Copy that shim in any new `node:test` file.
 - `*.real.test.js` under `tests/translator/real/` make live provider calls — skip unless credentials are set.
 - Regression baselines: `tests/__baseline__/verify-*.mjs` compare against committed snapshots (providers, aliases, OAuth URLs). Run these after touching provider registry / alias logic.
+- CI runs the suite on every push to `main` and every PR (`.github/workflows/test.yml`, ubuntu + Node 24, matching `.nvmrc`). It runs the three registry baselines, then the regression gate, and uploads the JSON report as an artifact — download that to re-baseline. The other three workflows only build (fpk / standalone / Docker).
 
 ## Architecture
 

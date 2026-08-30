@@ -4,15 +4,14 @@
 
 **Connect All AI Code Tools (Claude Code, Cursor, Antigravity, Copilot, Codex, Gemini, OpenCode, Cline, OpenClaw...) to 40+ AI Providers & 100+ Models.**
 
-[![npm](https://img.shields.io/npm/v/10router.svg)](https://www.npmjs.com/package/10router)
-[![Downloads](https://img.shields.io/npm/dm/10router.svg)](https://www.npmjs.com/package/10router)
-[![Docker Pulls](https://img.shields.io/docker/pulls/decolua/10router.svg?logo=docker&label=Docker%20pulls)](https://hub.docker.com/r/decolua/10router)
-[![GHCR](https://img.shields.io/badge/GHCR-decolua%2F10router-blue?logo=github)](https://github.com/decolua/10router/pkgs/container/10router)
-[![License](https://img.shields.io/npm/l/10router.svg)](https://github.com/decolua/10router/blob/main/LICENSE)
+[![npm](https://img.shields.io/npm/v/@techysy/10router.svg)](https://www.npmjs.com/package/@techysy/10router)
+[![Downloads](https://img.shields.io/npm/dm/@techysy/10router.svg)](https://www.npmjs.com/package/@techysy/10router)
+[![GHCR](https://img.shields.io/badge/GHCR-techysy%2F10router-blue?logo=github)](https://github.com/techysy/10router/pkgs/container/10router)
+[![License](https://img.shields.io/npm/l/@techysy/10router.svg)](https://github.com/techysy/10router/blob/main/LICENSE)
 
-<a href="https://trendshift.io/repositories/22628" target="_blank"><img src="https://trendshift.io/api/badge/repositories/22628" alt="decolua%2F10router | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+**English** | [简体中文](https://github.com/techysy/10router/blob/main/cli/README.zh-CN.md)
 
-[🌐 Website](https://10router.com) • [📖 Full Docs](https://github.com/decolua/10router)
+[📖 Full Docs](https://github.com/techysy/10router)
 
 ---
 
@@ -37,25 +36,30 @@
 
 ## ⚡ Quick Start
 
-**Option 1 — npm (recommended for desktop):**
+**1. Install** — pick one:
+
+*npm (recommended for desktop):*
 
 ```bash
-npm install -g 10routerproxy
+npm install -g @techysy/10router
 10router
 
 # Or run directly with npx
-npx 10routerproxy
+npx @techysy/10router
 ```
 
-**Option 2 — Docker (server/VPS):**
+> ⚠️ The package is **`@techysy/10router`**, not `10router` — that name belongs to an
+> unrelated fork on npm.
+
+*Docker (server/VPS):*
 
 ```bash
 docker run -d --name 10router -p 20128:20128 \
   -v "$HOME/.10router:/app/data" -e DATA_DIR=/app/data \
-  decolua/10router:latest
+  ghcr.io/techysy/10router:latest
 ```
 
-Published images: [Docker Hub](https://hub.docker.com/r/decolua/10router) • [GHCR](https://github.com/decolua/10router/pkgs/container/10router) (multi-platform amd64/arm64).
+Published images: [GHCR](https://github.com/techysy/10router/pkgs/container/10router) (multi-platform amd64/arm64).
 
 🎉 Dashboard opens at `http://localhost:20128`
 
@@ -90,6 +94,48 @@ That's it! Start coding with FREE AI models.
 
 ---
 
+## 🔄 Updating
+
+How you update depends on how you installed. The dashboard shows an update
+banner when a newer version is on npm — but **the "Update now" button only
+works for npm installs.**
+
+**npm** — either use the dashboard button, or:
+
+```bash
+npm i -g @techysy/10router@latest
+```
+
+**Docker** — pull the new image and recreate the container. Your data lives in
+the mounted volume and is not touched:
+
+```bash
+docker pull ghcr.io/techysy/10router:latest
+docker rm -f 10router
+docker run -d --name 10router -p 20128:20128 \
+  -v "$HOME/.10router:/app/data" -e DATA_DIR=/app/data \
+  ghcr.io/techysy/10router:latest
+```
+
+**fnOS (fpk)** — install the new `.fpk` from
+[Releases](https://github.com/techysy/10router/releases) through the fnOS app
+centre.
+
+**Standalone** — download the new `10router-server.tar.gz` from
+[Releases](https://github.com/techysy/10router/releases), stop the server, and
+extract over the install directory.
+
+> ⚠️ **Docker / fpk / standalone users: don't press "Update now".** It runs
+> `npm i -g @techysy/10router@latest` and relaunches through `npx`, which installs a
+> *second* copy into your global npm prefix. The original install keeps running
+> the old version, and the two don't know about each other. Use the channel you
+> installed from. (There is no install-source check yet — tracked as a known
+> gap.)
+
+Data in `~/.10router/` survives every update path; no migration step is needed.
+
+---
+
 ## 🛠️ Supported CLI Tools
 
 Claude-Code • OpenClaw • Codex • OpenCode • Cursor • Antigravity • Cline • Continue • Droid • Roo • Copilot • Kilo Code • Gemini CLI • Qwen Code • iFlow • Crush • Crusher • Aider
@@ -110,14 +156,15 @@ Any tool supporting OpenAI/Claude-compatible API works.
 
 Full docs, advanced setup, video tutorials & development guide:
 
-- **GitHub**: https://github.com/decolua/10router
-- **Full README**: https://github.com/decolua/10router/blob/main/app/README.md
-- **Website**: https://10router.com
+- **GitHub**: https://github.com/techysy/10router
+- **Full README**: https://github.com/techysy/10router/blob/main/README.md
+- **Changelog**: https://github.com/techysy/10router/blob/main/CHANGELOG.md
 
 ---
 
 ## 🙏 Acknowledgments
 
+- **[9Router](https://github.com/decolua/9router)** - Upstream project this is an optimized fork of
 - **[CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)** - Original Go implementation
 
 ## 📄 License

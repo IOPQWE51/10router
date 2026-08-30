@@ -20,12 +20,30 @@ function isCertExpired(certPath) {
 }
 
 /**
+ * Restrict the Root CA private key to owner-only (0600).
+ *
+ * Whoever holds this key can mint a trusted certificate for any domain on this
+ * machine, so it must never be world-readable. `mode` on writeFileSync only
+ * applies when the file is created, so this also repairs keys written by older
+ * versions. No-op on Windows, where ACLs (not POSIX bits) govern access.
+ */
+function hardenKeyPermissions() {
+  if (process.platform === "win32") return;
+  try {
+    fs.chmodSync(ROOT_CA_KEY_PATH, 0o600);
+  } catch (e) {
+    console.warn(`⚠️  Could not restrict permissions on ${ROOT_CA_KEY_PATH}: ${e.message}`);
+  }
+}
+
+/**
  * Generate Root CA certificate (only once, auto-regenerate if expired)
  * This Root CA will sign all dynamic leaf certificates
  */
 function generateRootCA() {
   const exists = fs.existsSync(ROOT_CA_KEY_PATH) && fs.existsSync(ROOT_CA_CERT_PATH);
   if (exists && !isCertExpired(ROOT_CA_CERT_PATH)) {
+    hardenKeyPermissions();
     console.log("✅ Root CA already exists");
     return { key: ROOT_CA_KEY_PATH, cert: ROOT_CA_CERT_PATH };
   }
@@ -36,7 +54,7 @@ function generateRootCA() {
   }
 
   if (!fs.existsSync(MITM_DIR)) {
-    fs.mkdirSync(MITM_DIR, { recursive: true });
+    fs.mkdirSync(MITM_DIR, { recursive: true, mode: 0o700 });
   }
 
   console.log("🔐 Generating Root CA certificate...");
@@ -85,8 +103,9 @@ function generateRootCA() {
   const privateKeyPem = forge.pki.privateKeyToPem(keys.privateKey);
   const certPem = forge.pki.certificateToPem(cert);
 
-  fs.writeFileSync(ROOT_CA_KEY_PATH, privateKeyPem);
+  fs.writeFileSync(ROOT_CA_KEY_PATH, privateKeyPem, { mode: 0o600 });
   fs.writeFileSync(ROOT_CA_CERT_PATH, certPem);
+  hardenKeyPermissions();
 
   console.log("✅ Root CA generated successfully");
   return { key: ROOT_CA_KEY_PATH, cert: ROOT_CA_CERT_PATH };

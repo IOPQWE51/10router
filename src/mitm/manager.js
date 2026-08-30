@@ -5,7 +5,7 @@ const os = require("os");
 const net = require("net");
 const https = require("https");
 const crypto = require("crypto");
-const { addDNSEntry, removeDNSEntry, removeAllDNSEntries, removeAllDNSEntriesSync, checkAllDNSStatus, TOOL_HOSTS, isSudoAvailable, isSudoPasswordRequired } = require("./dns/dnsConfig");
+const { addDNSEntry, removeDNSEntry, removeAllDNSEntries, removeAllDNSEntriesSync, checkAllDNSStatus, listToolsWithDnsEntries, TOOL_HOSTS, isSudoAvailable, isSudoPasswordRequired } = require("./dns/dnsConfig");
 const { isAdmin } = require("./winElevated.js");
 
 const IS_WIN = process.platform === "win32";
@@ -63,7 +63,7 @@ function resolveBundledServerPath() {
 }
 
 // Copy bundled server.js into DATA_DIR so MITM doesn't lock node_modules
-// (prevents EBUSY on `npm i -g 10router@latest` while MITM is running).
+// (prevents EBUSY on `npm i -g 10router-cli@latest` while MITM is running).
 function ensureRuntimeServer(bundledPath) {
   try {
     if (!bundledPath || !fs.existsSync(bundledPath)) return bundledPath;
@@ -255,6 +255,54 @@ async function restoreToolDNS(sudoPassword) {
       await addDNSEntry(tool, password);
     } catch (e) {
       err(`DNS ${tool}: restore failed — ${e.message}`);
+    }
+  }
+}
+
+/**
+ * Remove hosts entries orphaned by a run that never shut down cleanly.
+ *
+ * The hooks that strip these entries (server.js on SIGTERM/SIGINT, the app's
+ * exit handler) don't run on SIGKILL, a crash or a power loss — and killPort()
+ * reclaims port 443 with SIGKILL, so the previous instance is routinely the one
+ * that skips them. Left behind, the tool hostnames stay pointed at 127.0.0.1
+ * with nothing listening and Copilot/Cursor/Kiro fail with errors that give no
+ * hint why. Nothing cleaned these up before: restoreToolDNS() only ever adds.
+ *
+ * Only removes entries that should NOT be active right now — MITM disabled, or
+ * that tool's own DNS toggle off. A live MITM instance is left untouched.
+ */
+async function sweepStaleDnsEntries() {
+  // Read-only probe first: one hosts-file read, so the common clean case costs
+  // nothing and never reaches a sudo prompt or UAC dialog.
+  const present = listToolsWithDnsEntries();
+  if (present.length === 0) return;
+
+  // Don't yank entries out from under an instance that is actually serving.
+  const status = await getMitmStatus().catch(() => null);
+  if (status?.running) return;
+
+  const settings = _getSettings ? await _getSettings().catch(() => ({})) : {};
+  const dnsState = await loadDnsToolState();
+  const stale = present.filter((tool) => !settings.mitmEnabled || !dnsState[tool]);
+  if (stale.length === 0) return;
+
+  if (!(await hasDnsPrivilege())) {
+    err(
+      `DNS: stale entries from a previous run (${stale.join(", ")}) still point at 127.0.0.1 — ` +
+      `those tools will keep failing until they are removed. ` +
+      (IS_WIN ? "Restart 10Router as administrator to clean them up." : "Enter your sudo password in the dashboard to clean them up.")
+    );
+    return;
+  }
+
+  const password = getCachedPassword() || await loadEncryptedPassword();
+  for (const tool of stale) {
+    try {
+      await removeDNSEntry(tool, password);
+      log(`🌐 DNS ${tool}: cleaned up stale entries from a previous run`);
+    } catch (e) {
+      err(`DNS ${tool}: stale cleanup failed — ${e.message}`);
     }
   }
 }
@@ -878,6 +926,7 @@ module.exports = {
   isSudoPasswordRequired,
   initDbHooks,
   restoreToolDNS,
+  sweepStaleDnsEntries,
   hasDnsPrivilege,
   removeAllDNSEntriesSync,
 };
