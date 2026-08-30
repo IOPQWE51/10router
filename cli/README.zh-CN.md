@@ -95,7 +95,7 @@ Claude Code / Codex / OpenClaw / Cursor / Cline 设置：
 
 ## 🔄 更新
 
-更新方式取决于你当初是怎么装的。npm 上有新版本时仪表盘会显示提示条，但**「立即更新」按钮只适用于 npm 安装**。
+更新方式取决于你当初是怎么装的。npm 上有新版本时仪表盘会显示提示条：**npm 安装**显示「立即更新」按钮；**fnOS（fpk）安装**会被运行时自动识别（启动脚本注入 `INSTALL_CHANNEL=fpk`），提示条自动把 npm 按钮换成「Get the fpk from Releases」下载入口。
 
 **npm** —— 用仪表盘按钮，或者：
 
@@ -113,11 +113,11 @@ docker run -d --name 10router -p 20128:20128 \
   ghcr.io/techysy/10router:latest
 ```
 
-**fnOS（fpk）** —— 从 [Releases](https://github.com/techysy/10router/releases) 下载新的 `.fpk`，通过飞牛应用中心安装。
+**fnOS（fpk）** —— 从 [Releases](https://github.com/techysy/10router/releases) 下载新的 `.fpk`，通过飞牛应用中心安装。仪表盘提示条会直接指向对应版本的 release 标签。
 
 **Standalone** —— 从 [Releases](https://github.com/techysy/10router/releases) 下载新的 `10router-server.tar.gz`，停止服务后覆盖解压到安装目录。
 
-> ⚠️ **Docker / fpk / standalone 用户请勿点击「立即更新」。** 该按钮执行的是 `npm i -g @techysy/10router@latest` 并通过 `npx` 重新拉起，会在全局 npm 目录里装出**第二份**。原来那份仍跑着旧版本，两者互不知晓。请走你当初安装的渠道。（目前尚无安装来源判断，属于已知待办。）
+> ⚠️ **Docker / standalone 用户请勿点击「立即更新」。** 该按钮执行的是 `npm i -g @techysy/10router@latest` 并通过 `npx` 重新拉起，会在全局 npm 目录里装出**第二份**。原来那份仍跑着旧版本，两者互不知晓。fpk 安装已被自动识别并改用 Releases 下载入口；Docker 和 standalone 暂无安装来源判断，属于已知待办。
 
 `~/.10router/` 中的数据在所有更新路径下都会保留，无需迁移操作。
 

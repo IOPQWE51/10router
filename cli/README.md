@@ -97,8 +97,10 @@ That's it! Start coding with FREE AI models.
 ## 🔄 Updating
 
 How you update depends on how you installed. The dashboard shows an update
-banner when a newer version is on npm — but **the "Update now" button only
-works for npm installs.**
+banner when a newer version is on npm. **npm installs** get the "Update now"
+button; **fnOS (fpk) installs** are detected at runtime (`INSTALL_CHANNEL=fpk`
+from the launch script) and the banner automatically swaps the npm button for
+a "Get the fpk from Releases" link.
 
 **npm** — either use the dashboard button, or:
 
@@ -119,18 +121,18 @@ docker run -d --name 10router -p 20128:20128 \
 
 **fnOS (fpk)** — install the new `.fpk` from
 [Releases](https://github.com/techysy/10router/releases) through the fnOS app
-centre.
+centre. The dashboard banner links straight to the matching release tag.
 
 **Standalone** — download the new `10router-server.tar.gz` from
 [Releases](https://github.com/techysy/10router/releases), stop the server, and
 extract over the install directory.
 
-> ⚠️ **Docker / fpk / standalone users: don't press "Update now".** It runs
+> ⚠️ **Docker / standalone users: don't press "Update now".** It runs
 > `npm i -g @techysy/10router@latest` and relaunches through `npx`, which installs a
 > *second* copy into your global npm prefix. The original install keeps running
-> the old version, and the two don't know about each other. Use the channel you
-> installed from. (There is no install-source check yet — tracked as a known
-> gap.)
+> the old version, and the two don't know about each other. fpk installs are
+> detected automatically and shown the Releases link instead; Docker and
+> standalone still have no install-source check (tracked as a known gap).
 
 Data in `~/.10router/` survives every update path; no migration step is needed.
 
