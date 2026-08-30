@@ -299,6 +299,12 @@ export async function buildModelsList(kindFilter, options = {}) {
   }
   const validNodeIds = new Set(providerNodes.map((n) => n.id));
 
+  // Custom nodes can declare their own JSON catalog source (modelsJsonUrl, set
+  // in the node editor) — same authoritative import semantics as presets.
+  const nodeJsonUrlById = new Map(
+    providerNodes.filter((n) => n.modelsJsonUrl).map((n) => [n.id, n.modelsJsonUrl])
+  );
+
   // Every valid provider identifier (id or alias) from the static registry, so a
   // customModel keyed by either form is treated as legitimate (e.g. noAuth free
   // provider `oc` = opencode alias).
@@ -439,7 +445,7 @@ export async function buildModelsList(kindFilter, options = {}) {
       // global toggle is ON, the imported list is authoritative: only enabled
       // models are exposed, with kind/caps read from the imported entries.
       // When the toggle is OFF, fall back to the static model list.
-      const jsonCatalog = (modelJsonImportEnabled && AI_PROVIDERS[providerId]?.modelsJsonUrl)
+      const jsonCatalog = (modelJsonImportEnabled && (AI_PROVIDERS[providerId]?.modelsJsonUrl || nodeJsonUrlById.get(providerId)))
         ? await getProviderJsonModels(providerId)
         : null;
       const jsonEnabled = (jsonCatalog || []).filter((m) => m.enabled !== false);

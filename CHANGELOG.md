@@ -10,6 +10,12 @@
 - **仓库描述更正**：GitHub/GHCR 描述从 "9Router fork: ..." 更新为 10Router 自述（此前 Docker 包页展示的是上游名号）。
 - **核实存疑两项**：docker-publish.yml 的 "重复 `--tag :latest`" 为误报（第二处 latest 是 `runs-on: ubuntu-latest`，写法本就正确）；`public/providers/longcat.png` 图标确认来自上游合并 `fd7a881c`，来源已明。
 
+## ✨ 功能与体验（正式版收录）
+
+- **左上角品牌区更正为 "10Router Proxy"**：跟随上游改名时丢了 "Proxy" 后缀（上游为 "9Router Proxy"）。仅调整侧边栏字标一处；登录页、PWA manifest、浏览器标题等其余位置保持原文案。
+- **fnOS fpk 检查更新改为指向对应版本的 Releases**：fpk 启动脚本注入 `INSTALL_CHANNEL=fpk`，`/api/version` 据此返回 `releaseUrl`（`github.com/techysy/10router/releases/tag/v<版本>`，比页内锚点更可靠）；侧边栏对 fpk 安装显示 "Get the fpk from Releases"，不再展示对 fpk 无效的 npm 安装命令。顺带修复：fpk 生成的默认 `.env` 不再写入占位 `JWT_SECRET`（公开字符串，服务端现已忽略并告警）。
+- **自定义供应商支持模型 JSON 目录（获取列表 + 禁用/激活）**：此前自定义节点添加模型只有"手动添加 / 从 /models 全量导入、只能逐个删除"。现节点编辑新增 "Model JSON URL"（及可选镜像 fallback），支持 `{models:[...]}` 与 OpenAI `/v1/models` 风格 `{data:[...]}` 两种格式；非 GitHub 源自动附带连接 API key 作为 Bearer。导入后与预置供应商同一生命周期：逐个禁用/激活、批量 Active All / Disable All、受全局 JSON 导入开关控制、`/v1/models` 只暴露启用模型。原手动路径在未导入目录或开关关闭时照常可用。
+
 ## ⚠️ npm 包名变更为 `@techysy/10router`
 
 `npm i -g @techysy/10router`，可执行命令仍是 `10router`，其余渠道（Docker / fpk / standalone）不受影响。

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AI_PROVIDERS } from "@/shared/constants/providers";
+import { getProviderNodeById } from "@/models";
 import { proxyAwareFetch } from "open-sse/utils/proxyFetch.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import {
@@ -80,9 +81,17 @@ async function fetchFromUrl(url, proxyOptions, authToken = null) {
 // Fetch the raw model catalog for a provider, trying the primary source
 // (modelsJsonUrl, e.g. GitHub API) and falling back to the mirror
 // (fallbackModelsJsonUrl, e.g. Gitee) when the primary is unreachable.
+// Preset providers declare the source in the static registry; custom provider
+// nodes declare it on the node record (edited in the node editor) — both get
+// the same import + enable/disable lifecycle.
 async function fetchRawCatalog(id) {
-  const provider = AI_PROVIDERS[id];
-  const modelsJsonUrl = provider?.modelsJsonUrl;
+  let modelsJsonUrl = AI_PROVIDERS[id]?.modelsJsonUrl;
+  let fallbackModelsJsonUrl = AI_PROVIDERS[id]?.fallbackModelsJsonUrl;
+  if (!modelsJsonUrl) {
+    const node = await getProviderNodeById(id).catch(() => null);
+    modelsJsonUrl = node?.modelsJsonUrl || "";
+    fallbackModelsJsonUrl = node?.fallbackModelsJsonUrl || "";
+  }
   if (!modelsJsonUrl) {
     throw Object.assign(new Error("Provider does not expose a model JSON source"), { status: 400 });
   }
@@ -106,7 +115,7 @@ async function fetchRawCatalog(id) {
     return { models, source: modelsJsonUrl };
   } catch (primaryErr) {
     // Fall back to the mirror (Gitee) if one is declared.
-    const fallbackUrl = provider?.fallbackModelsJsonUrl;
+    const fallbackUrl = fallbackModelsJsonUrl;
     if (fallbackUrl) {
       try {
         const models = await fetchFromUrl(fallbackUrl, proxyOptions, authToken);

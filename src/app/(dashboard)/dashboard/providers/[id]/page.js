@@ -151,6 +151,10 @@ export default function ProviderDetailPage() {
         apiType: providerNode.apiType,
         baseUrl: providerNode.baseUrl,
         type: providerNode.type,
+        // Custom nodes can declare a model JSON catalog source (node editor) —
+        // same import + enable/disable lifecycle as preset providers.
+        modelsJsonUrl: providerNode.modelsJsonUrl || undefined,
+        fallbackModelsJsonUrl: providerNode.fallbackModelsJsonUrl || undefined,
       }
     : (OAUTH_PROVIDERS[providerId] || APIKEY_PROVIDERS[providerId] || FREE_PROVIDERS[providerId] || FREE_TIER_PROVIDERS[providerId] || WEB_COOKIE_PROVIDERS[providerId]);
   // GitHub JSON model source declared in the provider registry (nullable).
@@ -1213,6 +1217,14 @@ export default function ProviderDetailPage() {
           onDeleteCustomModel={(modelId) => handleDeleteCustomModel(modelId, "llm", providerStorageAlias)}
           connections={connections}
           isAnthropic={isAnthropicCompatible}
+          // JSON catalog lifecycle — same enable/disable flow as preset
+          // providers, sourced from the node's own modelsJsonUrl.
+          jsonModels={providerModelsJsonUrl ? jsonModels : null}
+          importingJsonModels={importingJsonModels}
+          onImportJsonModels={handleImportJsonModels}
+          onToggleJsonModel={handleToggleJsonModel}
+          onBulkJsonModels={handleBulkJsonModels}
+          useJsonCatalog={modelJsonImportEnabled && !!providerModelsJsonUrl}
         />
       );
     }

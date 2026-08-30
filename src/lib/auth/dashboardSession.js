@@ -14,6 +14,7 @@ const DEFAULT_PASSWORD = "123456";
 const KNOWN_PLACEHOLDER_SECRETS = new Set([
   "change-me-to-a-long-random-secret",
   "10router-default-secret-change-me",
+  "change-me-to-a-random-string", // legacy fnOS fpk-generated .env default
   "change-me",
 ]);
 

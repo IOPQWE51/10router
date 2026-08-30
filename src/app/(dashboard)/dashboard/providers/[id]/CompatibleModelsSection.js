@@ -71,7 +71,76 @@ function CompatibleModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias,
   );
 }
 
-export default function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, modelAliases, customModels, copied, onCopy, onDeleteAlias, onAddCustomModel, onDeleteCustomModel, connections, isAnthropic }) {
+// A model row from the imported JSON catalog: enable/disable (not delete),
+// mirroring the preset-provider catalog lifecycle.
+function JsonModelRow({ modelId, fullModel, copied, onCopy, onToggle, enabled, onTest, testStatus, isTesting }) {
+  const borderColor = testStatus === "ok"
+    ? "border-green-500/40"
+    : testStatus === "error"
+    ? "border-red-500/40"
+    : "border-border";
+
+  const iconColor = testStatus === "ok"
+    ? "#22c55e"
+    : testStatus === "error"
+    ? "#ef4444"
+    : undefined;
+
+  return (
+    <div className={`flex items-center gap-3 p-3 rounded-lg border ${borderColor} hover:bg-sidebar/50 ${enabled ? "" : "opacity-60"}`}>
+      <span
+        className="material-symbols-outlined text-base text-text-muted"
+        style={iconColor ? { color: iconColor } : undefined}
+      >
+        {testStatus === "ok" ? "check_circle" : testStatus === "error" ? "cancel" : "smart_toy"}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{modelId}</p>
+        <div className="flex items-center gap-1 mt-1">
+          <code className="text-xs text-text-muted font-mono bg-sidebar px-1.5 py-0.5 rounded">{fullModel}</code>
+          <div className="relative group/btn">
+            <button
+              onClick={() => onCopy(fullModel, `model-${modelId}`)}
+              className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary"
+            >
+              <span className="material-symbols-outlined text-sm">
+                {copied === `model-${modelId}` ? "check" : "content_copy"}
+              </span>
+            </button>
+            <span className="pointer-events-none absolute top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
+              {copied === `model-${modelId}` ? "Copied!" : "Copy"}
+            </span>
+          </div>
+          {onTest && (
+            <div className="relative group/btn">
+              <button
+                onClick={onTest}
+                disabled={isTesting}
+                className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm" style={isTesting ? { animation: "spin 1s linear infinite" } : undefined}>
+                  {isTesting ? "progress_activity" : "science"}
+                </span>
+              </button>
+              <span className="pointer-events-none absolute top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
+                {isTesting ? "Testing..." : "Test"}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={onToggle}
+        className={`p-1 rounded ${enabled ? "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10" : "text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10"}`}
+        title={enabled ? "Disable model" : "Activate model"}
+      >
+        <span className="material-symbols-outlined text-sm">{enabled ? "block" : "restart_alt"}</span>
+      </button>
+    </div>
+  );
+}
+
+export default function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, modelAliases, customModels, copied, onCopy, onDeleteAlias, onAddCustomModel, onDeleteCustomModel, connections, isAnthropic, jsonModels, importingJsonModels, onImportJsonModels, onToggleJsonModel, onBulkJsonModels, useJsonCatalog }) {
   const [newModel, setNewModel] = useState("");
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -160,6 +229,16 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
 
   const canImport = connections.some((conn) => conn.isActive !== false);
 
+  // JSON catalog lifecycle (node declares a Model JSON URL). When the global
+  // JSON-import toggle is ON and a catalog is imported, that list is the
+  // authoritative model set: enabled rows are exposed, disabled rows are kept
+  // for re-activation — manual custom rows are hidden to avoid duplication
+  // (same semantics as preset providers).
+  const hasJsonSource = Array.isArray(jsonModels);
+  const jsonEnabledModels = hasJsonSource ? jsonModels.filter((m) => m.enabled !== false) : [];
+  const jsonDisabledModels = hasJsonSource ? jsonModels.filter((m) => m.enabled === false) : [];
+  const showJsonRows = useJsonCatalog && jsonEnabledModels.length > 0;
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-text-muted">
@@ -193,7 +272,41 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
         </p>
       )}
 
-      {allModels.length > 0 && (
+      {hasJsonSource && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button size="sm" variant="secondary" icon="download" onClick={onImportJsonModels} disabled={!canImport || importingJsonModels}>
+            {importingJsonModels ? "Fetching..." : "Fetch Models from JSON"}
+          </Button>
+          {showJsonRows && jsonDisabledModels.length > 0 && (
+            <Button size="sm" variant="secondary" icon="restart_alt" onClick={() => onBulkJsonModels(true)}>
+              Active All
+            </Button>
+          )}
+          {showJsonRows && jsonEnabledModels.length > 0 && (
+            <Button size="sm" variant="secondary" icon="block" onClick={() => onBulkJsonModels(false)}>
+              Disable All
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showJsonRows && (
+        <div className="flex flex-col gap-3">
+          {jsonEnabledModels.map((m) => (
+            <JsonModelRow
+              key={`json-${m.id}`}
+              modelId={m.id}
+              fullModel={`${providerDisplayAlias}/${m.id}`}
+              copied={copied}
+              onCopy={onCopy}
+              enabled={true}
+              onToggle={() => onToggleJsonModel(m.id, false)}
+            />
+          ))}
+        </div>
+      )}
+
+      {!showJsonRows && allModels.length > 0 && (
         <div className="flex flex-col gap-3">
           {allModels.map(({ id, alias, source }) => (
             <CompatibleModelRow
@@ -206,6 +319,23 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
               onTest={connections.length > 0 ? () => handleTestModel(id) : undefined}
               testStatus={modelTestResults[id]}
               isTesting={testingModelId === id}
+            />
+          ))}
+        </div>
+      )}
+
+      {useJsonCatalog && jsonDisabledModels.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-text-muted">Disabled (activate to expose again):</p>
+          {jsonDisabledModels.map((m) => (
+            <JsonModelRow
+              key={`json-disabled-${m.id}`}
+              modelId={m.id}
+              fullModel={`${providerDisplayAlias}/${m.id}`}
+              copied={copied}
+              onCopy={onCopy}
+              enabled={false}
+              onToggle={() => onToggleJsonModel(m.id, true)}
             />
           ))}
         </div>
@@ -229,4 +359,10 @@ CompatibleModelsSection.propTypes = {
     isActive: PropTypes.bool,
   })).isRequired,
   isAnthropic: PropTypes.bool,
+  jsonModels: PropTypes.arrayOf(PropTypes.object),
+  importingJsonModels: PropTypes.bool,
+  onImportJsonModels: PropTypes.func,
+  onToggleJsonModel: PropTypes.func,
+  onBulkJsonModels: PropTypes.func,
+  useJsonCatalog: PropTypes.bool,
 };

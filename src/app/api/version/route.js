@@ -1,6 +1,6 @@
 import https from "https";
 import pkg from "../../../../package.json" with { type: "json" };
-import { UPDATER_CONFIG } from "@/shared/constants/config.js";
+import { UPDATER_CONFIG, GITHUB_CONFIG } from "@/shared/constants/config.js";
 
 // Single source of truth with the updater and the Sidebar's install command —
 // a second copy here silently drifted to the wrong package once already.
@@ -60,5 +60,14 @@ export async function GET() {
   const currentVersion = pkg.version;
   const hasUpdate = latestVersion ? compareVersions(latestVersion, currentVersion) > 0 : false;
 
-  return Response.json({ currentVersion, latestVersion, hasUpdate });
+  // Install-source marker: fnOS fpk launches the server with INSTALL_CHANNEL=fpk
+  // (fnos-packaging/cmd/main); npm/Docker/standalone leave it unset. For fpk the
+  // npm install command is wrong in every direction — updates ship as fpk
+  // packages attached to the matching GitHub release, so hand the UI that URL.
+  const installChannel = process.env.INSTALL_CHANNEL || "";
+  const releaseUrl = installChannel === "fpk"
+    ? `${GITHUB_CONFIG.repoUrl}/releases/tag/v${latestVersion || currentVersion}`
+    : null;
+
+  return Response.json({ currentVersion, latestVersion, hasUpdate, installChannel, releaseUrl });
 }
