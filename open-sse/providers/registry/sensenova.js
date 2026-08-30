@@ -15,7 +15,11 @@ export default {
       apiKeyUrl: "https://platform.sensenova.cn/console/keys",
     },
   },
-  category: "apikey",
+  // Free public beta (TokenPlan 公测, credit-pool quota) — grouped with the
+  // free-tier providers in the UI; flip back to "apikey" when it starts charging.
+  category: "freeTier",
+  authType: "apikey",
+  authModes: ["apikey"],
   transport: {
     baseUrl: "https://token.sensenova.cn/v1/chat/completions",
     validateUrl: "https://token.sensenova.cn/v1/models",

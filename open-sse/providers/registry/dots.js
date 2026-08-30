@@ -17,7 +17,11 @@ export default {
       apiKeyUrl: "https://dots.ai/platform/apikeys",
     },
   },
-  category: "apikey",
+  // Free public beta (公测) — grouped with the free-tier providers in the UI;
+  // flip back to "apikey" when Dots starts charging.
+  category: "freeTier",
+  authType: "apikey",
+  authModes: ["apikey"],
   transport: {
     baseUrl: "https://note3-prev-api.askdiandian.com/v1/chat/completions",
     auth: { combined: true, header: "api-key", scheme: "raw" },
