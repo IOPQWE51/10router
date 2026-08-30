@@ -252,14 +252,13 @@ export async function getVercelAiGatewayUsage(apiKey, proxyOptions = null) {
   }
 }
 
-export async function getQoderUsage(accessToken, proxyOptions = null, providerId = "qoder") {
+export async function getQoderUsage(accessToken, proxyOptions = null) {
   if (!accessToken) {
     return { message: "Qoder usage unavailable: no access token" };
   }
   try {
-    const usageUrl = U(providerId).url || U("qoder").url;
     const response = await proxyAwareFetch(
-      usageUrl,
+      U("qoder").url,
       {
         method: "GET",
         headers: {
