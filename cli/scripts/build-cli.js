@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { execSync } = require("child_process");
 
@@ -8,7 +9,12 @@ const cliDir = path.resolve(__dirname, "..");
 const appDir = path.resolve(cliDir, "..");
 const rootDir = path.resolve(appDir, "..");
 const cliAppDir = process.env.NINEROUTER_CLI_APP_DIR || path.join(cliDir, "app");
-const buildHomeDir = path.join(cliDir, ".build-home");
+// Build-time HOME must stay OUTSIDE the repo: the Next build initializes the
+// app (jwt-secret / machine-id / data.sqlite) in APPDATA, and output tracing
+// would copy anything inside the tracing root into the standalone bundle —
+// that is how .build-home secrets ended up in the npm tarball once. os.tmpdir()
+// is never traced and never ships. Keep it persistent (npm cache warmth).
+const buildHomeDir = path.join(os.tmpdir(), "10router-cli-build-home");
 const buildDistDirName = ".next-cli-build";
 const buildDistDir = path.join(appDir, buildDistDirName);
 
@@ -23,7 +29,52 @@ const EXCLUDE_PATTERNS = [
   "*.log",          // Log files
   "tmp",            // Temp files
   ".DS_Store",      // macOS files
+  ".build-home",    // Legacy in-repo build home (belt & braces — see buildHomeDir)
 ];
+
+// Basenames that must never appear anywhere in the bundle: they carry the
+// dashboard JWT secret, the machine fingerprint or a live database snapshot.
+const SENSITIVE_BASENAMES = new Set([
+  ".build-home",
+  "jwt-secret",
+  "machine-id",
+  "data.sqlite",
+  "data.sqlite-wal",
+  "data.sqlite-shm",
+]);
+
+function findSensitiveArtifacts(dir) {
+  const hits = [];
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return hits;
+  }
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (SENSITIVE_BASENAMES.has(entry.name)) {
+      hits.push(entryPath);
+      continue;
+    }
+    if (entry.isDirectory()) hits.push(...findSensitiveArtifacts(entryPath));
+  }
+  return hits;
+}
+
+// Last line of defense before publish: scan the exact directory the npm
+// `files` whitelist ships and refuse the build if anything sensitive is in it.
+function assertNoSensitiveArtifacts(cliAppDir) {
+  const hits = findSensitiveArtifacts(cliAppDir);
+  if (hits.length > 0) {
+    throw new Error(
+      "Sensitive artifacts found in the CLI bundle — refusing to ship:\n" +
+        hits.join("\n") +
+        "\nThese can carry the dashboard jwt-secret, the machine-id or a live " +
+        "data.sqlite. Keep the build-time HOME/DATA_DIR outside the tracing root.",
+    );
+  }
+}
 
 function shouldExclude(name) {
   return EXCLUDE_PATTERNS.some(pattern => {
@@ -331,6 +382,16 @@ function buildCliPackage() {
     process.exit(1);
   }
 
+  // Step 9: Refuse to finish if anything sensitive made it into the bundle.
+  console.log("9️⃣  Scanning bundle for sensitive artifacts...");
+  try {
+    assertNoSensitiveArtifacts(cliAppDir);
+    console.log("✅ No sensitive artifacts in bundle\n");
+  } catch (error) {
+    console.error(`❌ ${error.message}`);
+    process.exit(1);
+  }
+
   console.log("✨ CLI package build completed!");
   console.log(`📁 Output: ${cliAppDir}`);
 
@@ -344,6 +405,7 @@ function buildCliPackage() {
 }
 
 module.exports = {
+  assertNoSensitiveArtifacts,
   assertRequiredApiArtifacts,
   copyStandaloneBuild,
   mergeServerArtifacts,

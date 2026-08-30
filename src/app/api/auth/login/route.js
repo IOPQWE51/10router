@@ -1,43 +1,38 @@
 import { NextResponse } from "next/server";
-import { getSettings, updateSettings } from "@/lib/localDb";
-import { setDashboardAuthCookie } from "@/lib/auth/dashboardSession";
-import bcrypt from "bcryptjs";
-import { SignJWT } from "jose";
+import { setDashboardAuthCookie, verifyDashboardPassword } from "@/lib/auth/dashboardSession";
+import { checkLock, recordFail, recordSuccess, getClientIp } from "@/lib/auth/loginLimiter";
 import { cookies } from "next/headers";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "10router-default-secret-change-me"
-);
-
+// Progressive lockout lives in loginLimiter (in-memory, resets on restart) —
+// the same limiter the SAML acs route uses. getClientIp trusts x-9r-real-ip
+// only when custom-server.js stamped it, so remote clients cannot rotate
+// their own bucket.
 export async function POST(request) {
+  const ip = getClientIp(request);
+
+  const lock = checkLock(ip);
+  if (lock.locked) {
+    return NextResponse.json(
+      { error: `Too many failed attempts. Try again in ${lock.retryAfter}s.` },
+      { status: 429, headers: { "Retry-After": String(lock.retryAfter) } },
+    );
+  }
+
   try {
     const { password } = await request.json();
-    const settings = await getSettings();
-
-    // Default password is '123456' if not set
-    const storedHash = settings.password;
-
-    let isValid = false;
-    if (!storedHash) {
-      isValid = password === "123456";
-    } else {
-      isValid = await bcrypt.compare(password, storedHash);
-    }
+    const isValid = await verifyDashboardPassword(password);
 
     if (isValid) {
-      const token = await new SignJWT({ authenticated: true })
-        .setProtectedHeader({ alg: "HS256" })
-        .setExpirationTime("24h")
-        .sign(SECRET);
-
+      recordSuccess(ip);
       const cookieStore = await cookies();
       await setDashboardAuthCookie(cookieStore, request);
-
       return NextResponse.json({ success: true });
     }
 
+    recordFail(ip);
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   } catch (error) {
+    recordFail(ip);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,5 +1,12 @@
 # v1.0.3 (2026-08-29)
 
+## 🔒 发布前安全修复（正式版发布前置）
+
+- **修复 npm 包携带构建机敏感文件**：CLI 构建把 `HOME`/`APPDATA` 指到 `cli/.build-home`，Next 构建期初始化生成的 `jwt-secret`、`machine-id` 和一份 `data.sqlite` 快照被 output tracing 带进 standalone、再随 `files: ["app"]` 进入 npm tarball（实测确认）。现改为：构建期 HOME 挪到系统临时目录（脱离 tracing root），构建结束前新增第 9 步全量扫描 `jwt-secret` / `machine-id` / `data.sqlite*` / `.build-home`，命中即拒绝出包；被污染的本地 `cli/app` 已清理。
+- **修复照抄 `.env.example` 导致会话可伪造**：示例里的 `JWT_SECRET=change-me-...` 是仓库公开字符串，照抄的用户其 dashboard 登录态可被任意伪造。现在 `.env.example` 注释掉 `JWT_SECRET`/`INITIAL_PASSWORD`（留空即自动生成 0600 随机密钥），且运行时检测到已知占位值会忽略它并回退到生成的密钥。
+- **仪表盘登录接入渐进锁定**：`loginLimiter`（5 次失败锁 30s→2m→10m→30m）此前只接了 SAML 回调，密码登录 `/api/auth/login` 完全无限流。现已接入，与 SAML 共用同一套 IP 判定（信任 `x-9r-real-ip` 需 custom-server 的 peer token 背书）。
+- **登录密码校验统一**：登录路由改为复用 `verifyDashboardPassword`——`INITIAL_PASSWORD` 环境变量此前在登录路由被忽略（文档写了但实际不生效），现与敏感操作二次验证口径一致；同时移除登录路由里一份带硬编码兜底密钥的死代码。
+
 ## ⚠️ npm 包名变更为 `@techysy/10router`
 
 `npm i -g @techysy/10router`，可执行命令仍是 `10router`，其余渠道（Docker / fpk / standalone）不受影响。

@@ -8,8 +8,25 @@ import { getSettings } from "@/lib/localDb";
 
 const DEFAULT_PASSWORD = "123456";
 
+// Placeholder values that ship in .env.example / old builds' source. A secret
+// the whole internet can guess is worse than no secret — fall back to the
+// auto-generated one instead of signing sessions with a public string.
+const KNOWN_PLACEHOLDER_SECRETS = new Set([
+  "change-me-to-a-long-random-secret",
+  "10router-default-secret-change-me",
+  "change-me",
+]);
+
 function loadJwtSecret() {
-  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  const fromEnv = process.env.JWT_SECRET;
+  if (fromEnv) {
+    if (!KNOWN_PLACEHOLDER_SECRETS.has(fromEnv)) return fromEnv;
+    console.warn(
+      "[auth] JWT_SECRET is a known placeholder value — ignoring it. " +
+        "Leave JWT_SECRET unset (a random secret is generated to " +
+        path.join(DATA_DIR, "jwt-secret") + ") or set a long random value.",
+    );
+  }
   const file = path.join(DATA_DIR, "jwt-secret");
   try {
     return fs.readFileSync(file, "utf8").trim();

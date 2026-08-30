@@ -28,4 +28,10 @@ tsconfig.json
 # Build artifacts that shouldn't be published
 .next/cache/
 .next/standalone/data/
+.next-cli-build/
+.build-home/
+**/.build-home/
+**/jwt-secret
+**/machine-id
+**/data.sqlite*
 
