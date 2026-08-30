@@ -255,7 +255,7 @@ export async function saveRequestUsage(entry) {
     // better-sqlite3 is sync → no JS yield mid-transaction → no race in same process.
     db.transaction(() => {
       const existing = db.get(
-        `SELECT id, endpoint FROM usageHistory
+        `SELECT id, endpoint, meta FROM usageHistory
          WHERE timestamp = ?
            AND COALESCE(provider, '') = COALESCE(?, '')
            AND COALESCE(model, '') = COALESCE(?, '')
@@ -272,10 +272,20 @@ export async function saveRequestUsage(entry) {
       );
 
       if (existing) {
-        if (!existing.endpoint && entry.endpoint) {
-          db.run(`UPDATE usageHistory SET endpoint = ? WHERE id = ?`, [entry.endpoint, existing.id]);
+        // usageKey contract: callers stamp one per upstream attempt (see the
+        // saveUsageStats call sites). Content alone cannot tell apart two
+        // distinct requests that landed in the same millisecond with identical
+        // token counts — the legacy content-only dedup silently ate those
+        // (history row + daily aggregate + lifetime counter). Keyed entries
+        // dedup only on the same key; keyless callers keep the legacy behavior.
+        const existingKey = parseJson(existing.meta, {}).usageKey || "";
+        if (!entry.usageKey || existingKey === entry.usageKey) {
+          if (!existing.endpoint && entry.endpoint) {
+            db.run(`UPDATE usageHistory SET endpoint = ? WHERE id = ?`, [entry.endpoint, existing.id]);
+          }
+          return;
         }
-        return;
+        // Same content, different attempt — fall through and count it.
       }
 
       db.run(
@@ -284,7 +294,7 @@ export async function saveRequestUsage(entry) {
           entry.timestamp, entry.provider || null, entry.model || null,
           entry.connectionId || null, entry.apiKey || null, entry.endpoint || null,
           promptTokens, completionTokens, entry.cost || 0, entry.status || "ok",
-          stringifyJson(tokens), stringifyJson({}),
+          stringifyJson(tokens), stringifyJson(entry.usageKey ? { usageKey: entry.usageKey } : {}),
         ]
       );
 

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   getProviderCredentials,
   markAccountUnavailable,
@@ -143,6 +144,7 @@ export async function handleEmbeddings(request) {
           connectionId: credentials.connectionId,
           apiKey,
           endpoint: url.pathname,
+          usageKey: randomUUID(),
           tokens: usage,
           status: "success",
         }).catch(() => {});
