@@ -5,6 +5,13 @@ const ICON_ALIASES = {
   "perplexity-agent": "perplexity",
   "gitlab-duo": "gitlab",
   "vercel-ai-gateway": "vercel",
+  "b.ai": "bai",
+  "b-ai": "bai",
+};
+
+// Providers whose asset ships as SVG (everything else is .png).
+const ICON_EXTENSIONS = {
+  bai: ".svg",
 };
 
 // Runtime only — first 404 remembers id for the whole session
@@ -25,10 +32,11 @@ export function resolveProviderIconId(providerId) {
   return aliased;
 }
 
-/** `/providers/{id}.png` or null when previously failed. */
+/** `/providers/{id}.png` (or .svg per ICON_EXTENSIONS) or null when previously failed. */
 export function getProviderIconSrc(providerId) {
   const id = resolveProviderIconId(providerId);
-  return id ? `/providers/${id}.png` : null;
+  if (!id) return null;
+  return `/providers/${id}${ICON_EXTENSIONS[id] || ".png"}`;
 }
 
 /** Call from img onError so later mounts skip the request. */

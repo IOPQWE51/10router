@@ -1008,5 +1008,29 @@
       "preserveCacheControl": true
     },
     "format": "openai"
+  },
+  "longcat": {
+    "baseUrl": "https://api.longcat.chat/openai/v1/chat/completions",
+    "validateUrl": "https://api.longcat.chat/openai/v1/models",
+    "format": "openai"
+  },
+  "sensenova": {
+    "baseUrl": "https://token.sensenova.cn/v1/chat/completions",
+    "validateUrl": "https://token.sensenova.cn/v1/models",
+    "format": "openai"
+  },
+  "dots": {
+    "baseUrl": "https://note3-prev-api.askdiandian.com/v1/chat/completions",
+    "auth": {
+      "combined": true,
+      "header": "api-key",
+      "scheme": "raw"
+    },
+    "format": "openai"
+  },
+  "bai": {
+    "baseUrl": "https://api.b.ai/v1/chat/completions",
+    "validateUrl": "https://api.b.ai/v1/models",
+    "format": "openai"
   }
 }

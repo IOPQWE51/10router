@@ -15,6 +15,11 @@
 - **左上角品牌区更正为 "10Router Proxy"**：跟随上游改名时丢了 "Proxy" 后缀（上游为 "9Router Proxy"）。仅调整侧边栏字标一处；登录页、PWA manifest、浏览器标题等其余位置保持原文案。
 - **fnOS fpk 检查更新改为指向对应版本的 Releases**：fpk 启动脚本注入 `INSTALL_CHANNEL=fpk`，`/api/version` 据此返回 `releaseUrl`（`github.com/techysy/10router/releases/tag/v<版本>`，比页内锚点更可靠）；侧边栏对 fpk 安装显示 "Get the fpk from Releases"，不再展示对 fpk 无效的 npm 安装命令。顺带修复：fpk 生成的默认 `.env` 不再写入占位 `JWT_SECRET`（公开字符串，服务端现已忽略并告警）。
 - **自定义供应商支持模型 JSON 目录（获取列表 + 禁用/激活）**：此前自定义节点添加模型只有"手动添加 / 从 /models 全量导入、只能逐个删除"。现节点编辑新增 "Model JSON URL"（及可选镜像 fallback），支持 `{models:[...]}` 与 OpenAI `/v1/models` 风格 `{data:[...]}` 两种格式；非 GitHub 源自动附带连接 API key 作为 Bearer。导入后与预置供应商同一生命周期：逐个禁用/激活、批量 Active All / Disable All、受全局 JSON 导入开关控制、`/v1/models` 只暴露启用模型。原手动路径在未导入目录或开关关闭时照常可用。
+- **新增 4 家免费公测/开放供应商**（均已配官方图标，模型目录 JSON 走仓库 GitHub+Gitee 双源，可在供应商页"获取列表"拉取更新）：
+  - **LongCat**（美团）：OpenAI 兼容端点 `api.longcat.chat/openai/v1`，Bearer 鉴权；
+  - **SenseNova**（商汤 TokenPlan）：`token.sensenova.cn/v1`，标准 Bearer，含 DeepSeek V4 Flash / GLM 5.2 托管模型与两款图像模型；
+  - **Dots**（小红书 Dots Studio）：`note3-prev-api.askdiandian.com/v1`（公测端点，GA 后可能变更），鉴权为自定义 `api-key` 请求头（非 Bearer），已通过 registry `transport.auth` 适配；
+  - **B.AI**（聚合平台，一个 Key 通吃 GPT/Claude/Gemini/DeepSeek/GLM/Kimi/Qwen 等 11 个家族）：`api.b.ai/v1`，标准 Bearer；模型 ID 与凭证绑定，静态目录留空、以凭证 `GET /v1/models` 实时列表为准。
 
 ## ⚠️ npm 包名变更为 `@techysy/10router`
 
