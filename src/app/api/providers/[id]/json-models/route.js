@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AI_PROVIDERS } from "@/shared/constants/providers";
+import { AI_PROVIDERS, getProviderAlias } from "@/shared/constants/providers";
 import { getProviderNodeById } from "@/models";
 import { proxyAwareFetch } from "open-sse/utils/proxyFetch.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
@@ -194,7 +194,12 @@ export async function PUT(request, { params }) {
         // Enabling the whole catalog must also lift any stale disabledModels
         // entries left over from the pre-catalog static-list era — otherwise
         // /v1/models keeps hiding models the user just bulk-enabled.
+        // Clear BOTH the full provider id and its output alias: /v1/models
+        // filters via isDisabled(outputAlias) while the dashboard may have
+        // written entries under either key.
         await enableModels(id, []);
+        const alias = getProviderAlias(id);
+        if (alias && alias !== id) await enableModels(alias, []);
       }
       return NextResponse.json({ success: true, changed });
     }
@@ -205,8 +210,11 @@ export async function PUT(request, { params }) {
     if (enabled) {
       // Same stale-state cleanup for single-model toggles: enabling a JSON
       // catalog model must clear a matching disabledModels entry, or the
-      // isDisabled() filter in /v1/models keeps the model hidden.
+      // isDisabled() filter in /v1/models keeps the model hidden. Clear under
+      // both the provider id and its alias for the same reason as above.
       await enableModels(id, [modelId]);
+      const alias = getProviderAlias(id);
+      if (alias && alias !== id) await enableModels(alias, [modelId]);
     }
     return NextResponse.json({ success: true, changed });
   } catch (error) {
