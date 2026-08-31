@@ -2,5 +2,12 @@
   "provider": "bai",
   "alias": "bai",
   "note": "B.AI (b.ai) model catalog — aggregator for GPT/Claude/Gemini/DeepSeek/Hunyuan/MiMo/Grok/GLM/Kimi/Qwen/MiniMax families. Edit this file and the Fetch Models button in 10Router will pull the latest list. Model IDs are credential-bound: the authoritative list for your key is GET https://api.b.ai/v1/models (Bearer auth). Optional per-model capability fields: vision (bool), reasoning (bool), contextWindow (int), maxOutput (int), thinkingFormat (string).",
-  "models": []
+  "models": [
+    {
+      "id": "qwen3.8-flash",
+      "name": "Qwen 3.8 Flash",
+      "contextWindow": 8192,
+      "maxOutput": 2048
+    }
+  ]
 }
