@@ -1032,5 +1032,20 @@
     "baseUrl": "https://api.b.ai/v1/chat/completions",
     "validateUrl": "https://api.b.ai/v1/models",
     "format": "openai"
+  },
+  "tokenbom": {
+    "baseUrl": "https://tokenbom.com/v1/chat/completions",
+    "validateUrl": "https://tokenbom.com/v1/models",
+    "format": "openai"
+  },
+  "gorouter": {
+    "baseUrl": "https://gorouter.app/v1/chat/completions",
+    "validateUrl": "https://gorouter.app/v1/models",
+    "format": "openai"
+  },
+  "tabiauto": {
+    "baseUrl": "https://tabitoken.com/v1/chat/completions",
+    "validateUrl": "https://tabitoken.com/v1/models",
+    "format": "openai"
   }
 }

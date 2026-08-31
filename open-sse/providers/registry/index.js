@@ -125,6 +125,9 @@ import p122 from "./longcat.js";
 import p123 from "./sensenova.js";
 import p124 from "./dots.js";
 import p125 from "./bai.js";
+import p126 from "./tokenbom.js";
+import p127 from "./gorouter.js";
+import p128 from "./tabiauto.js";
 
 export default [
   p0,
@@ -251,4 +254,7 @@ export default [
   p123,
   p124,
   p125,
+  p126,
+  p127,
+  p128,
 ];
