@@ -26,13 +26,19 @@ marked.use({ renderer });
 // canonical locale key exactly as the i18n literals (zh-CN, zh-TW).
 const CHANGELOG_LOCALES = ["en", "zh-CN", "zh-TW"];
 
+// Changelog files ship in the build under public/i18n/changelog/, so they're
+// served from this app directly (no network round-trip). On local access
+// (192.168.31.101:20127) the root-relative path works fine; on the fnOS
+// remote-access domain (fnos.net/techysy/) the root path breaks, so we fall
+// back to the raw.githubusercontent.com mirror, then to Gitee.
+const CHANGELOG_BASE = "/i18n/changelog/";
+
 function changelogFileForLocale(locale) {
   const normalized = locale === "zh" ? "zh-CN" : locale;
   return CHANGELOG_LOCALES.includes(normalized) ? normalized : "en";
 }
 
-// Fetch with an AbortController timeout. Returns the response text, or throws
-// on timeout / network error.
+// Fetch with an AbortController timeout. Returns the response text, or throws.
 function fetchWithTimeout(url, ms = 10000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
@@ -44,12 +50,11 @@ function fetchWithTimeout(url, ms = 10000) {
     .finally(() => clearTimeout(timer));
 }
 
-// Try one URL, then immediately try a fallback on failure — no retry delay.
-function fetchChangelog(url, fallbackUrl) {
-  return fetchWithTimeout(url).catch(() => {
-    if (!fallbackUrl) throw new Error("Failed to load changelog");
-    return fetchWithTimeout(fallbackUrl);
-  });
+// Try URLs in order until one succeeds. No retry delay.
+function fetchChangelog(urls) {
+  const [first, ...rest] = urls;
+  if (!first) return Promise.reject(new Error("Failed to load changelog"));
+  return fetchWithTimeout(first).catch(() => fetchChangelog(rest));
 }
 
 export default function ChangelogModal({ isOpen, onClose }) {
@@ -64,27 +69,32 @@ export default function ChangelogModal({ isOpen, onClose }) {
     setError("");
 
     const file = changelogFileForLocale(getCurrentLocale());
-    const url = `${GITHUB_CONFIG.changelogUrlBase}${file}.md`;
-    const fallback = `${GITHUB_CONFIG.changelogUrlFallbackBase}${file}.md`;
+    const urls = [
+      `${CHANGELOG_BASE}${file}.md`,                                               // local
+      `${GITHUB_CONFIG.changelogUrlBase}${file}.md`,                               // GitHub raw
+      `${GITHUB_CONFIG.changelogUrlFallbackBase}${file}.md`,                       // Gitee raw
+    ];
 
-    fetchChangelog(url, fallback)
+    fetchChangelog(urls)
       .then((md) => {
         setHtml(marked.parse(md));
         setError("");
       })
-      .catch((err) => {
-        // Locale file missing (e.g. ja/ko not translated yet, or the whole
-        // fetch chain failed) — fall back to the English changelog before
-        // surfacing an error.
+      .catch(() => {
+        // Locale file missing (e.g. ja/ko not translated) or all sources
+        // failed — fall back to English before surfacing an error.
         if (file !== "en") {
-          const enUrl = `${GITHUB_CONFIG.changelogUrlBase}en.md`;
-          const enFallback = `${GITHUB_CONFIG.changelogUrlFallbackBase}en.md`;
-          fetchChangelog(enUrl, enFallback)
+          const enUrls = [
+            `${CHANGELOG_BASE}en.md`,
+            `${GITHUB_CONFIG.changelogUrlBase}en.md`,
+            `${GITHUB_CONFIG.changelogUrlFallbackBase}en.md`,
+          ];
+          fetchChangelog(enUrls)
             .then((md) => { setHtml(marked.parse(md)); setError(""); })
             .catch((enErr) => setError(enErr.message || "Failed to load"))
             .finally(() => setLoading(false));
         } else {
-          setError(err.message || "Failed to load");
+          setError("Failed to load");
           setLoading(false);
         }
       });
