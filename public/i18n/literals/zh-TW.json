@@ -256,5 +256,13 @@
   "success": "成功",
   "testing": "測試中",
   "queued": "排隊中",
-  "disabled": "已停用"
+  "disabled": "已停用",
+  "Vision Adapter": "視覺適配器",
+  "Your model can't read image/audio? Auto-switches to a model in the pool below.": "你的模型無法讀取圖片/音訊？會自動切換到下方池中的模型。",
+  "Images": "圖片",
+  "Audio input": "音訊輸入",
+  "Add Model": "新增模型",
+  "Select Model": "選擇模型",
+  "Search...": "搜尋...",
+  "No models found": "未找到模型"
 }
