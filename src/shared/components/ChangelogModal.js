@@ -8,6 +8,18 @@ import { GITHUB_CONFIG } from "@/shared/constants/config";
 
 marked.setOptions({ gfm: true, breaks: true });
 
+// External links (e.g. the full CHANGELOG.md link) must open in a new tab —
+// navigating inside the app window breaks the SPA. Anchor target/rel are only
+// set when the href is a full URL.
+const renderer = new marked.Renderer();
+const origLink = renderer.link.bind(renderer);
+renderer.link = (href, title, text) =>
+  origLink(href, title, text).replace(
+    ">",
+    ` target="_blank" rel="noopener noreferrer">`,
+  );
+marked.use({ renderer });
+
 export default function ChangelogModal({ isOpen, onClose }) {
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
