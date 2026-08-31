@@ -9,15 +9,15 @@ import { GITHUB_CONFIG } from "@/shared/constants/config";
 marked.setOptions({ gfm: true, breaks: true });
 
 // External links (e.g. the full CHANGELOG.md link) must open in a new tab —
-// navigating inside the app window breaks the SPA. Anchor target/rel are only
-// set when the href is a full URL.
-const renderer = new marked.Renderer();
-const origLink = renderer.link.bind(renderer);
-renderer.link = (href, title, text) =>
-  origLink(href, title, text).replace(
-    ">",
-    ` target="_blank" rel="noopener noreferrer">`,
-  );
+// navigating inside the app window breaks the SPA. marked v18 passes a token
+// object {href, title, tokens} to the link renderer (NOT positional args);
+// use this.parser to render the link text so nested inline tokens survive.
+const renderer = {
+  link({ href, title, tokens }) {
+    const text = tokens ? this.parser.parseInline(tokens) : (title || href);
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  },
+};
 marked.use({ renderer });
 
 export default function ChangelogModal({ isOpen, onClose }) {
