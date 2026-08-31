@@ -122,22 +122,40 @@ export default function ProvidersPage() {
     !searchQuery.trim() ||
     name.toLowerCase().includes(searchQuery.trim().toLowerCase());
 
+  // Compute a noAuth provider's topology visibility (same logic as the card).
+  const topologyVisibleFor = (info, key) => {
+    const setting = topologyVisibility?.[key];
+    return setting === false
+      ? false
+      : setting === true
+        ? true
+        : !info.topologyHiddenByDefault;
+  };
+
   // Connection state drives the primary sort key for every section, gated by
   // the providerDisabledLastSort toggle (profile setting).
   //
   // When the toggle is ON:
-  //   0 connected (connected>0)  →  floats to the top
-  //   1 configured but all connections disabled
-  //   2 never configured (no connections at all)  →  sinks last
+  //   0 connected (connected>0) or a noAuth provider shown on the topology
+  //     canvas (enabled) → floats to the top
+  //   1 a noAuth provider hidden from the topology canvas (disabled) → sits
+  //     just below connected providers, above fully-disabled ones
+  //   2 configured but all connections disabled
+  //   3 never configured (no connections at all)  →  sinks last
   //
   // When OFF, only connected-first applies (connected providers surface, the
   // rest interleave by priority/name) — the disabled/never-configured
   // distinction is dropped.
-  const providerRank = (stats) => {
+  const providerRank = (stats, info, key) => {
     if (stats.connected > 0) return 0;
+    // noAuth free providers (opencode, mimo-free) have no connections; their
+    // on/off is the topology toggle. Shown → top; hidden → just below connected.
+    if (info?.noAuth) {
+      return topologyVisibleFor(info, key) ? 0 : 1;
+    }
     if (!disabledLastSort) return 1;
-    if (stats.total === 0) return 2; // never configured → sinks last
-    return 1; // configured but all connections disabled
+    if (stats.total === 0) return 3; // never configured → sinks last
+    return 2; // configured but all connections disabled
   };
 
   const sortByPriority = (entries, authType) =>
@@ -146,8 +164,8 @@ export default function ProvidersPage() {
       // surface before unconnected ones, then priority, then name.
       const sa = getProviderStats(ka, authType);
       const sb = getProviderStats(kb, authType);
-      const ra = providerRank(sa);
-      const rb = providerRank(sb);
+      const ra = providerRank(sa, a, ka);
+      const rb = providerRank(sb, b, kb);
       if (ra !== rb) return ra - rb;
       const pa = a.priority ?? 999;
       const pb = b.priority ?? 999;
@@ -159,8 +177,8 @@ export default function ProvidersPage() {
     [...items].sort((a, b) => {
       const sa = getProviderStats(a.id, authType);
       const sb = getProviderStats(b.id, authType);
-      const ra = providerRank(sa);
-      const rb = providerRank(sb);
+      const ra = providerRank(sa, a, a.id);
+      const rb = providerRank(sb, b, b.id);
       if (ra !== rb) return ra - rb;
       const pa = a.priority ?? 999;
       const pb = b.priority ?? 999;
@@ -358,8 +376,8 @@ export default function ProvidersPage() {
       // noAuth free providers float before key-gated ones, then priority/name.
       const sa = getProviderStats(ka, dualAuthTypes(a, ka));
       const sb = getProviderStats(kb, dualAuthTypes(b, kb));
-      const ra = providerRank(sa);
-      const rb = providerRank(sb);
+      const ra = providerRank(sa, a, ka);
+      const rb = providerRank(sb, b, kb);
       if (ra !== rb) return ra - rb;
       const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
       if (noAuthDiff !== 0) return noAuthDiff;
@@ -382,8 +400,8 @@ export default function ProvidersPage() {
       // Connection state first, then priority, then noAuth, then name.
       const sa = getProviderStats(ka, dualAuthTypes(a, ka));
       const sb = getProviderStats(kb, dualAuthTypes(b, kb));
-      const ra = providerRank(sa);
-      const rb = providerRank(sb);
+      const ra = providerRank(sa, a, ka);
+      const rb = providerRank(sb, b, kb);
       if (ra !== rb) return ra - rb;
       const pa = a.priority ?? 999;
       const pb = b.priority ?? 999;
@@ -405,8 +423,8 @@ export default function ProvidersPage() {
       // priority, then name.
       const sa = getProviderStats(ka, "apikey");
       const sb = getProviderStats(kb, "apikey");
-      const ra = providerRank(sa);
-      const rb = providerRank(sb);
+      const ra = providerRank(sa, a, ka);
+      const rb = providerRank(sb, b, kb);
       if (ra !== rb) return ra - rb;
       const pa = a.priority ?? 999;
       const pb = b.priority ?? 999;
