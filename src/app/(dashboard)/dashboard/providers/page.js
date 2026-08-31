@@ -144,27 +144,29 @@ export default function ProvidersPage() {
 
   const sortByPriority = (entries, authType) =>
     [...entries].sort(([ka, a], [kb, b]) => {
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
+      // Connection state is the primary axis: active/connected providers always
+      // surface before unconnected ones, then priority, then name.
       const sa = getProviderStats(ka, authType);
       const sb = getProviderStats(kb, authType);
       const ra = providerRank(sa);
       const rb = providerRank(sb);
       if (ra !== rb) return ra - rb;
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
       return (a.name || "").localeCompare(b.name || "");
     });
 
   const sortItemsByPriority = (items, authType) =>
     [...items].sort((a, b) => {
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
       const sa = getProviderStats(a.id, authType);
       const sb = getProviderStats(b.id, authType);
       const ra = providerRank(sa);
       const rb = providerRank(sb);
       if (ra !== rb) return ra - rb;
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
       return (a.name || "").localeCompare(b.name || "");
     });
 
@@ -349,18 +351,18 @@ export default function ProvidersPage() {
   const freeEntries = Object.entries(FREE_PROVIDERS)
     .filter(([, info]) => !info.hidden && matchSearch(info.name))
     .sort(([ka, a], [kb, b]) => {
-      // noAuth free providers (no sign-up) float before key-gated ones, then
-      // apply the same priority/connected/disabled-last rule as other sections.
-      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
-      if (noAuthDiff !== 0) return noAuthDiff;
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
+      // Connection state first (connected providers surface first), then
+      // noAuth free providers float before key-gated ones, then priority/name.
       const sa = getProviderStats(ka, dualAuthTypes(a, ka));
       const sb = getProviderStats(kb, dualAuthTypes(b, kb));
       const ra = providerRank(sa);
       const rb = providerRank(sb);
       if (ra !== rb) return ra - rb;
+      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
+      if (noAuthDiff !== 0) return noAuthDiff;
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
       return (a.name || "").localeCompare(b.name || "");
     });
   // Free Tier cards may be oauth-only (e.g. kimchi) or dual-auth, so count via
@@ -374,16 +376,17 @@ export default function ProvidersPage() {
         (info.serviceKinds ?? ["llm"]).includes("llm"),
     )
     .sort(([ka, a], [kb, b]) => {
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
-      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
-      if (noAuthDiff !== 0) return noAuthDiff;
+      // Connection state first, then priority, then noAuth, then name.
       const sa = getProviderStats(ka, dualAuthTypes(a, ka));
       const sb = getProviderStats(kb, dualAuthTypes(b, kb));
       const ra = providerRank(sa);
       const rb = providerRank(sb);
       if (ra !== rb) return ra - rb;
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
+      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
+      if (noAuthDiff !== 0) return noAuthDiff;
       return (a.name || "").localeCompare(b.name || "");
     });
   // API Key: connected providers first, then alphabetical by name
@@ -395,14 +398,16 @@ export default function ProvidersPage() {
         matchSearch(info.name),
     )
     .sort(([ka, a], [kb, b]) => {
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
+      // Connection state first (connected providers surface first), then
+      // priority, then name.
       const sa = getProviderStats(ka, "apikey");
       const sb = getProviderStats(kb, "apikey");
       const ra = providerRank(sa);
       const rb = providerRank(sb);
       if (ra !== rb) return ra - rb;
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
       return (a.name || "").localeCompare(b.name || "");
     });
   const isApikeySearching = !!searchQuery.trim();
