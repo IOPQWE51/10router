@@ -252,5 +252,9 @@
   "Model not reachable": "模型不可達",
   "Network error": "網路錯誤",
   "Add API Key": "新增 API 金鑰",
-  "Add Connection": "新增連線"
+  "Add Connection": "新增連線",
+  "success": "成功",
+  "testing": "測試中",
+  "queued": "排隊中",
+  "disabled": "已停用"
 }

@@ -1454,5 +1454,8 @@
   "Failed:": "失败：",
   "Running:": "运行中：",
   "Test failed": "测试失败",
-  "Failed to save connection": "保存连接失败"
+  "Failed to save connection": "保存连接失败",
+  "success": "成功",
+  "testing": "测试中",
+  "queued": "排队中"
 }

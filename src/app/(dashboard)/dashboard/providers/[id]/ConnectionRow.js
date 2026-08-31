@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { getStatusVariant as getConnectionStatusVariant } from "@/shared/utils/connectionStatus";
+import { translate } from "@/i18n/runtime";
 import PropTypes from "prop-types";
 import { Badge, Toggle, Tooltip } from "@/shared/components";
 import CooldownTimer from "./CooldownTimer";
@@ -128,10 +129,10 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
 
   const getOneByOneLabel = () => {
     if (!oneByOneStatus) return null;
-    if (oneByOneStatus.state === "queued") return "queued";
-    if (oneByOneStatus.state === "testing") return "testing";
-    if (oneByOneStatus.state === "success") return "success";
-    if (oneByOneStatus.state === "failed") return oneByOneStatus.error ? `failed: ${oneByOneStatus.error}` : "failed";
+    if (oneByOneStatus.state === "queued") return translate("queued");
+    if (oneByOneStatus.state === "testing") return translate("testing");
+    if (oneByOneStatus.state === "success") return translate("success");
+    if (oneByOneStatus.state === "failed") return oneByOneStatus.error ? `${translate("failed")}: ${oneByOneStatus.error}` : translate("failed");
     return null;
   };
 
@@ -165,7 +166,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
           )}
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
             <Badge variant={getStatusVariant()} size="sm" dot>
-              {connection.isActive === false ? "disabled" : (effectiveStatus || "Unknown")}
+              {connection.isActive === false ? translate("disabled") : (effectiveStatus || translate("Unknown"))}
             </Badge>
             <Badge variant="default" size="sm">
               {authLabel}
