@@ -12,7 +12,7 @@
 
 基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
 
-**✨ 单一 commit 历史，无上游提交污染，便于 cherry-pick 同步上游新功能。**
+**✨ 单一 commit 历史，无上游提交污染；上游新功能一律学习后自行重写。**
 
 </div>
 
@@ -44,47 +44,16 @@
 └──────────────────────────────────────────┘
 ```
 
-## 🆚 与上游的差异
+## 🧾 版本历程
 
-| 修复 | 文件 | 说明 |
-|------|------|------|
-| **无连接不暴露内置模型** | `api/v1/models/route.js` | DB 正常但无连接时，不 dump 全量 ~680 built-in catalog，避免淹没客户端 |
-| **Claude 轮询加速** | `usage/components/ProviderLimits/utils.js` | quota 轮询间隔 10min → 3min，配额变化感知更快 |
-| **移除 groupByProviderStable** | `usage/components/ProviderLimits/utils.js` | 恢复自然排序，不强制按 provider 聚合 |
-| **MiMo Free topology 默认可见** | `mimo-free.js` | usage topology 上默认展示（可 toggle 隐藏），不再只有一个大 OpenCode 图标 |
-| **多币种本地化显示** | `shared/utils/currency.js` | CNY ¥ / TWD NT$ / JPY ¥ / KRW ₩ / VND ₫，Profile 页可切换 |
-| **配额按 connection 隔离** | `usage/components/ProviderLimits/utils.js` | 多账号场景下每个 connection 独立计算配额，互不干扰 |
-| **arm64 Docker 支持** | `docker-publish.yml` | 镜像同时构建 linux/amd64 + linux/arm64，支持树莓派等 ARM 设备 |
-
-#### v1.0.2 新增
-
-| 功能 | 说明 |
+| 版本 | 要点 |
 |------|------|
-| **孤儿模型过滤** | `/v1/models` 不再返回已删除节点/停用连接下的残留 customModels |
-| **前缀唯一性检测** | 自定义节点 prefix 与内置 provider 冲突时拒绝创建/编辑 |
-| **CodeBuddy prompt 修复** | 不再误删自家 Agent（Hermes 等）的 system prompt，保留记忆/身份 |
-| **模型 JSON 目录** | provider 可从 GitHub（主）+ Gitee（备）拉取最新模型清单，无需发版 |
-| **启用/禁用语义** | JSON 拉取的模型按启用/禁用管理（非删除），`/v1/models` 只暴露启用的 |
+| **v1.0.0** | 品牌重塑 9Router → 10Router（数据目录迁移至 `~/.10router/` 等一次性变更），沉淀本地修复与增强：配额轮询加速、按 connection 隔离、多币种显示、arm64 Docker 等 |
+| **v1.0.1** | 未作为完整版本发布（仅 npm 试水包 `10router-cli@1.0.1`），MITM 安全修复与 UI 改进实际随 v1.0.2 交付 |
+| **v1.0.2** | 修复更新检查误指第三方包、`--help` 命令名、postinstall 失败；新增测试 CI，统一 Node 24 |
+| **v1.0.3** | 安全加固（npm 包敏感文件门禁、占位密钥拒用、登录限流、用量去重）；新增 LongCat / SenseNova / Dots / B.AI 供应商与官方图标；自定义供应商模型目录；fpk 更新直达 Releases；移除 qoder-cn；npm 包名变更为 `@techysy/10router` |
 
-#### v1.0.3 新增
-
-| 变更 | 说明 |
-|------|------|
-| **安全加固** | npm 包构建九步敏感文件门禁（构建机密不再随 tarball 泄漏）、占位 `JWT_SECRET` 拒用、登录渐进限流、同毫秒用量去重 |
-| **新供应商 ×4** | LongCat（美团）、SenseNova（商汤）、Dots（小红书）、B.AI（聚合平台）；免费公测的两家归 Free Tier 分区 |
-| **自定义供应商模型目录** | 自定义节点同样支持 JSON 拉取模型清单，禁用/激活生命周期与预置供应商一致 |
-| **fpk 更新指引** | fnOS 安装的「检查更新」直达对应版本 Releases，不再误指 npm 命令 |
-| **移除 qoder-cn** | 已废弃渠道整体摘除，qoder（国际版）不受影响 |
-| **官方图标** | LongCat / SiliconFlow 换官方版，新增 tokenbom / Dots / SenseNova / B.AI |
-
-完整明细见 [CHANGELOG.md](CHANGELOG.md)；本地打包发版流程见 [cli/PACKAGING.md](cli/PACKAGING.md)。
-
-### 📦 已在 fork分支 的改动（不再重复）
-
-- 货币本地化（¥/NT$/₩/₫）— fork分支 v0.5.50+
-- 配额包按 connection 独立 — fork分支 v0.5.50+
-- 拓扑 toggle — fork分支 v0.5.50+
-- Cloudflare 修复 — fork分支 v0.5.50+
+👉 各版本完整明细（每项修复的根因与验证方式）见 **[CHANGELOG.md](CHANGELOG.md)**；本地打包发版流程见 [cli/PACKAGING.md](cli/PACKAGING.md)。
 
 ## 🚀 快速开始
 
