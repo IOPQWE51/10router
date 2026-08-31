@@ -7,7 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
 [![GitHub last commit](https://img.shields.io/github/last-commit/techysy/10router)](https://github.com/techysy/10router/commits)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![10Router](https://img.shields.io/badge/10Router-v1.0.3-orange.svg)](https://github.com/techysy/10router)
+[![10Router](https://img.shields.io/badge/10Router-v1.0.3-orange.svg)](https://github.com/techysy/10router/releases)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 
 基于 [decolua/9router](https://github.com/decolua/9router) v0.5.55 的本地优化快照
@@ -39,7 +39,7 @@
 └──────────┬──────────────────────────────┘
            ↓
 ┌──────────────────────────────────────────┐
-│     40+ Providers · 100+ Models          │
+│     85+ Providers · 1000+ Models         │
 │  Free ──→ Cheap ──→ Subscription         │
 └──────────────────────────────────────────┘
 ```
@@ -65,6 +65,19 @@
 | **CodeBuddy prompt 修复** | 不再误删自家 Agent（Hermes 等）的 system prompt，保留记忆/身份 |
 | **模型 JSON 目录** | provider 可从 GitHub（主）+ Gitee（备）拉取最新模型清单，无需发版 |
 | **启用/禁用语义** | JSON 拉取的模型按启用/禁用管理（非删除），`/v1/models` 只暴露启用的 |
+
+#### v1.0.3 新增
+
+| 变更 | 说明 |
+|------|------|
+| **安全加固** | npm 包构建九步敏感文件门禁（构建机密不再随 tarball 泄漏）、占位 `JWT_SECRET` 拒用、登录渐进限流、同毫秒用量去重 |
+| **新供应商 ×4** | LongCat（美团）、SenseNova（商汤）、Dots（小红书）、B.AI（聚合平台）；免费公测的两家归 Free Tier 分区 |
+| **自定义供应商模型目录** | 自定义节点同样支持 JSON 拉取模型清单，禁用/激活生命周期与预置供应商一致 |
+| **fpk 更新指引** | fnOS 安装的「检查更新」直达对应版本 Releases，不再误指 npm 命令 |
+| **移除 qoder-cn** | 已废弃渠道整体摘除，qoder（国际版）不受影响 |
+| **官方图标** | LongCat / SiliconFlow 换官方版，新增 tokenbom / Dots / SenseNova / B.AI |
+
+完整明细见 [CHANGELOG.md](CHANGELOG.md)；本地打包发版流程见 [cli/PACKAGING.md](cli/PACKAGING.md)。
 
 ### 📦 已在 fork分支 的改动（不再重复）
 
