@@ -68,6 +68,17 @@ npm i -g @techysy/10router
 
 > ⚠️ 包名是 **`@techysy/10router`**，不是 `10router` —— 后者是 npm 上一个与本项目无关的 fork。
 
+> ℹ️ **npm 11+ 的 `allow-scripts` 提示**：新版本 npm 会拦截本包的 `postinstall` 脚本并警告
+> `Run npm install -g --allow-scripts=@techysy/10router to allow these scripts once...`。
+> **这是可选的，不影响使用**——该脚本只是把 SQLite 引擎「预暖」到 `~/.10router/runtime`，
+> 跳过它首次启动时会自动补装。想消除提示：
+>
+> ```bash
+> npm install -g --allow-scripts=@techysy/10router
+> # 或永久允许：
+> npm config set allow-scripts=@techysy/10router --location=user
+> ```
+
 ### 🐳 Docker 部署
 
 ```bash
