@@ -27,6 +27,7 @@ export default {
   models: [
     { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", contextWindow: 1000000, maxOutput: 384000, reasoning: true },
     { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", contextWindow: 1000000, maxOutput: 384000, reasoning: true },
+    { id: "deepseek-v4-flash-vision-exp", name: "DeepSeek V4 Flash Vision (Exp)", vision: true, contextWindow: 1000000, maxOutput: 384000 },
     { id: "deepseek-v3.2", name: "DeepSeek V3.2", contextWindow: 131072, maxOutput: 65536 },
     { id: "deepseek-r1-0528", name: "DeepSeek R1 0528", contextWindow: 131072, maxOutput: 65536, reasoning: true },
     { id: "qwen3.8-flash", name: "Qwen3.8-Flash", vision: true, contextWindow: 1000000, maxOutput: 131072, reasoning: true },
