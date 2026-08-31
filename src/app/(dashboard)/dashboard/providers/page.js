@@ -126,6 +126,22 @@ export default function ProvidersPage() {
   // The disabled-last rule pushes providers whose connections are all
   // disabled (isActive=false) behind providers with no connections at all,
   // so live/unconfigured providers surface before switched-off ones.
+  //
+  // Rank order when disabledLastSort is on:
+  //   0 active (connected>0)
+  //   1 connected but not all disabled (some enabled)
+  //   2 no connections at all
+  //   3 all connections disabled  →  sunk below "no connections"
+  // When off, active still floats first and the 2/3 distinction is dropped
+  // (all-disabled providers stay interleaved, matching the previous behavior).
+  const providerRank = (stats) => {
+    if (stats.connected > 0) return 0;
+    if (!disabledLastSort) return 1;
+    if (stats.total > 0 && !stats.allDisabled) return 1;
+    if (stats.total === 0) return 2;
+    return 3;
+  };
+
   const sortByPriority = (entries, authType) =>
     [...entries].sort(([ka, a], [kb, b]) => {
       const pa = a.priority ?? 999;
@@ -133,14 +149,9 @@ export default function ProvidersPage() {
       if (pa !== pb) return pa - pb;
       const sa = getProviderStats(ka, authType);
       const sb = getProviderStats(kb, authType);
-      const ca = sa.connected > 0 ? 1 : 0;
-      const cb = sb.connected > 0 ? 1 : 0;
-      if (ca !== cb) return cb - ca;
-      if (disabledLastSort) {
-        const da = sa.allDisabled ? 1 : 0;
-        const db = sb.allDisabled ? 1 : 0;
-        if (da !== db) return da - db;
-      }
+      const ra = providerRank(sa);
+      const rb = providerRank(sb);
+      if (ra !== rb) return ra - rb;
       return (a.name || "").localeCompare(b.name || "");
     });
 
@@ -151,14 +162,9 @@ export default function ProvidersPage() {
       if (pa !== pb) return pa - pb;
       const sa = getProviderStats(a.id, authType);
       const sb = getProviderStats(b.id, authType);
-      const ca = sa.connected > 0 ? 1 : 0;
-      const cb = sb.connected > 0 ? 1 : 0;
-      if (ca !== cb) return cb - ca;
-      if (disabledLastSort) {
-        const da = sa.allDisabled ? 1 : 0;
-        const db = sb.allDisabled ? 1 : 0;
-        if (da !== db) return da - db;
-      }
+      const ra = providerRank(sa);
+      const rb = providerRank(sb);
+      if (ra !== rb) return ra - rb;
       return (a.name || "").localeCompare(b.name || "");
     });
 
@@ -342,7 +348,21 @@ export default function ProvidersPage() {
   );
   const freeEntries = Object.entries(FREE_PROVIDERS)
     .filter(([, info]) => !info.hidden && matchSearch(info.name))
-    .sort(([, a], [, b]) => (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0));
+    .sort(([ka, a], [kb, b]) => {
+      // noAuth free providers (no sign-up) float before key-gated ones, then
+      // apply the same priority/connected/disabled-last rule as other sections.
+      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
+      if (noAuthDiff !== 0) return noAuthDiff;
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
+      const sa = getProviderStats(ka, dualAuthTypes(a, ka));
+      const sb = getProviderStats(kb, dualAuthTypes(b, kb));
+      const ra = providerRank(sa);
+      const rb = providerRank(sb);
+      if (ra !== rb) return ra - rb;
+      return (a.name || "").localeCompare(b.name || "");
+    });
   // Free Tier cards may be oauth-only (e.g. kimchi) or dual-auth, so count via
   // dualAuthTypes per provider instead of a fixed "apikey" — otherwise oauth
   // connections are invisible here (mismatch with the detail page).
@@ -361,14 +381,9 @@ export default function ProvidersPage() {
       if (noAuthDiff !== 0) return noAuthDiff;
       const sa = getProviderStats(ka, dualAuthTypes(a, ka));
       const sb = getProviderStats(kb, dualAuthTypes(b, kb));
-      const ca = sa.connected > 0 ? 0 : 1;
-      const cb = sb.connected > 0 ? 0 : 1;
-      if (ca !== cb) return ca - cb;
-      if (disabledLastSort) {
-        const da = sa.allDisabled ? 1 : 0;
-        const db = sb.allDisabled ? 1 : 0;
-        if (da !== db) return da - db;
-      }
+      const ra = providerRank(sa);
+      const rb = providerRank(sb);
+      if (ra !== rb) return ra - rb;
       return (a.name || "").localeCompare(b.name || "");
     });
   // API Key: connected providers first, then alphabetical by name
@@ -380,16 +395,14 @@ export default function ProvidersPage() {
         matchSearch(info.name),
     )
     .sort(([ka, a], [kb, b]) => {
+      const pa = a.priority ?? 999;
+      const pb = b.priority ?? 999;
+      if (pa !== pb) return pa - pb;
       const sa = getProviderStats(ka, "apikey");
       const sb = getProviderStats(kb, "apikey");
-      const ca = sa.total > 0 ? 0 : 1;
-      const cb = sb.total > 0 ? 0 : 1;
-      if (ca !== cb) return ca - cb;
-      if (disabledLastSort) {
-        const da = sa.allDisabled ? 1 : 0;
-        const db = sb.allDisabled ? 1 : 0;
-        if (da !== db) return da - db;
-      }
+      const ra = providerRank(sa);
+      const rb = providerRank(sb);
+      if (ra !== rb) return ra - rb;
       return (a.name || "").localeCompare(b.name || "");
     });
   const isApikeySearching = !!searchQuery.trim();
