@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-bg">
-      <div className="fixed top-[10%] left-1/2 z-[80] flex w-[min(92vw,380px)] -translate-x-1/2 flex-col gap-2">
+      <div className="fixed top-[5%] left-1/2 z-[80] flex w-[min(92vw,380px)] -translate-x-1/2 flex-col gap-2">
         {notifications.map((n) => {
           const style = getToastStyle(n.type);
           return (
