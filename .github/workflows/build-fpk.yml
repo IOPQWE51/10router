@@ -41,6 +41,7 @@ jobs:
           cp -r node_modules/node-forge fnos-packaging/app/server/node_modules/
           cp -r node_modules/sql.js fnos-packaging/app/server/node_modules/
           cp -r node_modules/next fnos-packaging/app/server/node_modules/
+          cp -r node_modules/better-sqlite3 fnos-packaging/app/server/node_modules/
           ls -la fnos-packaging/app/server/
 
       - name: Download fnpack
