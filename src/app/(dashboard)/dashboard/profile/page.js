@@ -913,15 +913,6 @@ export default function ProfilePage() {
               >
                 Import Backup
               </Button>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={handleImportDatabase}
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 pt-2">
               <Button
                 variant="outline"
                 icon="history"
@@ -931,6 +922,13 @@ export default function ProfilePage() {
               >
                 {translate("Import Usage")}
               </Button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={handleImportDatabase}
+              />
               <input
                 ref={usageImportFileRef}
                 type="file"
