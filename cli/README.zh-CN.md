@@ -50,6 +50,8 @@ npx @techysy/10router
 
 > ⚠️ 包名是 **`@techysy/10router`**，不是 `10router` —— 后者在 npm 上是一个与本项目无关的 fork。
 
+> ℹ️ **安装时看到 `npm warn install-scripts … @techysy/10router …`？** 安装本身是成功的。新版 npm 只对允许清单内的包执行安装脚本，被跳过的 `postinstall` 只是可选预热（把 SQLite / 托盘运行时预下载到 `~/.10router/runtime`）——首次运行 `10router` 会自动重做同样的预热，直接忽略警告即可。若想在安装时就预热：`npm i -g @techysy/10router --allow-scripts=@techysy/10router`，或永久放行：`npm config set allow-scripts=@techysy/10router --location=user`。（`--force` 对此无效——这是 npm 的脚本允许清单策略，不是依赖冲突。）
+
 *Docker（服务器 / VPS）：*
 
 ```bash

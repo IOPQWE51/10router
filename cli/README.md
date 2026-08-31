@@ -51,6 +51,15 @@ npx @techysy/10router
 > ⚠️ The package is **`@techysy/10router`**, not `10router` — that name belongs to an
 > unrelated fork on npm.
 
+> ℹ️ **Seeing `npm warn install-scripts … @techysy/10router …`?** The install still
+> succeeded. Newer npm runs install scripts only for allow-listed packages, and the
+> skipped `postinstall` is just an optional warm-up (SQLite/tray runtime into
+> `~/.10router/runtime`) — `10router` re-runs the same warm-up on first start, so you
+> can safely ignore the warning. To pre-warm at install time instead:
+> `npm i -g @techysy/10router --allow-scripts=@techysy/10router`, or allow it
+> permanently with `npm config set allow-scripts=@techysy/10router --location=user`.
+> (`--force` does not change this — the skip is npm's script allow-list, not a conflict.)
+
 *Docker (server/VPS):*
 
 ```bash
