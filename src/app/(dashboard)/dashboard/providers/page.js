@@ -122,24 +122,25 @@ export default function ProvidersPage() {
     !searchQuery.trim() ||
     name.toLowerCase().includes(searchQuery.trim().toLowerCase());
 
-  // Sorting: priority → connected-first → (optional) disabled-last → name.
-  // The disabled-last rule pushes providers whose connections are all
-  // disabled (isActive=false) behind providers with no connections at all,
-  // so live/unconfigured providers surface before switched-off ones.
+  // Connection state drives the primary sort key for every section, gated by
+  // the providerDisabledLastSort toggle (profile setting).
   //
-  // Rank order when disabledLastSort is on:
+  // When the toggle is ON, configured providers (any connection ever added)
+  // always rank above never-configured ones:
   //   0 active (connected>0)
-  //   1 connected but not all disabled (some enabled)
-  //   2 no connections at all
-  //   3 all connections disabled  →  sunk below "no connections"
-  // When off, active still floats first and the 2/3 distinction is dropped
-  // (all-disabled providers stay interleaved, matching the previous behavior).
+  //   1 configured, some connections enabled
+  //   2 configured, all connections disabled
+  //   3 never configured (no connections at all)  →  sinks last
+  //
+  // When OFF, only connected-first applies (active providers surface, the rest
+  // interleave by priority/name) — the disabled/never-configured distinction is
+  // dropped.
   const providerRank = (stats) => {
     if (stats.connected > 0) return 0;
     if (!disabledLastSort) return 1;
     if (stats.total > 0 && !stats.allDisabled) return 1;
-    if (stats.total === 0) return 2;
-    return 3;
+    if (stats.total > 0) return 2; // configured but all disabled
+    return 3; // never configured
   };
 
   const sortByPriority = (entries, authType) =>
