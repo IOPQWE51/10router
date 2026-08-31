@@ -1,5 +1,5 @@
 // B.AI — model aggregator exposing OpenAI Chat Completions, OpenAI Responses
-// and Anthropic Messages under one key. Docs: https://docs.b.ai/zh-Hans/llmservice/api/
+// and Anthropic Messages under one key. Docs: https://docs.b.ai/llmservice/api/
 // Bearer (or x-api-key) auth; GET /v1/models lists models tied to the credential.
 // Model IDs are per-credential — the static list below is a seed; use the
 // Fetch Models catalog JSON (or a validated connection) for the full set.
@@ -24,5 +24,40 @@ export default {
   },
   modelsJsonUrl: "https://api.github.com/repos/techysy/10router/contents/providers/bai.json",
   fallbackModelsJsonUrl: "https://gitee.com/techysy/10router/raw/main/providers/bai.json",
-  models: [],
+  models: [
+    { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", contextWindow: 1000000, maxOutput: 384000, reasoning: true },
+    { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", contextWindow: 1000000, maxOutput: 384000, reasoning: true },
+    { id: "deepseek-v3.2", name: "DeepSeek V3.2", contextWindow: 131072, maxOutput: 65536 },
+    { id: "deepseek-r1-0528", name: "DeepSeek R1 0528", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "qwen3.8-flash", name: "Qwen3.8-Flash", vision: true, contextWindow: 1000000, maxOutput: 131072, reasoning: true },
+    { id: "qwen3.8-27b", name: "Qwen3.8-27B", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "qwen3.8-max", name: "Qwen3.8-Max", vision: true, contextWindow: 1000000, maxOutput: 131072, reasoning: true },
+    { id: "qwen3.7-max", name: "Qwen3.7-Max", contextWindow: 1000000, maxOutput: 65536, reasoning: true },
+    { id: "qwen3.6-27b", name: "Qwen3.6-27B", contextWindow: 131072, maxOutput: 65536 },
+    { id: "gpt-5.5", name: "GPT-5.5", vision: true, contextWindow: 1050000, maxOutput: 128000, reasoning: true },
+    { id: "gpt-5.4", name: "GPT-5.4", vision: true, contextWindow: 1050000, maxOutput: 128000, reasoning: true },
+    { id: "gpt-5.4-mini", name: "GPT-5.4 Mini", vision: true, contextWindow: 128000, maxOutput: 16384 },
+    { id: "gpt-5.4-nano", name: "GPT-5.4 Nano", vision: true, contextWindow: 128000, maxOutput: 16384 },
+    { id: "gpt-5", name: "GPT-5", vision: true, contextWindow: 272000, maxOutput: 16384 },
+    { id: "gpt-5-mini", name: "GPT-5 Mini", vision: true, contextWindow: 128000, maxOutput: 16384 },
+    { id: "gpt-5-nano", name: "GPT-5 Nano", vision: true, contextWindow: 128000, maxOutput: 16384 },
+    { id: "gpt-5.2", name: "GPT-5.2", vision: true, contextWindow: 272000, maxOutput: 16384 },
+    { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", vision: true, contextWindow: 1050000, maxOutput: 128000, reasoning: true },
+    { id: "gpt-5.6-terra", name: "GPT-5.6 Terra", vision: true, contextWindow: 1050000, maxOutput: 128000, reasoning: true },
+    { id: "grok-4.6", name: "Grok 4.6", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "grok-4.5", name: "Grok 4.5", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "gemini-3.6-flash", name: "Gemini 3.6 Flash", vision: true, contextWindow: 1048576, maxOutput: 65536 },
+    { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", vision: true, contextWindow: 1048576, maxOutput: 65536 },
+    { id: "gemini-3-flash", name: "Gemini 3 Flash", vision: true, contextWindow: 1048576, maxOutput: 65536 },
+    { id: "mimo-v2.5-pro", name: "MiMo V2.5 Pro", contextWindow: 131072, maxOutput: 32768, reasoning: true },
+    { id: "mimo-v2.5", name: "MiMo V2.5", contextWindow: 131072, maxOutput: 32768, reasoning: true },
+    { id: "glm-5.3-flash", name: "GLM-5.3-Flash", contextWindow: 131072, maxOutput: 16384 },
+    { id: "glm-5.3", name: "GLM-5.3", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "glm-5.2", name: "GLM-5.2", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "glm-5.1", name: "GLM-5.1", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "kimi-k2.5", name: "Kimi K2.5", contextWindow: 131072, maxOutput: 65536, reasoning: true },
+    { id: "minimax-m3", name: "MiniMax M3", contextWindow: 1048576, maxOutput: 65536 },
+    { id: "minimax-m2.7", name: "MiniMax M2.7", contextWindow: 1048576, maxOutput: 65536 },
+    { id: "hy3", name: "Hy3", contextWindow: 131072, maxOutput: 65536 },
+  ],
 };
