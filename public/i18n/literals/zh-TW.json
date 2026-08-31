@@ -264,5 +264,10 @@
   "Add Model": "新增模型",
   "Select Model": "選擇模型",
   "Search...": "搜尋...",
-  "No models found": "未找到模型"
+  "No models found": "未找到模型",
+  "Import Usage": "匯入使用量",
+  "Imported": "已匯入",
+  "usage records": "筆使用記錄",
+  "skipped": "跳過",
+  "total": "總計"
 }

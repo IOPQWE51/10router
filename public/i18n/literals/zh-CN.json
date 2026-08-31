@@ -1457,5 +1457,10 @@
   "Failed to save connection": "保存连接失败",
   "success": "成功",
   "testing": "测试中",
-  "queued": "排队中"
+  "queued": "排队中",
+  "Import Usage": "导入使用量",
+  "Imported": "已导入",
+  "usage records": "条使用记录",
+  "skipped": "跳过",
+  "total": "总计"
 }

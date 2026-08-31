@@ -770,7 +770,7 @@ export default function ProfilePage() {
       if (!res.ok) throw new Error(data.error || "Failed to import usage");
       setUsageImportStatus({
         type: "success",
-        message: `Imported ${data.imported} usage records from 9router (${data.skipped} skipped, ${data.total} total)`,
+        message: `${translate("Imported")} ${data.imported} ${translate("usage records")} (${translate("skipped")} ${data.skipped}, ${translate("total")} ${data.total})`,
       });
     } catch (err) {
       setUsageImportStatus({ type: "error", message: err.message || "Failed to import usage" });
@@ -918,7 +918,7 @@ export default function ProfilePage() {
                 loading={usageImportLoading}
                 className="w-full sm:w-auto"
               >
-                Import Usage (9router)
+                {translate("Import Usage")}
               </Button>
               <input
                 ref={usageImportFileRef}
