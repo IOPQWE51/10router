@@ -11,6 +11,10 @@ export const APP_CONFIG = {
 export const GITHUB_CONFIG = {
   repoUrl: "https://github.com/techysy/10router",
   donateUrl: "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/donate.json",
+  // Per-locale changelog markdown (public/i18n/changelog/<locale>.md) fetched
+  // live from the repo, with Gitee as a fallback mirror. See ChangelogModal.
+  changelogUrlBase: "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/public/i18n/changelog/",
+  changelogUrlFallbackBase: "https://gitee.com/techysy/10router/raw/main/public/i18n/changelog/",
 };
 
 // Updater configuration
