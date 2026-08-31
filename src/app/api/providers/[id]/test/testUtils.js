@@ -809,6 +809,61 @@ case "llm7": {
         }, effectiveProxy);
         return { valid: res.ok, error: res.ok ? null : "Invalid API key", refreshed: false };
       }
+      case "sensenova":
+      case "longcat":
+      case "bai":
+      case "api-airforce":
+      case "bazaarlink":
+      case "baidu":
+      case "featherless":
+      case "bluesminds":
+      case "alitp-intl": {
+        // Generic OpenAI-compatible freeTier/apikey providers with a GET
+        // /models endpoint and default Bearer auth — validate via that.
+        const validateUrl =
+          PROVIDERS[connection.provider]?.validateUrl ||
+          (PROVIDERS[connection.provider]?.baseUrl?.replace(/\/chat\/completions$/, "") + "/models");
+        if (!validateUrl || validateUrl === "/models") return { valid: false, error: "Provider test not supported" };
+        const res = await fetchWithConnectionProxy(validateUrl, {
+          headers: { Authorization: `Bearer ${connection.apiKey}` },
+        }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid API key" };
+      }
+      case "codebuddy-cn": {
+        // Tencent coding plan — OpenAI-compatible chat endpoint (Bearer).
+        const baseUrl = PROVIDERS["codebuddy-cn"]?.baseUrl || "https://copilot.tencent.com/v2/chat/completions";
+        const res = await fetchWithConnectionProxy(baseUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${connection.apiKey}` },
+          body: JSON.stringify({ model: getDefaultModel("codebuddy-cn"), messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }),
+        }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid API key" };
+      }
+      case "commandcode": {
+        // CommandCode — NDJSON custom format, Bearer auth. Chat ping validates the key.
+        const baseUrl = PROVIDERS["commandcode"]?.baseUrl || "https://api.commandcode.ai/alpha/generate";
+        const res = await fetchWithConnectionProxy(baseUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${connection.apiKey}`, "x-command-code-version": "0.25.7", "x-cli-environment": "cli" },
+          body: JSON.stringify({ model: getDefaultModel("commandcode"), messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }),
+        }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid API key" };
+      }
+      case "dots": {
+        // Dots uses a custom "api-key" header (raw, not Bearer) and has no GET
+        // /models endpoint — connection validation falls back to a chat ping.
+        const baseUrl = PROVIDERS["dots"]?.baseUrl || "https://note3-prev-api.askdiandian.com/v1/chat/completions";
+        const res = await fetchWithConnectionProxy(baseUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "api-key": connection.apiKey },
+          body: JSON.stringify({ model: getDefaultModel("dots"), messages: [{ role: "user", content: "ping" }], max_tokens: 1, stream: false }),
+        }, effectiveProxy);
+        const valid = res.status !== 401 && res.status !== 403;
+        return { valid, error: valid ? null : "Invalid API key" };
+      }
       default:
         return { valid: false, error: "Provider test not supported" };
     }
