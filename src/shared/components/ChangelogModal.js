@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { marked } from "marked";
-import { GITHUB_CONFIG } from "@/shared/constants/config";
 import { translate, getCurrentLocale } from "@/i18n/runtime";
 
 marked.setOptions({ gfm: true, breaks: true });
@@ -25,6 +24,10 @@ marked.use({ renderer });
 // ja/ko until they're translated) falls back to en.md. The file name uses the
 // canonical locale key exactly as the i18n literals (zh-CN, zh-TW).
 const CHANGELOG_LOCALES = ["en", "zh-CN", "zh-TW"];
+
+// Changelog files ship in the build under public/i18n/changelog/, so they're
+// served from this app directly (no network round-trip to raw.githubusercontent).
+const CHANGELOG_BASE = "/i18n/changelog/";
 
 function changelogFileForLocale(locale) {
   const normalized = locale === "zh" ? "zh-CN" : locale;
@@ -52,7 +55,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
     setError("");
 
     const file = changelogFileForLocale(getCurrentLocale());
-    const url = `${GITHUB_CONFIG.changelogUrlBase}${file}.md`;
+    const url = `${CHANGELOG_BASE}${file}.md`;
     fetchChangelog(url)
       .then((md) => {
         setHtml(md);
@@ -62,7 +65,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
         // Locale file missing (e.g. ja/ko not translated yet, or file removed) —
         // fall back to the English changelog before surfacing an error.
         if (file !== "en") {
-          const enUrl = `${GITHUB_CONFIG.changelogUrlBase}en.md`;
+          const enUrl = `${CHANGELOG_BASE}en.md`;
           fetchChangelog(enUrl)
             .then((md) => { setHtml(md); setError(""); })
             .catch((enErr) => setError(enErr.message || "Failed to load"))

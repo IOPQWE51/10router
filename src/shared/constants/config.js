@@ -10,12 +10,6 @@ export const APP_CONFIG = {
 // GitHub configuration
 export const GITHUB_CONFIG = {
   repoUrl: "https://github.com/techysy/10router",
-  // Per-locale changelog files live under public/i18n/changelog/<locale>.md and
-  // are fetched from raw at runtime (so the Change Log always shows the latest).
-  // The base points at the directory; the modal appends the locale file name and
-  // falls back to en.md when a locale has no translation yet.
-  changelogUrlBase:
-    "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/public/i18n/changelog/",
   donateUrl: "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/donate.json",
 };
 
