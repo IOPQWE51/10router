@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { marked } from "marked";
 import { GITHUB_CONFIG } from "@/shared/constants/config";
+import { translate } from "@/i18n/runtime";
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -69,11 +70,11 @@ export default function ChangelogModal({ isOpen, onClose }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b border-black/5 dark:border-white/5">
-          <h2 className="text-lg font-semibold text-text-main">Change Log</h2>
+          <h2 className="text-lg font-semibold text-text-main">{translate("Change Log")}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-text-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            aria-label="Close"
+            aria-label={translate("Close")}
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
@@ -84,11 +85,11 @@ export default function ChangelogModal({ isOpen, onClose }) {
           {loading && (
             <div className="flex items-center justify-center py-10 text-text-muted">
               <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
-              Loading...
+              {translate("Loading...")}
             </div>
           )}
           {error && (
-            <div className="text-red-500 py-4">Failed to load changelog: {error}</div>
+            <div className="text-red-500 py-4">{translate("Failed to load changelog: ")}{error}</div>
           )}
           {!loading && !error && html && (
             <div

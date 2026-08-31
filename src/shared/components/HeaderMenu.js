@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { useTheme } from "@/shared/hooks/useTheme";
 import ChangelogModal from "./ChangelogModal";
 import { ConfirmModal } from "./Modal";
+import { translate } from "@/i18n/runtime";
 
 function MenuItem({ icon, label, onClick, trailing, danger }) {
   return (
@@ -72,7 +73,7 @@ export default function HeaderMenu({ onLogout }) {
         <button
           onClick={() => setIsOpen((v) => !v)}
           className="flex items-center justify-center p-2 rounded-lg text-text-muted hover:text-text-main hover:bg-black/5 dark:hover:bg-white/5 transition-all"
-          title="Menu"
+          title={translate("Menu")}
         >
           <span className="material-symbols-outlined">grid_view</span>
         </button>
@@ -81,23 +82,23 @@ export default function HeaderMenu({ onLogout }) {
           <div className="absolute right-0 top-full mt-2 w-60 bg-surface border border-black/10 dark:border-white/10 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 overflow-hidden py-1">
             <MenuItem
               icon="history"
-              label="Change Log"
+              label={translate("Change Log")}
               onClick={() => { close(); setChangelogOpen(true); }}
             />
             <MenuItem
               icon={isDark ? "light_mode" : "dark_mode"}
-              label="Theme"
+              label={translate("Theme")}
               onClick={() => { toggleTheme(); close(); }}
             />
             <MenuItem
               icon="power_settings_new"
-              label="Shutdown"
+              label={translate("Shutdown")}
               danger
               onClick={() => { close(); setShutdownOpen(true); }}
             />
             <MenuItem
               icon="logout"
-              label="Logout"
+              label={translate("Logout")}
               danger
               onClick={() => { close(); onLogout(); }}
             />
@@ -110,10 +111,10 @@ export default function HeaderMenu({ onLogout }) {
         isOpen={shutdownOpen}
         onClose={() => setShutdownOpen(false)}
         onConfirm={handleShutdown}
-        title="Close Proxy"
-        message="Are you sure you want to close the proxy server?"
-        confirmText="Close"
-        cancelText="Cancel"
+        title={translate("Close Proxy")}
+        message={translate("Are you sure you want to close the proxy server?")}
+        confirmText={translate("Close")}
+        cancelText={translate("Cancel")}
         variant="danger"
         loading={isShuttingDown}
       />

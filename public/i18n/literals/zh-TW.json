@@ -203,5 +203,9 @@
   "Show all": "顯示全部",
   "Auto-refresh": "自動重新整理",
   "Disabled providers sort last": "已停用供應商後置",
-  "Push providers with all connections disabled behind those with no connections": "連線全部停用的供應商排在無連線供應商之後"
+  "Push providers with all connections disabled behind those with no connections": "連線全部停用的供應商排在無連線供應商之後",
+  "Change Log": "更新日誌",
+  "Loading...": "載入中...",
+  "Menu": "選單",
+  "Failed to load changelog:": "載入更新日誌失敗："
 }
