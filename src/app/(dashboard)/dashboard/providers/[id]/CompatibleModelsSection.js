@@ -3,6 +3,7 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/shared/components";
+import { useNotificationStore } from "@/store/notificationStore";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
 function CompatibleModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias, onTest, testStatus, isTesting }) {
   const borderColor = testStatus === "ok"
@@ -141,6 +142,7 @@ function JsonModelRow({ modelId, fullModel, copied, onCopy, onToggle, enabled, o
 }
 
 export default function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, modelAliases, customModels, copied, onCopy, onDeleteAlias, onAddCustomModel, onDeleteCustomModel, connections, isAnthropic, jsonModels, importingJsonModels, onImportJsonModels, onToggleJsonModel, onBulkJsonModels, useJsonCatalog }) {
+  const notify = useNotificationStore();
   const [newModel, setNewModel] = useState("");
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -176,7 +178,7 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
     if (!newModel.trim() || adding) return;
     const modelId = newModel.trim();
     if (allModels.some((model) => model.id === modelId)) {
-      alert("Model already exists for this provider.");
+      notify.warning("Model already exists for this provider.")
       return;
     }
 
@@ -201,12 +203,12 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
       const res = await fetch(`/api/providers/${activeConnection.id}/models`);
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Failed to import models");
+        notify.error(data.error || "Failed to import models")
         return;
       }
       const models = data.models || [];
       if (models.length === 0) {
-        alert("No models returned from /models.");
+        notify.warning("No models returned from /models.")
         return;
       }
       let importedCount = 0;
@@ -218,7 +220,7 @@ export default function CompatibleModelsSection({ providerStorageAlias, provider
         importedCount += 1;
       }
       if (importedCount === 0) {
-        alert("No new models were added.");
+        notify.warning("No new models were added.")
       }
     } catch (error) {
       console.log("Error importing models:", error);
