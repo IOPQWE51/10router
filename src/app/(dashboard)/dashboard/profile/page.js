@@ -75,6 +75,7 @@ export default function ProfilePage() {
   const certFileRef = useRef(null);
 
   const importFileRef = useRef(null);
+  const usageImportFileRef = useRef(null);
   const [usageImportStatus, setUsageImportStatus] = useState({ type: "", message: "" });
   const [usageImportLoading, setUsageImportLoading] = useState(false);
   const [proxyForm, setProxyForm] = useState({
@@ -743,16 +744,16 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (importFileRef.current) importFileRef.current.value = "";
     if (!file) return;
-    // SQLite/DB file → usage-only import (9router backup). JSON → full config
-    // backup import via the password modal.
-    const isSqlite = /\.(sqlite|db)$/i.test(file.name);
-    if (isSqlite) {
-      void importUsageFile(file);
-      return;
-    }
     pendingImportRef.current = file;
     setDbStatus({ type: "", message: "" });
     setDbAuth({ open: true, mode: "import", password: "" });
+  };
+
+  const handleUsageImportFile = (event) => {
+    const file = event.target.files?.[0];
+    if (usageImportFileRef.current) usageImportFileRef.current.value = "";
+    if (!file) return;
+    void importUsageFile(file);
   };
 
   const importUsageFile = async (file) => {
@@ -904,9 +905,27 @@ export default function ProfilePage() {
               <input
                 ref={importFileRef}
                 type="file"
-                accept=".sqlite,.db,application/json,.json"
+                accept="application/json,.json"
                 className="hidden"
                 onChange={handleImportDatabase}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                variant="outline"
+                icon="history"
+                onClick={() => usageImportFileRef.current?.click()}
+                loading={usageImportLoading}
+                className="w-full sm:w-auto"
+              >
+                Import Usage (9router)
+              </Button>
+              <input
+                ref={usageImportFileRef}
+                type="file"
+                accept=".sqlite,.db"
+                className="hidden"
+                onChange={handleUsageImportFile}
               />
             </div>
             {dbStatus.message && (
