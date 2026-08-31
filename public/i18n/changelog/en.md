@@ -2,6 +2,20 @@
 
 User-facing highlights per release. See [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md) for the full developer log.
 
+## v1.0.4 (2026-08-31)
+
+### ✨ New
+- **Changelog loads in your UI language**: Change Log now shows Chinese / Traditional / English per the interface language, bundled locally (no latency); untranslated locales fall back to English
+
+### 🐛 Fixes
+- **Provider ordering corrected**: connected providers float to the top, all-disabled providers sink, never-configured sink last; OpenCode Free / MiMo Code Free (topology-hidden) sit just below connected and above disabled
+- **Disabled connections no longer count as connected**
+- **Change Log modal**: external links open in a new tab, modal & header menu are translated, and switching language refreshes immediately
+- **Custom models (e.g. bai) no longer hidden by JSON-catalog mode**
+
+### 🔒 Security
+- **Outbound proxy restored on boot**: no need to re-save settings after a restart
+
 ## v1.0.3 (2026-08-30)
 
 ### ✨ New
