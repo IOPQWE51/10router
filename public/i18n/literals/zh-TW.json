@@ -207,5 +207,22 @@
   "Change Log": "更新日誌",
   "Loading...": "載入中...",
   "Menu": "選單",
-  "Failed to load changelog:": "載入更新日誌失敗："
+  "Failed to load changelog:": "載入更新日誌失敗：",
+  "Test All": "全部測試",
+  "Testing...": "測試中...",
+  "Test Results": "測試結果",
+  "Test request failed": "測試請求失敗",
+  "passed": "通過",
+  "failed": "失敗",
+  "tested": "已測試",
+  "ERROR": "錯誤",
+  "No active connections found for this group.": "未找到該組的啟用連線。",
+  "Test": "測試",
+  "Provider": "提供商",
+  "OAuth": "OAuth",
+  "All": "全部",
+  "Test all OAuth connections": "測試所有 OAuth 連線",
+  "Test all Free connections": "測試所有免費連線",
+  "Test all API Key connections": "測試所有 API 金鑰連線",
+  "Test all Free provider connections": "測試所有免費供應商連線"
 }
