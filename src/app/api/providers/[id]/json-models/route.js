@@ -3,6 +3,7 @@ import { AI_PROVIDERS } from "@/shared/constants/providers";
 import { getProviderNodeById } from "@/models";
 import { proxyAwareFetch } from "open-sse/utils/proxyFetch.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
+import { enableModels } from "@/lib/disabledModelsDb";
 import {
   getProviderConnections,
   getProviderJsonModels,
@@ -189,12 +190,24 @@ export async function PUT(request, { params }) {
     // Bulk flip: { all: true, enabled } toggles every model in the catalog.
     if (all === true) {
       const changed = await setAllProviderJsonModelsEnabled(id, enabled);
+      if (enabled) {
+        // Enabling the whole catalog must also lift any stale disabledModels
+        // entries left over from the pre-catalog static-list era — otherwise
+        // /v1/models keeps hiding models the user just bulk-enabled.
+        await enableModels(id, []);
+      }
       return NextResponse.json({ success: true, changed });
     }
     if (!modelId) {
       return NextResponse.json({ error: "modelId required (or all: true for bulk)" }, { status: 400 });
     }
     const changed = await updateProviderJsonModelEnabled(id, modelId, enabled);
+    if (enabled) {
+      // Same stale-state cleanup for single-model toggles: enabling a JSON
+      // catalog model must clear a matching disabledModels entry, or the
+      // isDisabled() filter in /v1/models keeps the model hidden.
+      await enableModels(id, [modelId]);
+    }
     return NextResponse.json({ success: true, changed });
   } catch (error) {
     return NextResponse.json({ error: error.message || "Failed to update provider model JSON" }, { status: error.status || 500 });
