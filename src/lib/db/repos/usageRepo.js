@@ -244,7 +244,6 @@ export async function saveRequestUsage(entry) {
 
     if (!entry.timestamp) entry.timestamp = new Date().toISOString();
     entry.cost = await calculateCost(entry.provider, entry.model, entry.tokens);
-
     const tokens = entry.tokens || {};
     const promptTokens = tokens.prompt_tokens || tokens.input_tokens || 0;
     const completionTokens = tokens.completion_tokens || tokens.output_tokens || 0;
@@ -779,4 +778,74 @@ export async function getRecentLogs(limit = 200) {
     console.error("[usageRepo] getRecentLogs failed:", e.message);
     return [];
   }
+}
+
+// Import historical usage rows (e.g. from a 9router backup). Unlike
+// saveRequestUsage, imported entries keep their original timestamp/cost and are
+// deduped by exact content signature. Only the usageHistory/usageDaily tables
+// are touched — no configuration is imported.
+export async function importUsageRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return { imported: 0, skipped: 0 };
+  const db = await getAdapter();
+
+  let imported = 0;
+  let skipped = 0;
+
+  db.transaction(() => {
+    for (const entry of rows) {
+      const tokens = entry.tokens || {};
+      const promptTokens = tokens.prompt_tokens || tokens.input_tokens || entry.promptTokens || 0;
+      const completionTokens = tokens.completion_tokens || tokens.output_tokens || entry.completionTokens || 0;
+      const ts = entry.timestamp || new Date().toISOString();
+
+      // Dedup: same signature as live writes.
+      const existing = db.get(
+        `SELECT id FROM usageHistory
+         WHERE timestamp = ?
+           AND COALESCE(provider, '') = COALESCE(?, '')
+           AND COALESCE(model, '') = COALESCE(?, '')
+           AND COALESCE(connectionId, '') = COALESCE(?, '')
+           AND COALESCE(apiKey, '') = COALESCE(?, '')
+           AND promptTokens = ?
+           AND completionTokens = ?
+         ORDER BY id DESC LIMIT 1`,
+        [ts, entry.provider || null, entry.model || null, entry.connectionId || null, entry.apiKey || null, promptTokens, completionTokens]
+      );
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      db.run(
+        `INSERT INTO usageHistory(timestamp, provider, model, connectionId, apiKey, endpoint, promptTokens, completionTokens, cost, status, tokens, meta) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          ts, entry.provider || null, entry.model || null,
+          entry.connectionId || null, entry.apiKey || null, entry.endpoint || null,
+          promptTokens, completionTokens, entry.cost || 0, entry.status || "ok",
+          stringifyJson(tokens), stringifyJson(entry.meta || {}),
+        ]
+      );
+
+      // Aggregate into daily stats.
+      const dateKey = getLocalDateKey(ts);
+      const row = db.get(`SELECT data FROM usageDaily WHERE dateKey = ?`, [dateKey]);
+      const day = row ? parseJson(row.data, {}) : {
+        requests: 0, promptTokens: 0, completionTokens: 0, cost: 0,
+        byProvider: {}, byModel: {}, byAccount: {}, byApiKey: {}, byEndpoint: {},
+      };
+      aggregateEntryToDay(day, entry);
+      db.run(`INSERT INTO usageDaily(dateKey, data) VALUES(?, ?) ON CONFLICT(dateKey) DO UPDATE SET data = excluded.data`, [dateKey, stringifyJson(day)]);
+
+      const cur = db.get(`SELECT value FROM _meta WHERE key = 'totalRequestsLifetime'`);
+      const next = (cur ? parseInt(cur.value, 10) : 0) + 1;
+      db.run(`INSERT INTO _meta(key, value) VALUES('totalRequestsLifetime', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, [String(next)]);
+
+      imported++;
+    }
+  });
+
+  if (imported > 0) {
+    scheduleStatsEvent("update", 250);
+  }
+  return { imported, skipped };
 }

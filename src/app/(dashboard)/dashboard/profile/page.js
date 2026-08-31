@@ -10,6 +10,7 @@ import { APP_CONFIG } from "@/shared/constants/config";
 import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { LOCALE_FLAGS } from "@/shared/constants/locales";
 import { isRegionalCurrencyEnabled } from "@/shared/utils/currency";
+import { translate } from "@/i18n/runtime";
 
 function getLocaleFromCookie() {
   if (typeof document === "undefined") return "en";
@@ -74,6 +75,8 @@ export default function ProfilePage() {
   const certFileRef = useRef(null);
 
   const importFileRef = useRef(null);
+  const [usageImportStatus, setUsageImportStatus] = useState({ type: "", message: "" });
+  const [usageImportLoading, setUsageImportLoading] = useState(false);
   const [proxyForm, setProxyForm] = useState({
     outboundProxyEnabled: false,
     outboundProxyUrl: "",
@@ -740,9 +743,39 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (importFileRef.current) importFileRef.current.value = "";
     if (!file) return;
+    // SQLite/DB file → usage-only import (9router backup). JSON → full config
+    // backup import via the password modal.
+    const isSqlite = /\.(sqlite|db)$/i.test(file.name);
+    if (isSqlite) {
+      void importUsageFile(file);
+      return;
+    }
     pendingImportRef.current = file;
     setDbStatus({ type: "", message: "" });
     setDbAuth({ open: true, mode: "import", password: "" });
+  };
+
+  const importUsageFile = async (file) => {
+    setUsageImportLoading(true);
+    setUsageImportStatus({ type: "", message: "" });
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/settings/database/import-usage", {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to import usage");
+      setUsageImportStatus({
+        type: "success",
+        message: `Imported ${data.imported} usage records from 9router (${data.skipped} skipped, ${data.total} total)`,
+      });
+    } catch (err) {
+      setUsageImportStatus({ type: "error", message: err.message || "Failed to import usage" });
+    } finally {
+      setUsageImportLoading(false);
+    }
   };
 
   const runImportDatabase = async (password) => {
@@ -871,7 +904,7 @@ export default function ProfilePage() {
               <input
                 ref={importFileRef}
                 type="file"
-                accept="application/json,.json"
+                accept=".sqlite,.db,application/json,.json"
                 className="hidden"
                 onChange={handleImportDatabase}
               />
@@ -879,6 +912,11 @@ export default function ProfilePage() {
             {dbStatus.message && (
               <p className={`text-sm ${dbStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
                 {dbStatus.message}
+              </p>
+            )}
+            {usageImportStatus.message && (
+              <p className={`text-sm ${usageImportStatus.type === "error" ? "text-red-500" : "text-green-600 dark:text-green-400"}`}>
+                {usageImportStatus.message}
               </p>
             )}
           </div>
