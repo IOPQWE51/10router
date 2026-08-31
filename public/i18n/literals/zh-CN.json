@@ -1464,6 +1464,5 @@
   "skipped": "跳过",
   "total": "总计",
   "Only SQLite database files (.sqlite/.db) can be imported": "只能导入 SQLite 数据库文件（.sqlite/.db）",
-  "Account filter is active": "账户筛选已启用",
-  "This filter persists across visits": "此筛选在多次访问间持久保存"
+  "Account filter is active and persists across visits": "账户筛选已启用，且会在多次访问间保持"
 }

@@ -1100,12 +1100,7 @@ export default function ProviderLimits() {
       {accountFilter !== "all" && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
           <span className="material-symbols-outlined text-[14px] shrink-0">filter_alt</span>
-          <span>
-            {translate("Account filter is active")}:{" "}
-            <strong>{ACCOUNT_FILTER_OPTIONS.find((o) => o.value === accountFilter)?.label || accountFilter}</strong>
-            {" · "}
-            {translate("This filter persists across visits")}
-          </span>
+          <span>{translate("Account filter is active and persists across visits")}</span>
         </div>
       )}
 
