@@ -125,22 +125,19 @@ export default function ProvidersPage() {
   // Connection state drives the primary sort key for every section, gated by
   // the providerDisabledLastSort toggle (profile setting).
   //
-  // When the toggle is ON, configured providers (any connection ever added)
-  // always rank above never-configured ones:
-  //   0 active (connected>0)
-  //   1 configured, some connections enabled
-  //   2 configured, all connections disabled
-  //   3 never configured (no connections at all)  →  sinks last
+  // When the toggle is ON:
+  //   0 connected (connected>0)  →  floats to the top
+  //   1 configured but all connections disabled
+  //   2 never configured (no connections at all)  →  sinks last
   //
-  // When OFF, only connected-first applies (active providers surface, the rest
-  // interleave by priority/name) — the disabled/never-configured distinction is
-  // dropped.
+  // When OFF, only connected-first applies (connected providers surface, the
+  // rest interleave by priority/name) — the disabled/never-configured
+  // distinction is dropped.
   const providerRank = (stats) => {
     if (stats.connected > 0) return 0;
     if (!disabledLastSort) return 1;
-    if (stats.total > 0 && !stats.allDisabled) return 1;
-    if (stats.total > 0) return 2; // configured but all disabled
-    return 3; // never configured
+    if (stats.total === 0) return 2; // never configured → sinks last
+    return 1; // configured but all connections disabled
   };
 
   const sortByPriority = (entries, authType) =>
@@ -233,6 +230,11 @@ export default function ProvidersPage() {
     };
 
     const connected = providerConnections.filter((c) => {
+      // A disabled connection (isActive=false) must not count as connected,
+      // even if its testStatus is "active" — otherwise a fully-disabled
+      // provider would still rank as active and float to the top instead of
+      // sinking behind configured-but-disabled ones.
+      if (c.isActive === false) return false;
       const status = getEffectiveStatus(c);
       return status === "active" || status === "success";
     }).length;
