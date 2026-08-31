@@ -369,47 +369,34 @@ export default function ProvidersPage() {
     Object.entries(OAUTH_PROVIDERS).filter(([, info]) => !info.hidden && matchSearch(info.name)),
     "oauth",
   );
-  const freeEntries = Object.entries(FREE_PROVIDERS)
-    .filter(([, info]) => !info.hidden && matchSearch(info.name))
-    .sort(([ka, a], [kb, b]) => {
-      // Connection state first (connected providers surface first), then
-      // noAuth free providers float before key-gated ones, then priority/name.
-      const sa = getProviderStats(ka, dualAuthTypes(a, ka));
-      const sb = getProviderStats(kb, dualAuthTypes(b, kb));
-      const ra = providerRank(sa, a, ka);
-      const rb = providerRank(sb, b, kb);
-      if (ra !== rb) return ra - rb;
-      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
-      if (noAuthDiff !== 0) return noAuthDiff;
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
-      return (a.name || "").localeCompare(b.name || "");
-    });
-  // Free Tier cards may be oauth-only (e.g. kimchi) or dual-auth, so count via
-  // dualAuthTypes per provider instead of a fixed "apikey" — otherwise oauth
-  // connections are invisible here (mismatch with the detail page).
-  const freeTierEntries = Object.entries(FREE_TIER_PROVIDERS)
-    .filter(
-      ([, info]) =>
-        !info.hidden &&
-        matchSearch(info.name) &&
-        (info.serviceKinds ?? ["llm"]).includes("llm"),
-    )
-    .sort(([ka, a], [kb, b]) => {
-      // Connection state first, then priority, then noAuth, then name.
-      const sa = getProviderStats(ka, dualAuthTypes(a, ka));
-      const sb = getProviderStats(kb, dualAuthTypes(b, kb));
-      const ra = providerRank(sa, a, ka);
-      const rb = providerRank(sb, b, kb);
-      if (ra !== rb) return ra - rb;
-      const pa = a.priority ?? 999;
-      const pb = b.priority ?? 999;
-      if (pa !== pb) return pa - pb;
-      const noAuthDiff = (b.noAuth ? 1 : 0) - (a.noAuth ? 1 : 0);
-      if (noAuthDiff !== 0) return noAuthDiff;
-      return (a.name || "").localeCompare(b.name || "");
-    });
+  // Merge free (noAuth/connectionless) and free-tier (api-key) providers into
+  // ONE list sorted by the shared connection-state rule. Without this, the two
+  // arrays render sequentially and a connected free-tier provider (e.g. Dots)
+  // could still appear BELOW a topology-hidden noAuth provider (e.g. opencode),
+  // which looks wrong. Combined sort keeps connected providers on top.
+  const freeAllEntries = [
+    ...Object.entries(FREE_PROVIDERS)
+      .filter(([, info]) => !info.hidden && matchSearch(info.name))
+      .map(([k, info]) => ({ key: k, info, stats: getProviderStats(k, dualAuthTypes(info, k)), isFreeTier: false })),
+    ...Object.entries(FREE_TIER_PROVIDERS)
+      .filter(
+        ([, info]) =>
+          !info.hidden &&
+          matchSearch(info.name) &&
+          (info.serviceKinds ?? ["llm"]).includes("llm"),
+      )
+      .map(([k, info]) => ({ key: k, info, stats: getProviderStats(k, dualAuthTypes(info, k)), isFreeTier: true })),
+  ].sort((a, b) => {
+    const ra = providerRank(a.stats, a.info, a.key);
+    const rb = providerRank(b.stats, b.info, b.key);
+    if (ra !== rb) return ra - rb;
+    const noAuthDiff = (b.info.noAuth ? 1 : 0) - (a.info.noAuth ? 1 : 0);
+    if (noAuthDiff !== 0) return noAuthDiff;
+    const pa = a.info.priority ?? 999;
+    const pb = b.info.priority ?? 999;
+    if (pa !== pb) return pa - pb;
+    return (a.info.name || "").localeCompare(b.info.name || "");
+  });
   // API Key: connected providers first, then alphabetical by name
   const apikeyEntries = Object.entries(APIKEY_PROVIDERS)
     .filter(
@@ -449,8 +436,7 @@ export default function ProvidersPage() {
 
   const hasAnyResult =
     oauthEntries.length > 0 ||
-    freeEntries.length > 0 ||
-    freeTierEntries.length > 0 ||
+    freeAllEntries.length > 0 ||
     apikeyEntries.length > 0 ||
     compatibleProviders.length > 0 ||
     anthropicCompatibleProviders.length > 0;
@@ -566,7 +552,7 @@ export default function ProvidersPage() {
       )}
 
       {/* Free Tier Providers */}
-      {(freeEntries.length > 0 || freeTierEntries.length > 0) && (
+      {freeAllEntries.length > 0 && (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
@@ -592,40 +578,37 @@ export default function ProvidersPage() {
           </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {freeEntries.map(([key, info]) => {
-            // Dual-auth (e.g. kiro): count/toggle oauth + apikey/api_key so the
-            // card total matches the provider detail page.
+          {freeAllEntries.map(({ key, info, isFreeTier }) => {
             const freeAuthTypes = dualAuthTypes(info, key);
             // noAuth free providers (opencode, mimo-free) get a topology
             // visibility toggle instead of an enable/disable switch.
-            const topologySetting = topologyVisibility?.[key];
-            const topologyVisible =
-              topologySetting === false
-                ? false
-                : topologySetting === true
-                  ? true
-                  : !info.topologyHiddenByDefault;
-            return (
-              <ProviderCard
-                key={key}
-                providerId={key}
-                provider={info}
-                stats={getProviderStats(key, freeAuthTypes)}
-                authType="free"
-                onToggle={(active) =>
-                  handleToggleProvider(key, freeAuthTypes, active)
-                }
-                topologyVisible={topologyVisible}
-                onToggleTopology={
-                  info.noAuth
-                    ? (visible) => handleToggleTopology(key, visible)
-                    : undefined
-                }
-              />
-            );
-          })}
-          {freeTierEntries.map(([key, info]) => {
-            const freeAuthTypes = dualAuthTypes(info, key);
+            if (!isFreeTier) {
+              const topologySetting = topologyVisibility?.[key];
+              const topologyVisible =
+                topologySetting === false
+                  ? false
+                  : topologySetting === true
+                    ? true
+                    : !info.topologyHiddenByDefault;
+              return (
+                <ProviderCard
+                  key={key}
+                  providerId={key}
+                  provider={info}
+                  stats={getProviderStats(key, freeAuthTypes)}
+                  authType="free"
+                  onToggle={(active) =>
+                    handleToggleProvider(key, freeAuthTypes, active)
+                  }
+                  topologyVisible={topologyVisible}
+                  onToggleTopology={
+                    info.noAuth
+                      ? (visible) => handleToggleTopology(key, visible)
+                      : undefined
+                  }
+                />
+              );
+            }
             return (
               <ApiKeyProviderCard
                 key={key}
