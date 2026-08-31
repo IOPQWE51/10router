@@ -1665,7 +1665,7 @@ export default function ProviderDetailPage() {
                     onClick={handleRunOneByOneTest}
                     disabled={oneByOneRunning}
                   >
-                    {oneByOneRunning ? "Testing Connection One-by-One..." : "Test Connection One-by-One"}
+                    {oneByOneRunning ? translate("Testing Connection One-by-One...") : translate("Test Connection One-by-One")}
                   </Button>
                   {oneByOneRunning && (
                     <Button
@@ -1675,21 +1675,21 @@ export default function ProviderDetailPage() {
                       onClick={handleStopOneByOneTest}
                       disabled={oneByOneStopping}
                     >
-                      {oneByOneStopping ? "Stopping..." : "Stop"}
+                      {oneByOneStopping ? translate("Stopping...") : translate("Stop")}
                     </Button>
                   )}
                 </>
               )}
               {/* Round Robin toggle */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-text-muted font-medium">Round Robin</span>
+                <span className="text-xs text-text-muted font-medium">{translate("Round Robin")}</span>
                 <Toggle
                   checked={providerStrategy === "round-robin"}
                   onChange={handleRoundRobinToggle}
                 />
                 {providerStrategy === "round-robin" && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-text-muted">Sticky:</span>
+                    <span className="text-xs text-text-muted">{translate("Sticky:")}</span>
                     <input
                       type="number"
                       min={1}
@@ -1757,15 +1757,15 @@ export default function ProviderDetailPage() {
               {oneByOneSummary && (
                 <div className="mb-4 rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2 text-xs text-text-muted dark:border-white/10 dark:bg-white/[0.03]">
                   <div className="flex flex-wrap items-center gap-3">
-                    <span>Total: {oneByOneSummary.total}</span>
-                    <span>Completed: {oneByOneSummary.completed}</span>
-                    <span>Passed: {oneByOneSummary.passed}</span>
-                    <span>Failed: {oneByOneSummary.failed}</span>
+                    <span>{translate("Total:")} {oneByOneSummary.total}</span>
+                    <span>{translate("Completed:")} {oneByOneSummary.completed}</span>
+                    <span>{translate("Passed:")} {oneByOneSummary.passed}</span>
+                    <span>{translate("Failed:")} {oneByOneSummary.failed}</span>
                     {oneByOneSummary.stopped && (
-                      <span className="text-amber-600 dark:text-amber-400">Stopped</span>
+                      <span className="text-amber-600 dark:text-amber-400">{translate("Stopped")}</span>
                     )}
                     {oneByOneRunning && oneByOneCurrentConnectionId && (
-                      <span>Running: {connections.find((conn) => conn.id === oneByOneCurrentConnectionId)?.name || oneByOneCurrentConnectionId}</span>
+                      <span>{translate("Running:")} {connections.find((conn) => conn.id === oneByOneCurrentConnectionId)?.name || oneByOneCurrentConnectionId}</span>
                     )}
                   </div>
                 </div>
