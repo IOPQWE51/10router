@@ -9,6 +9,7 @@ import { Card, Button, Modal, Input, CardSkeleton, ModelSelectModal, ConfirmModa
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { useModelCaps } from "@/shared/hooks/useModelCaps";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { translate } from "@/i18n/runtime";
 
 // Validate combo name: only a-z, A-Z, 0-9, -, _
 const VALID_NAME_REGEX = /^[a-zA-Z0-9_.\-]+$/;
@@ -414,13 +415,13 @@ function CapacityAdapterSection({ capacityAdapter, onChange, activeProviders, ge
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="text-sm font-medium">Vision Adapter</p>
+          <p className="text-sm font-medium">{translate("Vision Adapter")}</p>
           <p className="text-xs text-text-muted mt-0.5">
-            Your model can&apos;t read image/audio? Auto-switches to a model in the pool below.
+            {translate("Your model can't read image/audio? Auto-switches to a model in the pool below.")}
           </p>
           <ul className="mt-1.5 text-[11px] text-text-muted flex flex-col gap-0.5">
-            <li><span className="font-medium text-text-main">Vision</span> — images (png, jpg, webp, …)</li>
-            <li><span className="font-medium text-text-main">Audio</span> — audio input</li>
+            <li><span className="font-medium text-text-main">Vision</span> — {translate("Images")} (png, jpg, webp, …)</li>
+            <li><span className="font-medium text-text-main">Audio</span> — {translate("Audio input")}</li>
           </ul>
         </div>
       </div>
@@ -472,7 +473,7 @@ function CapacityAdapterCap({ cap, entry, onChange, activeProviders, getCaps }) 
           <Toggle
             checked={enabled}
             onChange={(v) => patch({ enabled: v })}
-            aria-label={`Enable ${cap.label} adapter`}
+            aria-label={`${translate("Enable")} ${cap.label} ${translate("adapter")}`}
           />
           <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-primary text-[18px]">{cap.icon}</span>
@@ -480,11 +481,11 @@ function CapacityAdapterCap({ cap, entry, onChange, activeProviders, getCaps }) 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <code className="font-mono text-sm font-medium">{cap.label}</code>
-              <span className="text-[10px] text-text-muted">— {cap.desc}</span>
+              <span className="text-[10px] text-text-muted">— {translate(cap.desc)}</span>
             </div>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
               {models.length === 0 ? (
-                <span className="text-xs text-text-muted italic">No models</span>
+                <span className="text-xs text-text-muted italic">{translate("No models")}</span>
               ) : (
                 models.slice(0, 3).map((model, index) => (
                   <code
@@ -506,7 +507,7 @@ function CapacityAdapterCap({ cap, entry, onChange, activeProviders, getCaps }) 
                 ))
               )}
               {models.length > 3 && (
-                <span className="text-[10px] text-text-muted">+{models.length - 3} more</span>
+                <span className="text-[10px] text-text-muted">+{models.length - 3} {translate("more")}</span>
               )}
             </div>
           </div>
@@ -519,9 +520,9 @@ function CapacityAdapterCap({ cap, entry, onChange, activeProviders, getCaps }) 
               checked={roundRobin}
               onChange={(v) => patch({ roundRobin: v })}
               disabled={!enabled}
-              aria-label={`Round-robin ${cap.label} adapter`}
+              aria-label={`${translate("Round-robin")} ${cap.label} ${translate("adapter")}`}
             />
-            <span>Round</span>
+            <span>{translate("Round")}</span>
           </label>
           <Button
             icon="add"
@@ -529,9 +530,9 @@ function CapacityAdapterCap({ cap, entry, onChange, activeProviders, getCaps }) 
             size="sm"
             onClick={() => setShowModelSelect(true)}
             disabled={!enabled}
-            title={`Add ${cap.label} model`}
+            title={`${translate("Add Model")} — ${cap.label}`}
           >
-            Add Model
+            {translate("Add Model")}
           </Button>
         </div>
       </div>
