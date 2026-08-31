@@ -71,6 +71,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
       .then((md) => {
         setHtml(marked.parse(md));
         setError("");
+        setLoading(false);
       })
       .catch(() => {
         // Locale file missing (e.g. ja/ko not translated) or both sources
@@ -81,7 +82,7 @@ export default function ChangelogModal({ isOpen, onClose }) {
             `${GITHUB_CONFIG.changelogUrlFallbackBase}en.md`,
           ];
           fetchChangelog(enUrls)
-            .then((md) => { setHtml(marked.parse(md)); setError(""); })
+            .then((md) => { setHtml(marked.parse(md)); setError(""); setLoading(false); })
             .catch((enErr) => setError(enErr.message || "Failed to load"))
             .finally(() => setLoading(false));
         } else {
