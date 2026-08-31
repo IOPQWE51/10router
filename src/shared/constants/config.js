@@ -10,7 +10,7 @@ export const APP_CONFIG = {
 // GitHub configuration
 export const GITHUB_CONFIG = {
   repoUrl: "https://github.com/techysy/10router",
-  changelogUrl: "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/CHANGELOG.md",
+  changelogUrl: "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/CHANGELOG.ui.md",
   donateUrl: "https://raw.githubusercontent.com/techysy/10router/refs/heads/main/donate.json",
 };
 
