@@ -26,13 +26,6 @@ marked.use({ renderer });
 // canonical locale key exactly as the i18n literals (zh-CN, zh-TW).
 const CHANGELOG_LOCALES = ["en", "zh-CN", "zh-TW"];
 
-// Changelog files ship in the build under public/i18n/changelog/, so they're
-// served from this app directly (no network round-trip). On local access
-// (192.168.31.101:20127) the root-relative path works fine; on the fnOS
-// remote-access domain (fnos.net/techysy/) the root path breaks, so we fall
-// back to the raw.githubusercontent.com mirror, then to Gitee.
-const CHANGELOG_BASE = "/i18n/changelog/";
-
 function changelogFileForLocale(locale) {
   const normalized = locale === "zh" ? "zh-CN" : locale;
   return CHANGELOG_LOCALES.includes(normalized) ? normalized : "en";
@@ -70,7 +63,6 @@ export default function ChangelogModal({ isOpen, onClose }) {
 
     const file = changelogFileForLocale(getCurrentLocale());
     const urls = [
-      `${CHANGELOG_BASE}${file}.md`,                                               // local
       `${GITHUB_CONFIG.changelogUrlBase}${file}.md`,                               // GitHub raw
       `${GITHUB_CONFIG.changelogUrlFallbackBase}${file}.md`,                       // Gitee raw
     ];
@@ -81,11 +73,10 @@ export default function ChangelogModal({ isOpen, onClose }) {
         setError("");
       })
       .catch(() => {
-        // Locale file missing (e.g. ja/ko not translated) or all sources
+        // Locale file missing (e.g. ja/ko not translated) or both sources
         // failed — fall back to English before surfacing an error.
         if (file !== "en") {
           const enUrls = [
-            `${CHANGELOG_BASE}en.md`,
             `${GITHUB_CONFIG.changelogUrlBase}en.md`,
             `${GITHUB_CONFIG.changelogUrlFallbackBase}en.md`,
           ];
