@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { marked } from "marked";
 import { GITHUB_CONFIG } from "@/shared/constants/config";
-import { translate } from "@/i18n/runtime";
+import { translate, getCurrentLocale } from "@/i18n/runtime";
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -21,6 +21,25 @@ const renderer = {
 };
 marked.use({ renderer });
 
+// Locales with a dedicated changelog translation. Everything else (including
+// ja/ko until they're translated) falls back to en.md. The file name uses the
+// canonical locale key exactly as the i18n literals (zh-CN, zh-TW).
+const CHANGELOG_LOCALES = ["en", "zh-CN", "zh-TW"];
+
+function changelogFileForLocale(locale) {
+  const normalized = locale === "zh" ? "zh-CN" : locale;
+  return CHANGELOG_LOCALES.includes(normalized) ? normalized : "en";
+}
+
+function fetchChangelog(url) {
+  return fetch(url)
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    })
+    .then((md) => marked.parse(md));
+}
+
 export default function ChangelogModal({ isOpen, onClose }) {
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,15 +50,36 @@ export default function ChangelogModal({ isOpen, onClose }) {
     if (!isOpen || html) return;
     setLoading(true);
     setError("");
-    fetch(GITHUB_CONFIG.changelogUrl)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
+
+    const file = changelogFileForLocale(getCurrentLocale());
+    const url = `${GITHUB_CONFIG.changelogUrlBase}${file}.md`;
+    fetchChangelog(url)
+      .then((md) => {
+        setHtml(md);
+        setError("");
       })
-      .then((md) => setHtml(marked.parse(md)))
-      .catch((err) => setError(err.message || "Failed to load"))
-      .finally(() => setLoading(false));
+      .catch((primaryErr) => {
+        // Locale file missing (e.g. ja/ko not translated yet, or file removed) —
+        // fall back to the English changelog before surfacing an error.
+        if (file !== "en") {
+          const enUrl = `${GITHUB_CONFIG.changelogUrlBase}en.md`;
+          fetchChangelog(enUrl)
+            .then((md) => { setHtml(md); setError(""); })
+            .catch((enErr) => setError(enErr.message || "Failed to load"))
+            .finally(() => setLoading(false));
+        } else {
+          setError(primaryErr.message || "Failed to load");
+          setLoading(false);
+        }
+      });
   }, [isOpen, html]);
+
+  // Reload when the locale changes while the modal is open, so a locale switch
+  // re-renders the changelog in the new language instead of reusing the cache.
+  const currentLocale = getCurrentLocale();
+  useEffect(() => {
+    if (isOpen && html) setHtml("");
+  }, [currentLocale]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
