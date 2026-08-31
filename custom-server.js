@@ -15,6 +15,33 @@ process.env.NINEROUTER_PEER_TOKEN = PEER_TOKEN;
 
 let backgroundRefreshStarted = false;
 
+// Apply the outbound proxy from DB settings at boot. This is the Node-side
+// replacement for the `@/lib/network/initOutboundProxy` import in layout.js,
+// which Next tree-shakes out of the standalone build. Runs in custom-server.js
+// (always loaded, never tree-shaken) so process.env.HTTP(S)_PROXY is restored
+// on every restart instead of waiting for the user to re-save settings.
+let outboundProxyStarted = false;
+function startOutboundProxyFromCustomServer() {
+  if (outboundProxyStarted) return;
+  outboundProxyStarted = true;
+  const modPath = path.join(__dirname, "src", "lib", "network", "outboundProxyStandalone.js");
+  import(pathToFileURL(modPath).href)
+    .then((m) => {
+      try {
+        m.ensureOutboundProxyInitialized();
+      } catch (e) {
+        console.error("[OutboundProxyInit] start failed:", e && e.message ? e.message : e);
+      }
+    })
+    .catch((e) => {
+      // Expected in a bare repo checkout (src/lib/network not shipped). The Next
+      // app bootstrap (layout.js initOutboundProxy) covers it in dev.
+      if (process.env.DEBUG_OUTBOUND_PROXY) {
+        console.error("[OutboundProxyInit] import failed:", e && e.message ? e.message : e);
+      }
+    });
+}
+
 function startBackgroundTokenRefreshFromCustomServer() {
   if (backgroundRefreshStarted) return;
   backgroundRefreshStarted = true;
@@ -75,6 +102,7 @@ http.createServer = (...args) => {
   const server = origCreate(...rest, wrapped);
   server.once("listening", () => {
     startBackgroundTokenRefreshFromCustomServer();
+    startOutboundProxyFromCustomServer();
   });
   const origEmit = server.emit;
   // JBR 25 sends h2c upgrades that the HTTP/1.1 server would otherwise close.

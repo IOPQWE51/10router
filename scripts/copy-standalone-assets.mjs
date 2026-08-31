@@ -37,6 +37,16 @@ export function copyStandaloneAssets({ projectRoot = process.cwd(), distDir = pr
     cpSync(serverWrapperSource, serverWrapperDestination, { force: true });
     console.log(`[standalone-assets] Copied custom-server.js to ${serverWrapperDestination}`);
   }
+
+  // Standalone-safe outbound-proxy initializer used by custom-server.js at boot.
+  // Kept as source (not bundled) so the Node entry can import it without the
+  // `@/` alias or Next tree-shaking dropping the side effect.
+  const proxyInitSource = resolve(projectRoot, "src", "lib", "network", "outboundProxyStandalone.js");
+  const proxyInitDestination = resolve(standaloneDir, "src", "lib", "network", "outboundProxyStandalone.js");
+  if (existsSync(proxyInitSource)) {
+    cpSync(proxyInitSource, proxyInitDestination, { force: true });
+    console.log(`[standalone-assets] Copied outboundProxyStandalone.js to ${proxyInitDestination}`);
+  }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(dirname(fileURLToPath(import.meta.url)), "copy-standalone-assets.mjs")) {
