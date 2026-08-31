@@ -1251,15 +1251,13 @@ export default function ProviderDetailPage() {
     const disabledDisplayModels = useJsonCatalog
       ? []
       : allModels.filter((m) => disabledSet.has(m.id));
-    const customModelRows = useJsonCatalog
-      ? []
-      : getProviderCustomModelRows({
-          customModels,
-          modelAliases,
-          providerAlias: providerStorageAlias,
-          builtInModels: models,
-          type: "llm",
-        });
+    const customModelRows = getProviderCustomModelRows({
+      customModels,
+      modelAliases,
+      providerAlias: providerStorageAlias,
+      builtInModels: models,
+      type: "llm",
+    });
 
     return (
       <div className="flex flex-wrap gap-3">
