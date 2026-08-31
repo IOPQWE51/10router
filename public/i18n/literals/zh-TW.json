@@ -224,5 +224,7 @@
   "Test all OAuth connections": "測試所有 OAuth 連線",
   "Test all Free connections": "測試所有免費連線",
   "Test all API Key connections": "測試所有 API 金鑰連線",
-  "Test all Free provider connections": "測試所有免費供應商連線"
+  "Test all Free provider connections": "測試所有免費供應商連線",
+  "tests passed": "個測試通過",
+  "Provider test failed": "提供商測試失敗"
 }

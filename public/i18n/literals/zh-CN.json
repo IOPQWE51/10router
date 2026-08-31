@@ -1435,5 +1435,6 @@
   "Push providers with all connections disabled behind those with no connections": "连接全部停用的供应商排在无连接供应商之后",
   "Test request failed": "测试请求失败",
   "OK": "正常",
-  "ERROR": "错误"
+  "ERROR": "错误",
+  "tests passed": "个测试通过"
 }

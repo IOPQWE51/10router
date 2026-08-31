@@ -315,12 +315,12 @@ export default function ProvidersPage() {
       setTestResults(data);
       if (data.summary) {
         const { passed, failed, total } = data.summary;
-        if (failed === 0) notify.success(`All ${total} tests passed`);
-        else notify.warning(`${passed}/${total} passed, ${failed} failed`);
+        if (failed === 0) notify.success(`${translate("All")} ${total} ${translate("tests passed")}`);
+        else notify.warning(`${passed}/${total} ${translate("passed")}, ${failed} ${translate("failed")}`);
       }
     } catch (error) {
-      setTestResults({ error: "Test request failed" });
-      notify.error("Provider test failed");
+      setTestResults({ error: translate("Test request failed") });
+      notify.error(translate("Provider test failed"));
     } finally {
       setTestingMode(null);
     }
@@ -521,15 +521,15 @@ export default function ProvidersPage() {
                   ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
                   : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
               }`}
-              title="Test all OAuth connections"
-              aria-label="Test all OAuth connections"
+              title={translate("Test all OAuth connections")}
+              aria-label={translate("Test all OAuth connections")}
             >
               <span
                 className={`material-symbols-outlined text-[14px]${testingMode === "oauth" ? " animate-spin" : ""}`}
               >
                 play_arrow
               </span>
-              {testingMode === "oauth" ? "Testing..." : "Test All"}
+              {testingMode === "oauth" ? translate("Testing...") : translate("Test All")}
             </button>
           </div>
         </div>
@@ -566,15 +566,15 @@ export default function ProvidersPage() {
                 ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
                 : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
             }`}
-            title="Test all Free connections"
-            aria-label="Test all Free provider connections"
+            title={translate("Test all Free connections")}
+            aria-label={translate("Test all Free provider connections")}
           >
             <span
               className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
             >
               play_arrow
             </span>
-            {testingMode === "free" ? "Testing..." : "Test All"}
+            {testingMode === "free" ? translate("Testing...") : translate("Test All")}
           </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
@@ -639,15 +639,15 @@ export default function ProvidersPage() {
                 ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
                 : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
             }`}
-            title="Test all API Key connections"
-            aria-label="Test all API Key connections"
+            title={translate("Test all API Key connections")}
+            aria-label={translate("Test all API Key connections")}
           >
             <span
               className={`material-symbols-outlined text-[14px]${testingMode === "apikey" ? " animate-spin" : ""}`}
             >
               play_arrow
             </span>
-            {testingMode === "apikey" ? "Testing..." : "Test All"}
+            {testingMode === "apikey" ? translate("Testing...") : translate("Test All")}
           </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
@@ -726,11 +726,11 @@ export default function ProvidersPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-border bg-surface/95 backdrop-blur-sm rounded-t-xl">
-              <h3 className="font-semibold">Test Results</h3>
+              <h3 className="font-semibold">{translate("Test Results")}</h3>
               <button
                 onClick={() => setTestResults(null)}
                 className="p-1 rounded-lg hover:bg-bg text-text-muted hover:text-text-main transition-colors"
-                aria-label="Close test results"
+                aria-label={translate("Close")}
               >
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
@@ -1043,27 +1043,27 @@ function ProviderTestResultsView({ results }) {
   const modeLabel =
     {
       oauth: "OAuth",
-      free: "Free",
-      apikey: "API Key",
-      provider: "Provider",
-      all: "All",
+      free: translate("Free"),
+      apikey: translate("API Key"),
+      provider: translate("Provider"),
+      all: translate("All"),
     }[mode] || mode;
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {summary && (
         <div className="flex flex-wrap items-center gap-2 text-xs mb-1 sm:gap-3">
-          <span className="text-text-muted">{modeLabel} Test</span>
+          <span className="text-text-muted">{modeLabel} {translate("Test")}</span>
           <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
-            {summary.passed} passed
+            {summary.passed} {translate("passed")}
           </span>
           {summary.failed > 0 && (
             <span className="px-2 py-0.5 rounded bg-red-500/15 text-red-400 font-medium">
-              {summary.failed} failed
+              {summary.failed} {translate("failed")}
             </span>
           )}
           <span className="text-text-muted sm:ml-auto">
-            {summary.total} tested
+            {summary.total} {translate("tested")}
           </span>
         </div>
       )}
@@ -1097,13 +1097,13 @@ function ProviderTestResultsView({ results }) {
                 : "bg-red-500/15 text-red-400"
             }`}
           >
-            {r.valid ? "OK" : r.diagnosis?.type || "ERROR"}
+            {r.valid ? translate("OK") : r.diagnosis?.type || translate("ERROR")}
           </span>
         </div>
       ))}
       {items.length === 0 && (
         <div className="text-center py-4 text-text-muted text-sm">
-          No active connections found for this group.
+          {translate("No active connections found for this group.")}
         </div>
       )}
     </div>
