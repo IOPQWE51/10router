@@ -95,6 +95,7 @@ export async function POST(request) {
 
     let isValid = false;
     let error = null;
+    let maintenance = false;
 
     // Validate with each provider
     try {
@@ -615,21 +616,47 @@ export async function POST(request) {
           let probeOk = null;
           try {
             const probeRes = await fetch(modelsUrl, { headers, signal: AbortSignal.timeout(8000) });
-            if (probeRes.status === 401 || probeRes.status === 403) probeOk = false;
+            if (probeRes.status === 401 || probeRes.status === 403) {
+              // 403 may be a Cloudflare/WAF challenge page, not a bad key —
+              // detect HTML bodies and report the endpoint as possibly down
+              // rather than a flat "invalid key".
+              const ctype = probeRes.headers.get("content-type") || "";
+              if (probeRes.status === 403 && !/json/i.test(ctype)) {
+                maintenance = true;
+                error = "Provider may be under maintenance — blocked by its gateway (e.g. Cloudflare). Try again later or check the provider status page";
+                isValid = false;
+                break;
+              }
+              probeOk = false;
+            }
             else if (probeRes.ok) probeOk = true;
-          } catch { /* fallback to chat */ }
+          } catch (probeErr) {
+            // Network failure (timeout, DNS, TLS) — endpoint may be down.
+            maintenance = true;
+            error = "Endpoint unreachable — the provider may be under maintenance, try again later";
+            isValid = false;
+            break;
+          }
           if (probeOk !== null) {
             isValid = probeOk;
             break;
           }
           // Fallback: minimal chat probe
           const defaultModel = getDefaultModel(provider) || "test";
-          const chatRes = await fetch(cfg.baseUrl, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ model: defaultModel, messages: [{ role: "user", content: "ping" }], max_tokens: 1 }),
-            signal: AbortSignal.timeout(10000),
-          });
+          let chatRes;
+          try {
+            chatRes = await fetch(cfg.baseUrl, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ model: defaultModel, messages: [{ role: "user", content: "ping" }], max_tokens: 1 }),
+              signal: AbortSignal.timeout(10000),
+            });
+          } catch (chatErr) {
+            maintenance = true;
+            error = "Endpoint unreachable — the provider may be under maintenance, try again later";
+            isValid = false;
+            break;
+          }
           isValid = chatRes.status !== 401 && chatRes.status !== 403;
           break;
         }
@@ -642,6 +669,7 @@ export async function POST(request) {
     return NextResponse.json({
       valid: isValid,
       error: isValid ? null : (error || "Invalid API key"),
+      maintenance: maintenance || undefined,
     });
   } catch (error) {
     console.log("Error validating API key:", error);

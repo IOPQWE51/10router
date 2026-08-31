@@ -41,6 +41,8 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
   const [region, setRegion] = useState(defaultRegion);
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState(null);
+  const [validationError, setValidationError] = useState(null);
+  const [validationMaintenance, setValidationMaintenance] = useState(false);
   const [saving, setSaving] = useState(false);
   const bulkPlaceholder = isCloudflareAi
     ? `name1|sk-key1|acc123456\nname2|sk-key2|def789012\nsk-key-only-auto-named`
@@ -83,8 +85,12 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
       });
       const data = await res.json();
       setValidationResult(data.valid ? "success" : "failed");
+      setValidationError(data.valid ? null : (data.error || null));
+      setValidationMaintenance(!!data.maintenance);
     } catch {
       setValidationResult("failed");
+      setValidationError(null);
+      setValidationMaintenance(false);
     } finally {
       setValidating(false);
     }
@@ -306,9 +312,12 @@ export default function AddApiKeyModal({ isOpen, provider, providerName, isCompa
           </p>
         )}
         {validationResult && (
-          <Badge variant={validationResult === "success" ? "success" : "error"}>
-            {validationResult === "success" ? "Valid" : "Invalid"}
+          <Badge variant={validationResult === "success" ? "success" : (validationMaintenance ? "warning" : "error")}>
+            {validationResult === "success" ? "Valid" : (validationMaintenance ? "Check endpoint" : "Invalid")}
           </Badge>
+        )}
+        {validationMaintenance && validationError && (
+          <p className="text-xs text-amber-500 break-words">{validationError}</p>
         )}
         {error && (
           <p className="text-xs text-red-500 break-words">{error}</p>

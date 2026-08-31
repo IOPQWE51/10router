@@ -817,17 +817,42 @@ case "llm7": {
       case "baidu":
       case "featherless":
       case "bluesminds":
-      case "alitp-intl": {
+      case "alitp-intl":
+      case "tokenbom":
+      case "gorouter":
+      case "tabiauto": {
         // Generic OpenAI-compatible freeTier/apikey providers with a GET
         // /models endpoint and default Bearer auth — validate via that.
         const validateUrl =
           PROVIDERS[connection.provider]?.validateUrl ||
           (PROVIDERS[connection.provider]?.baseUrl?.replace(/\/chat\/completions$/, "") + "/models");
         if (!validateUrl || validateUrl === "/models") return { valid: false, error: "Provider test not supported" };
-        const res = await fetchWithConnectionProxy(validateUrl, {
-          headers: { Authorization: `Bearer ${connection.apiKey}` },
-        }, effectiveProxy);
+        let res;
+        try {
+          res = await fetchWithConnectionProxy(validateUrl, {
+            headers: { Authorization: `Bearer ${connection.apiKey}` },
+          }, effectiveProxy);
+        } catch (err) {
+          // Network-level failure (DNS, timeout, TLS, connection reset) — the
+          // upstream endpoint may be down / still under maintenance.
+          return {
+            valid: false,
+            error: "Endpoint unreachable — the provider may be under maintenance, try again later",
+            maintenance: true,
+          };
+        }
+        // Cloudflare challenge page (or any HTML, not JSON) means the gateway
+        // is up but blocking direct API access — likely WAF / under maintenance.
+        const contentType = res.headers.get("content-type") || "";
+        const isCloudflare = /text\/html/i.test(contentType) || res.status === 403;
         const valid = res.status !== 401 && res.status !== 403;
+        if (!valid && (isCloudflare || !/json/i.test(contentType))) {
+          return {
+            valid: false,
+            error: "Provider may be under maintenance — blocked by its gateway (e.g. Cloudflare). Try again later or check the provider status page",
+            maintenance: true,
+          };
+        }
         return { valid, error: valid ? null : "Invalid API key" };
       }
       case "codebuddy-cn": {
