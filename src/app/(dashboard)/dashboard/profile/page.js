@@ -753,6 +753,17 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (usageImportFileRef.current) usageImportFileRef.current.value = "";
     if (!file) return;
+    // Hard validation: accept attribute is only a UI hint — some browsers
+    // (Safari etc.) let any file through. Reject anything that isn't SQLite.
+    const isSqlite =
+      /\.(sqlite|sqlite3|db)$/i.test(file.name) ||
+      file.type === "application/x-sqlite3" ||
+      file.type === "application/vnd.sqlite3" ||
+      file.type === "application/octet-stream";
+    if (!isSqlite) {
+      setUsageImportStatus({ type: "error", message: translate("Only SQLite database files (.sqlite/.db) can be imported") });
+      return;
+    }
     void importUsageFile(file);
   };
 

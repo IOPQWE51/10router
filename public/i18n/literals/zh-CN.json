@@ -1462,5 +1462,6 @@
   "Imported": "已导入",
   "usage records": "条使用记录",
   "skipped": "跳过",
-  "total": "总计"
+  "total": "总计",
+  "Only SQLite database files (.sqlite/.db) can be imported": "只能导入 SQLite 数据库文件（.sqlite/.db）"
 }
