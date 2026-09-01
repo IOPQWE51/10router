@@ -101,6 +101,12 @@ export default function ProvidersPage() {
   const [providerNodes, setProviderNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllApikey, setShowAllApikey] = useState(false);
+  // Community welfare providers (公益站: gorouter/tabiauto) are hidden by
+  // default; the toggle shows them with a "community" badge.
+  const [showCommunityProviders, setShowCommunityProviders] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("showCommunityProviders") === "1";
+  });
   const [showAddCompatibleModal, setShowAddCompatibleModal] = useState(false);
   const [showAddAnthropicCompatibleModal, setShowAddAnthropicCompatibleModal] =
     useState(false);
@@ -117,6 +123,13 @@ export default function ProvidersPage() {
     registerSearch("Search providers...");
     return () => unregisterSearch();
   }, [registerSearch, unregisterSearch]);
+
+  // Persist the community-providers visibility toggle across visits.
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("showCommunityProviders", showCommunityProviders ? "1" : "0");
+    }
+  }, [showCommunityProviders]);
 
   const matchSearch = (name) =>
     !searchQuery.trim() ||
@@ -376,12 +389,18 @@ export default function ProvidersPage() {
   // which looks wrong. Combined sort keeps connected providers on top.
   const freeAllEntries = [
     ...Object.entries(FREE_PROVIDERS)
-      .filter(([, info]) => !info.hidden && matchSearch(info.name))
+      .filter(
+        ([, info]) =>
+          !info.hidden &&
+          !(info.community && !showCommunityProviders) &&
+          matchSearch(info.name),
+      )
       .map(([k, info]) => ({ key: k, info, stats: getProviderStats(k, dualAuthTypes(info, k)), isFreeTier: false })),
     ...Object.entries(FREE_TIER_PROVIDERS)
       .filter(
         ([, info]) =>
           !info.hidden &&
+          !(info.community && !showCommunityProviders) &&
           matchSearch(info.name) &&
           (info.serviceKinds ?? ["llm"]).includes("llm"),
       )
@@ -558,24 +577,36 @@ export default function ProvidersPage() {
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
             Free Tier Providers
           </h2>
-          <button
-            onClick={() => handleBatchTest("free")}
-            disabled={!!testingMode}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
-              testingMode === "free"
-                ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
-            }`}
-            title={translate("Test all Free connections")}
-            aria-label={translate("Test all Free provider connections")}
-          >
-            <span
-              className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Community welfare providers toggle (公益站) */}
+            <label className="flex items-center gap-2 cursor-pointer" title={translate("Show community welfare providers (公益站) with no recharge entry")}>
+              <span className="text-xs text-text-muted select-none">{translate("Community")}</span>
+              <Toggle
+                checked={showCommunityProviders}
+                onChange={setShowCommunityProviders}
+                aria-label={translate("Show community welfare providers")}
+                size="sm"
+              />
+            </label>
+            <button
+              onClick={() => handleBatchTest("free")}
+              disabled={!!testingMode}
+              className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
+                testingMode === "free"
+                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
+                  : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+              }`}
+              title={translate("Test all Free connections")}
+              aria-label={translate("Test all Free provider connections")}
             >
-              play_arrow
-            </span>
-            {testingMode === "free" ? translate("Testing...") : translate("Test All")}
-          </button>
+              <span
+                className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
+              >
+                play_arrow
+              </span>
+              {testingMode === "free" ? translate("Testing...") : translate("Test All")}
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {freeAllEntries.map(({ key, info, isFreeTier }) => {
@@ -795,7 +826,14 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle, topolog
               />
             </div>
             <div className="min-w-0">
-              <h3 className="truncate font-semibold">{provider.name}</h3>
+              <h3 className="truncate font-semibold flex items-center gap-1.5">
+                {provider.name}
+                {provider.community && (
+                  <Badge variant="warning" size="sm" className="shrink-0">
+                    {translate("Community")}
+                  </Badge>
+                )}
+              </h3>
               <div className="flex min-w-0 items-center gap-1.5 text-xs flex-wrap">
                 {allDisabled ? (
                   <Badge variant="default" size="sm">
@@ -948,7 +986,14 @@ function ApiKeyProviderCard({
               />
             </div>
             <div className="min-w-0">
-              <h3 className="truncate font-semibold">{provider.name}</h3>
+              <h3 className="truncate font-semibold flex items-center gap-1.5">
+                {provider.name}
+                {provider.community && (
+                  <Badge variant="warning" size="sm" className="shrink-0">
+                    {translate("Community")}
+                  </Badge>
+                )}
+              </h3>
               <div className="flex min-w-0 items-center gap-1.5 text-xs flex-wrap">
                 {allDisabled ? (
                   <Badge variant="default" size="sm">

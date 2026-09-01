@@ -15,6 +15,10 @@ export default {
     },
   },
   category: "freeTier",
+  // Community welfare gateway (公益站) — no recharge entry, run by the community.
+  // Hidden from the provider list by default; shown via the "Show community
+  // providers" toggle on the providers page.
+  community: true,
   authType: "apikey",
   authModes: ["apikey"],
   transport: {

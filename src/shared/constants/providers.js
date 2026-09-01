@@ -32,6 +32,9 @@ function buildProviderEntry(r) {
     ...(r.hasProviderSpecificData ? { hasProviderSpecificData: true } : {}),
     ...(r.noAuth ? { noAuth: true } : {}),
     ...(r.passthroughModels ? { passthroughModels: true } : {}),
+    // Community welfare provider (公益站) — hidden by default on the providers
+    // page unless the "Show community providers" toggle is on.
+    ...(r.community ? { community: true } : {}),
     ...(r.hasOAuth ? { hasOAuth: true } : {}),
     ...(r.authModes ? { authModes: r.authModes } : {}),
     ...(r.authType ? { authType: r.authType } : {}),

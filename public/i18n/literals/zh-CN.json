@@ -1464,5 +1464,8 @@
   "skipped": "跳过",
   "total": "总计",
   "Only SQLite database files (.sqlite/.db) can be imported": "只能导入 SQLite 数据库文件（.sqlite/.db）",
-  "Account filter is active and persists across visits": "已启用账户筛选，该选择会在下次访问时保留"
+  "Account filter is active and persists across visits": "已启用账户筛选，该选择会在下次访问时保留",
+  "Community": "公益站",
+  "Show community welfare providers": "显示公益站供应商",
+  "Show community welfare providers (公益站) with no recharge entry": "显示无充值入口的公益站供应商（GoRouter / TaBiAI）"
 }
