@@ -69,10 +69,18 @@ export const SKILLS = [
   },
 ];
 
-export function getSkillRawUrl(id) {
-  return `${SKILLS_RAW_BASE}/${id}/SKILL.md`;
+// Pick the SKILL.md filename based on the active locale: Chinese locales link
+// to the bilingual Chinese version (SKILL.zh-CN.md); everything else uses the
+// English default. This keeps the /dashboard/skills page's links in sync with
+// the user's language.
+function skillFileForLocale(locale) {
+  return locale === "zh-CN" ? "SKILL.zh-CN.md" : "SKILL.md";
 }
 
-export function getSkillBlobUrl(id) {
-  return `${SKILLS_BLOB_BASE}/${id}/SKILL.md`;
+export function getSkillRawUrl(id, locale) {
+  return `${SKILLS_RAW_BASE}/${id}/${skillFileForLocale(locale)}`;
+}
+
+export function getSkillBlobUrl(id, locale) {
+  return `${SKILLS_BLOB_BASE}/${id}/${skillFileForLocale(locale)}`;
 }
