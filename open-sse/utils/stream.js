@@ -144,6 +144,23 @@ export function createSSEStream(options = {}) {
                     delete choice.delta.tool_calls;
                     fieldsInjected = true;
                   }
+                  // Normalize tool_calls with an empty function.name. Some
+                  // upstreams (e.g. CodeBuddy CN) stream the tool name on the
+                  // first chunk and then repeat `function:{name:"",arguments}`
+                  // on every subsequent chunk for the SAME tool index. A client
+                  // that blindly overwrites the accumulated name (rather than
+                  // skipping empty ones) ends up with `unknown tool ""`.
+                  // Dropping the empty `name` makes the stream match the OpenAI
+                  // spec (name only on the first chunk; later chunks carry just
+                  // arguments), so the client keeps the already-accumulated name.
+                  if (choice.delta?.tool_calls && Array.isArray(choice.delta.tool_calls)) {
+                    for (const tc of choice.delta.tool_calls) {
+                      if (tc?.function && tc.function.name === "" && Object.keys(tc.function).length > 1) {
+                        delete tc.function.name;
+                        fieldsInjected = true;
+                      }
+                    }
+                  }
                 }
               }
 
