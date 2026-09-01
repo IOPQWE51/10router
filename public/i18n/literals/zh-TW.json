@@ -274,5 +274,6 @@
   "Account filter is active and persists across visits": "已啟用帳戶篩選，該選擇會在下次造訪時保留",
   "Community": "公益站",
   "Show community welfare providers": "顯示公益站供應商",
-  "Show community welfare providers (公益站) with no recharge entry": "顯示無儲值入口的公益站供應商（GoRouter / TaBiAI）"
+  "Show community welfare providers (公益站) with no recharge entry": "顯示無儲值入口的公益站供應商（GoRouter / TaBiAI）",
+  "Show free community gateways with no recharge entry (GoRouter / TaBiAI)": "顯示無儲值入口的免費公益站供應商（GoRouter / TaBiAI）"
 }

@@ -102,11 +102,8 @@ export default function ProvidersPage() {
   const [loading, setLoading] = useState(true);
   const [showAllApikey, setShowAllApikey] = useState(false);
   // Community welfare providers (公益站: gorouter/tabiauto) are hidden by
-  // default; the toggle shows them with a "community" badge.
-  const [showCommunityProviders, setShowCommunityProviders] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem("showCommunityProviders") === "1";
-  });
+  // default; shown when the settings toggle (Profile → Providers) is on.
+  const [showCommunityProviders, setShowCommunityProviders] = useState(false);
   const [showAddCompatibleModal, setShowAddCompatibleModal] = useState(false);
   const [showAddAnthropicCompatibleModal, setShowAddAnthropicCompatibleModal] =
     useState(false);
@@ -123,13 +120,6 @@ export default function ProvidersPage() {
     registerSearch("Search providers...");
     return () => unregisterSearch();
   }, [registerSearch, unregisterSearch]);
-
-  // Persist the community-providers visibility toggle across visits.
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("showCommunityProviders", showCommunityProviders ? "1" : "0");
-    }
-  }, [showCommunityProviders]);
 
   const matchSearch = (name) =>
     !searchQuery.trim() ||
@@ -216,6 +206,7 @@ export default function ProvidersPage() {
           const settingsData = await settingsRes.json();
           setTopologyVisibility(settingsData.topologyVisibility || {});
           setDisabledLastSort(settingsData.providerDisabledLastSort === true);
+          setShowCommunityProviders(settingsData.showCommunityProviders === true);
         }
       } catch (error) {
         console.log("Error fetching data:", error);
@@ -577,36 +568,24 @@ export default function ProvidersPage() {
           <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2 leading-tight">
             Free Tier Providers
           </h2>
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Community welfare providers toggle (公益站) */}
-            <label className="flex items-center gap-2 cursor-pointer" title={translate("Show community welfare providers (公益站) with no recharge entry")}>
-              <span className="text-xs text-text-muted select-none">{translate("Community")}</span>
-              <Toggle
-                checked={showCommunityProviders}
-                onChange={setShowCommunityProviders}
-                aria-label={translate("Show community welfare providers")}
-                size="sm"
-              />
-            </label>
-            <button
-              onClick={() => handleBatchTest("free")}
-              disabled={!!testingMode}
-              className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
-                testingMode === "free"
-                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                  : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
-              }`}
-              title={translate("Test all Free connections")}
-              aria-label={translate("Test all Free provider connections")}
+          <button
+            onClick={() => handleBatchTest("free")}
+            disabled={!!testingMode}
+            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
+              testingMode === "free"
+                ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
+                : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
+            }`}
+            title={translate("Test all Free connections")}
+            aria-label={translate("Test all Free provider connections")}
+          >
+            <span
+              className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
             >
-              <span
-                className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
-              >
-                play_arrow
-              </span>
-              {testingMode === "free" ? translate("Testing...") : translate("Test All")}
-            </button>
-          </div>
+              play_arrow
+            </span>
+            {testingMode === "free" ? translate("Testing...") : translate("Test All")}
+          </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
           {freeAllEntries.map(({ key, info, isFreeTier }) => {
