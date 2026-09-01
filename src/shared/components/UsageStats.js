@@ -238,19 +238,28 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
       fetch("/api/provider-nodes").then((r) => r.ok ? r.json() : null),
       fetch("/api/settings", { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
-        .then((s) => s?.topologyVisibility || {}),
+        .then((s) => ({
+          topologyVisibility: s?.topologyVisibility || {},
+          showCommunityProviders: s?.showCommunityProviders === true,
+        })),
     ])
-      .then(([d, nodesData, topologyVisibility]) => {
+      .then(([d, nodesData, { topologyVisibility, showCommunityProviders }]) => {
         setTopologyVisibility(topologyVisibility);
         // Build node name lookup for custom providers
         const nodeNameMap = {};
         for (const node of (nodesData?.nodes || [])) {
           nodeNameMap[node.id] = node.name;
         }
+        // Community welfare providers (公益站: gorouter/tabiauto) are hidden from
+        // the topology unless the "Show community providers" setting is on — keep
+        // this in sync with the providers page filter.
+        const isCommunityHidden = (providerId) =>
+          !showCommunityProviders && AI_PROVIDERS[providerId]?.community === true;
         const seen = new Set();
         const unique = (d?.connections || []).filter((c) => {
           if (c.isActive === false) return false;
           if (!isLLMProvider(c.provider)) return false;
+          if (isCommunityHidden(c.provider)) return false;
           if (seen.has(c.provider)) return false;
           seen.add(c.provider);
           return true;
@@ -262,6 +271,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
           .filter((p) =>
             p.noAuth &&
             !p.hidden &&
+            !isCommunityHidden(p.id) &&
             !seen.has(p.id) &&
             isLLMProvider(p.id) &&
             isTopologyVisible(p, topologyVisibility),
