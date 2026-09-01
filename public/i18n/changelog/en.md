@@ -17,6 +17,9 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 - **Friendly maintenance hints on connection tests**: endpoint down / Cloudflare-blocked shows a maintenance note instead of a misleading "Invalid API key"
 - **Account filter reminder**: quota-pack account filter persists; an amber reminder bar shows when a non-default filter is active
 - **CodeBuddy CN DeepSeek 11150**: DeepSeek-series calls no longer fail with 400 on the reasoning-effort param (auto/off); coding agents (dsh, etc.) work normally
+- **CodeBuddy empty tool name (11133 / unknown tool)**: empty `function.name` in streaming tool calls is normalized, so standard clients no longer mis-detect the tool name
+- **Topology still shows hidden community providers**: the usage topology now honors the "Show community providers" toggle — community welfare sites (GoRouter/TaBiAI) are hidden when it's off
+- **Skills page i18n + Chinese links**: Skills page text is now localized; in Chinese (zh-CN) the links point to the Chinese skill files
 
 ## v1.0.3 (2026-08-30)
 
