@@ -63,7 +63,17 @@ export class CodeBuddyExecutor extends DefaultExecutor {
     // thinking pipeline sets reasoning_effort only when the client asks, and never
     // sets reasoning_summary — so reasoning never shows. Mirror the CLI here.
     const eff = transformed.reasoning_effort;
-    if (eff === "none" || eff === "off") {
+    // DeepSeek-series models reject BOTH "auto" and "off" with 400 code 11150
+    // ("reasoning effort value is not supported by the current model") — they
+    // only accept low/medium/high/xhigh/max/none. Translate the two unsupported
+    // values so agent clients (e.g. dsh sending THINK:auto) don't hard-fail:
+    //   auto → high (keep reasoning, it's the gateway default anyway)
+    //   off  → drop the field (equivalent to none, which DeepSeek accepts)
+    const isDeepSeek = /^deepseek/.test(model || "");
+    if (isDeepSeek && (eff === "auto" || eff === "off")) {
+      if (eff === "auto") transformed.reasoning_effort = "high";
+      else delete transformed.reasoning_effort;
+    } else if (eff === "none" || eff === "off") {
       delete transformed.reasoning_effort; // gateway has no "none" — just omit
     } else if (eff) {
       // Client explicitly asked for reasoning — mirror the CLI's reasoning_summary
