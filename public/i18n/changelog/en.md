@@ -8,6 +8,7 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 - **3 new providers**: **TokenBom** (decentralized token marketplace — idle API keys earn credits, credits call many models; 79-model online catalog), **GoRouter** (free gateway, no recharge entry), **TaBiAI** (free gateway, no recharge entry)
 - **Usage history import**: import usage data from 9Router backups (SQLite files) — merged into stats without touching config
 - **Notification overhaul**: global toasts moved to top-center; browser-native alert() dialogs replaced with friendly notifications
+- **Community welfare providers**: GoRouter / TaBiAI are hidden by default with a "community" badge; toggle them on in **Settings → Providers → Show community welfare providers**
 
 ### 🐛 Fixes
 - **Provider ordering fixed**: connected providers first, disabled sink to bottom — no longer scrambled by priority
@@ -15,6 +16,7 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 - **B.AI / CodeBuddy CN model catalogs completed**: missing models that caused "not found" when switching are added
 - **Friendly maintenance hints on connection tests**: endpoint down / Cloudflare-blocked shows a maintenance note instead of a misleading "Invalid API key"
 - **Account filter reminder**: quota-pack account filter persists; an amber reminder bar shows when a non-default filter is active
+- **CodeBuddy CN DeepSeek 11150**: DeepSeek-series calls no longer fail with 400 on the reasoning-effort param (auto/off); coding agents (dsh, etc.) work normally
 
 ## v1.0.3 (2026-08-30)
 
