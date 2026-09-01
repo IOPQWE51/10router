@@ -56,7 +56,7 @@ npx vitest run unit/capabilities.test.js   # single file (path relative to tests
 ## Architecture
 
 Two authoritative docs already exist — read them before working in these areas rather than re-deriving:
-- `docs/ARCHITECTURE.md` — full system: request lifecycle, combo/account fallback, OAuth + token refresh, cloud sync, data model.
+- `docs/en/ARCHITECTURE.md`（中文版 `docs/zh-CN/ARCHITECTURE.md`） — full system: request lifecycle, combo/account fallback, OAuth + token refresh, cloud sync, data model.
 - `open-sse/AGENTS.md` — the routing/translation engine's own conventions and "how to add a provider/executor/translator". **Read this before editing anything under `open-sse/`.**
 
 ### Request flow (the thing to understand first)

@@ -171,6 +171,7 @@ git show upstream/master:<path>    # 阅读某文件的上游实现
 
 - [GitHub 仓库](https://github.com/techysy/10router) — 主仓库
 - [Gitee 镜像](https://gitee.com/techysy/10router) — 国内镜像
+- [📚 技术文档](https://github.com/techysy/10router/tree/main/docs) — 架构 + 工程专题（中英双语导航）
 - [上游项目 9Router](https://github.com/decolua/9router)
 - [9Router 文档](https://9router.com)
 - [9Router fnOS 应用包](https://github.com/techysy/9router-fnos)
