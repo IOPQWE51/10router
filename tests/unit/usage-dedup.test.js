@@ -13,7 +13,14 @@ const originalDataDir = process.env.DATA_DIR;
 let tempDir;
 let db;
 
-const SAME_MS = "2026-08-30T12:00:00.123Z";
+// NOTE: timestamps are computed from "now" so the 24h stats window in
+// getUsageStats("24h") always contains them. Hardcoded dates rot as the wall
+// clock moves past them (the suite silently started failing two days after
+// it was written).
+const NOW_MS = Date.now();
+const SAME_MS = new Date(NOW_MS).toISOString();
+const SAME_MS_PLUS_1 = new Date(NOW_MS + 1000).toISOString();
+const SAME_MS_PLUS_2 = new Date(NOW_MS + 2000).toISOString();
 const baseEntry = {
   provider: "deepseek",
   model: "deepseek-v4",
@@ -51,16 +58,16 @@ describe("saveRequestUsage dedup (usageKey contract)", () => {
   });
 
   it("the same usageKey written twice counts once (idempotency guard still works)", async () => {
-    await db.saveRequestUsage({ ...baseEntry, timestamp: "2026-08-30T12:00:01.000Z", usageKey: "k-dup" });
-    await db.saveRequestUsage({ ...baseEntry, timestamp: "2026-08-30T12:00:01.000Z", usageKey: "k-dup" });
+    await db.saveRequestUsage({ ...baseEntry, timestamp: SAME_MS_PLUS_1, usageKey: "k-dup" });
+    await db.saveRequestUsage({ ...baseEntry, timestamp: SAME_MS_PLUS_1, usageKey: "k-dup" });
 
     const hist = await db.getUsageHistory({ provider: "deepseek" });
     expect(hist.length).toBe(3); // 2 from the previous case + 1, not 4
   });
 
   it("keyless callers keep the legacy content-only dedup", async () => {
-    await db.saveRequestUsage({ ...baseEntry, timestamp: "2026-08-30T12:00:02.000Z" });
-    await db.saveRequestUsage({ ...baseEntry, timestamp: "2026-08-30T12:00:02.000Z" });
+    await db.saveRequestUsage({ ...baseEntry, timestamp: SAME_MS_PLUS_2 });
+    await db.saveRequestUsage({ ...baseEntry, timestamp: SAME_MS_PLUS_2 });
 
     const hist = await db.getUsageHistory({ provider: "deepseek" });
     expect(hist.length).toBe(4); // +1, second keyless write deduped
