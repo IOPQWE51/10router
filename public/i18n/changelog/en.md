@@ -2,6 +2,20 @@
 
 User-facing highlights per release. See [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md) for the full developer log.
 
+## v1.0.4 (2026-09-01)
+
+### ✨ New
+- **3 new providers**: **TokenBom** (decentralized token marketplace — idle API keys earn credits, credits call many models; 79-model online catalog), **GoRouter** (free gateway, no recharge entry), **TaBiAI** (free gateway, no recharge entry)
+- **Usage history import**: import usage data from 9Router backups (SQLite files) — merged into stats without touching config
+- **Notification overhaul**: global toasts moved to top-center; browser-native alert() dialogs replaced with friendly notifications
+
+### 🐛 Fixes
+- **Provider ordering fixed**: connected providers first, disabled sink to bottom — no longer scrambled by priority
+- **JSON catalog models invisible after enabling**: stale disable records are now cleared ("enabled but not listed" resolved)
+- **B.AI / CodeBuddy CN model catalogs completed**: missing models that caused "not found" when switching are added
+- **Friendly maintenance hints on connection tests**: endpoint down / Cloudflare-blocked shows a maintenance note instead of a misleading "Invalid API key"
+- **Account filter reminder**: quota-pack account filter persists; an amber reminder bar shows when a non-default filter is active
+
 ## v1.0.3 (2026-08-30)
 
 ### ✨ New
