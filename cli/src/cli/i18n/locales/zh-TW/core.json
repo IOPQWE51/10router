@@ -1,0 +1,40 @@
+{
+  "help.text": "用法: {bin} [選項]\n\n選項:\n  -p, --port <連接埠>   服務執行連接埠(預設: {port})\n  -H, --host <主機>     綁定位址(預設: {host})\n  -n, --no-browser      不自動開啟瀏覽器\n  -l, --log             顯示服務日誌(預設隱藏)\n  -t, --tray            以系統列模式執行(背景)\n  --skip-update         略過自動更新檢查\n  -h, --help            顯示本說明\n  -v, --version         顯示版本\n\n命令:\n  xai video --prompt \"...\" --output video.mp4\n                      透過執行中的閘道產生 Grok Imagine 影片\n                      (見: {bin} xai video --help)",
+
+  "error.standaloneMissing": "錯誤: 未找到 standalone 建置產物。",
+  "error.standaloneHint": "請先執行 'npm run build:cli'。",
+  "common.error": "錯誤:",
+
+  "update.checking": "正在檢查更新...",
+  "update.openManually": "請手動開啟瀏覽器: {url}",
+
+  "launcher.networkExposed": "⚠ 已暴露到區域網路: 可透過 {url} 存取(繫結 0.0.0.0)。僅本機使用請加 --host 127.0.0.1。",
+  "launcher.exiting": "\n正在結束...",
+  "launcher.shutdownFromTray": "\n👋 正在從系統列關閉...",
+  "launcher.banner": "\n🚀 {name} v{version}",
+  "launcher.serverLine": "服務位址: {url}",
+  "launcher.trayReady": "\n💡 路由已在系統列中執行,可以關閉此終端機。",
+  "launcher.trayReadyHint": "   以滑鼠右鍵按一下系統列圖示,可開啟儀表板或結束。",
+  "launcher.updateHeader": "\n⬆  更新 v{current} → v{latest}",
+  "launcher.updateRunAfterExit": "結束後執行以下命令:\n",
+  "launcher.pressEnterBack": "\n按 Enter 返回選單...",
+  "launcher.switchingToTray": "\n⏳ 正在切換到系統列模式...(圖示已在選單列顯示)",
+  "launcher.trayRunning": "🔔 10Router 正在系統列中執行(PID: {pid})",
+  "launcher.serverLineIndent": "   服務位址: {url}",
+  "launcher.closeTerminalHint": "\n💡 可以關閉此終端機,以滑鼠右鍵按一下系統列圖示即可結束。",
+  "launcher.startingBackground": "\n⏳ 正在啟動背景處理程序...(系統列圖示約 3 秒後出現)",
+  "launcher.backgroundRunning": "🔔 10Router 已在背景執行(PID: {pid})",
+  "launcher.startFailed": "服務啟動失敗: {message}",
+  "launcher.crashedDisablingMit": "\n⚠️  服務已當機 {count} 次,正在停用 MIT 並重新啟動...",
+  "launcher.crashedRestarting": "\n⚠️  服務已結束(code={code}),將於 {seconds} 秒後重新啟動...({attempt}/{max})",
+  "launcher.crashLogHeader": "\n--- 服務當機日誌 ---",
+  "launcher.crashLogFooter": "--- 當機日誌結束 ---",
+
+  "menu.interfaceTitle": "選擇介面 (v{version})",
+  "menu.serverSubtitle": "🚀 服務位址: {url}",
+  "menu.updateTo": "更新至 v{latest}(目前 v{current})",
+  "menu.webUi": "Web 介面(在瀏覽器中開啟)",
+  "menu.terminalUi": "終端機介面(互動式 CLI)",
+  "menu.hideToTray": "隱藏到系統列(背景執行)",
+  "menu.exit": "結束"
+}

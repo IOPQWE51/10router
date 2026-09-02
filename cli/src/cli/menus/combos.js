@@ -1,4 +1,5 @@
 const api = require("../api/client");
+const { t } = require("../i18n");
 const { prompt, confirm, pause } = require("../utils/input");
 const { clearScreen, showStatus, showHeader } = require("../utils/display");
 const { formatDate } = require("../utils/format");
@@ -29,17 +30,17 @@ async function showComboActions(combo, breadcrumb = []) {
   await showMenuWithBack({
     title: `🔀 ${combo.name}`,
     breadcrumb: [...breadcrumb, combo.name],
-    headerContent: `Name: ${combo.name}\nModels: ${modelsChain}`,
+    headerContent: t("menus.combos.actionsHeader", { name: combo.name, models: modelsChain }),
     items: [
       {
-        label: "Edit Combo",
+        label: t("menus.combos.editCombo"),
         action: async () => {
           await handleEditSingleCombo(combo);
           return true;
         }
       },
       {
-        label: "Delete Combo",
+        label: t("menus.combos.deleteCombo"),
         action: async () => {
           await handleDeleteSingleCombo(combo);
           return false; // Exit after delete
@@ -55,27 +56,27 @@ async function showComboActions(combo, breadcrumb = []) {
  */
 async function handleEditSingleCombo(combo) {
   clearScreen();
-  console.log(`\n✏️  Edit Combo: ${combo.name}\n`);
-  
-  const newName = await prompt(`New name (Enter to keep "${combo.name}"): `);
+  console.log(`\n${t("menus.combos.editTitle", { name: combo.name })}\n`);
+
+  const newName = await prompt(t("menus.combos.newNamePrompt", { name: combo.name }));
   const name = newName || combo.name;
-  
-  console.log("\nCurrent models: " + (Array.isArray(combo.models) ? combo.models.map(formatModel).join(" → ") : ""));
-  console.log("\nSelect models for this combo (add one by one):");
-  
+
+  console.log(t("menus.combos.currentModels", { models: Array.isArray(combo.models) ? combo.models.map(formatModel).join(" → ") : "" }));
+  console.log(t("menus.combos.selectModelsOneByOne"));
+
   const models = [];
   let addMore = true;
-  
+
   while (addMore) {
-    const currentChain = models.length > 0 ? models.join(" → ") : "None";
-    const model = await selectModelFromList(`Add Model #${models.length + 1}`, `Chain: ${currentChain}`);
-    
+    const currentChain = models.length > 0 ? models.join(" → ") : t("menus.combos.none");
+    const model = await selectModelFromList(t("menus.combos.addModelNumbered", { number: models.length + 1 }), t("menus.combos.chainLabel", { chain: currentChain }));
+
     if (model) {
       models.push(model);
-      console.log(`\n✓ Added: ${model}`);
-      console.log(`Current chain: ${models.join(" → ")}\n`);
-      
-      const continueAdding = await confirm("Add another model?");
+      console.log(`\n${t("menus.combos.addedCheck", { model })}`);
+      console.log(t("menus.combos.currentChain", { chain: models.join(" → ") }) + "\n");
+
+      const continueAdding = await confirm(t("menus.combos.addAnother"));
       addMore = continueAdding;
     } else {
       addMore = false;
@@ -88,9 +89,9 @@ async function handleEditSingleCombo(combo) {
   const result = await api.updateCombo(combo.id, { name, models: finalModels });
   
   if (result.success) {
-    showStatus("Combo updated!", "success");
+    showStatus(t("menus.combos.updateSuccess"), "success");
   } else {
-    showStatus(`Update failed: ${result.error}`, "error");
+    showStatus(t("menus.combos.updateFailedShort", { error: result.error }), "error");
   }
   await pause();
 }
@@ -100,13 +101,13 @@ async function handleEditSingleCombo(combo) {
  * @param {Object} combo - Combo to delete
  */
 async function handleDeleteSingleCombo(combo) {
-  const confirmed = await confirm(`Delete combo "${combo.name}"?`);
+  const confirmed = await confirm(t("menus.combos.deleteOneConfirm", { name: combo.name }));
   if (confirmed) {
     const result = await api.deleteCombo(combo.id);
     if (result.success) {
-      showStatus("Combo deleted!", "success");
+      showStatus(t("menus.combos.deleteOneSuccess"), "success");
     } else {
-      showStatus(`Delete failed: ${result.error}`, "error");
+      showStatus(t("menus.combos.deleteFailedShort", { error: result.error }), "error");
     }
     await pause();
   }
@@ -120,13 +121,13 @@ async function showCombosMenu(breadcrumb = []) {
   const { showListMenu } = require("../utils/menuHelper");
   
   await showListMenu({
-    title: "🔀 Combos Management",
+    title: t("menus.combos.managementTitle"),
     breadcrumb,
     fetchItems: async () => {
       const result = await api.getCombos();
       if (!result.success) {
         clearScreen();
-        showStatus(`Failed to load combos: ${result.error}`, "error");
+        showStatus(t("menus.combos.loadFailed", { error: result.error }), "error");
         await pause();
         return null;
       }
@@ -144,7 +145,7 @@ async function showCombosMenu(breadcrumb = []) {
       await showComboActions(combo, breadcrumb);
     },
     createAction: {
-      label: "Create New Combo",
+      label: t("menus.combos.createNewCombo"),
       action: async () => {
         await handleCreateCombo();
       }
@@ -161,22 +162,22 @@ async function showComboDetail(comboId) {
   const result = await api.getComboById(comboId);
   
   if (!result.success) {
-    showStatus(`Failed to load combo: ${result.error}`, "error");
+    showStatus(t("menus.combos.detailLoadFailed", { error: result.error }), "error");
     await pause();
     return;
   }
-  
+
   const combo = result.data;
-  
+
   console.log("┌─────────────────────────────────────────────────────────┐");
-  console.log(`│  🔀 Combo: ${combo.name.padEnd(46)} │`);
+  console.log(`│  ${t("menus.combos.detailComboLabel", { name: combo.name.padEnd(46) })} │`);
   console.log("├─────────────────────────────────────────────────────────┤");
   console.log("│                                                          │");
-  console.log(`│  ID: ${combo.id.padEnd(51)} │`);
-  console.log(`│  Created: ${formatDate(combo.createdAt).padEnd(46)} │`);
-  console.log(`│  Updated: ${formatDate(combo.updatedAt).padEnd(46)} │`);
+  console.log(`│  ${t("menus.combos.detailIdLabel", { id: combo.id.padEnd(51) })} │`);
+  console.log(`│  ${t("menus.combos.detailCreatedLabel", { date: formatDate(combo.createdAt).padEnd(46) })} │`);
+  console.log(`│  ${t("menus.combos.detailUpdatedLabel", { date: formatDate(combo.updatedAt).padEnd(46) })} │`);
   console.log("│                                                          │");
-  console.log("│  Model Chain:                                           │");
+  console.log("│  " + t("menus.combos.detailModelChain").padEnd(55) + "│");
   
   // Models is array of strings like ["ag/claude-sonnet-4-5", "kr/claude-sonnet-4.5"]
   const models = Array.isArray(combo.models) ? combo.models : [];
@@ -211,108 +212,108 @@ function formatComboLabel(combo) {
 async function handleCreateCombo() {
   clearScreen();
   
-  showStatus("Create New Combo", "info");
+  showStatus(t("menus.combos.createNewCombo"), "info");
   console.log();
-  
+
   // Get combo name
-  const name = await prompt("Combo name: ");
+  const name = await prompt(t("menus.combos.namePrompt"));
   if (!name) {
-    showStatus("Combo name is required", "error");
+    showStatus(t("menus.combos.nameRequired"), "error");
     await pause();
     return;
   }
-  
+
   // Fetch available models
-  showStatus("Loading available models...", "info");
+  showStatus(t("menus.combos.loadingModels"), "info");
   const modelsResult = await api.getModels();
-  
+
   if (!modelsResult.success) {
-    showStatus(`Failed to load models: ${modelsResult.error}`, "error");
+    showStatus(t("menus.combos.modelsLoadFailed", { error: modelsResult.error }), "error");
     await pause();
     return;
   }
-  
+
   const availableModels = modelsResult.data.models || [];
-  
+
   if (availableModels.length === 0) {
-    showStatus("No models available. Please add providers first.", "warning");
+    showStatus(t("menus.combos.noModels"), "warning");
     await pause();
     return;
   }
-  
+
   // Select models for chain
   const selectedModels = [];
-  
+
   console.log();
-  showStatus("Select models for the chain (minimum 2)", "info");
-  
+  showStatus(t("menus.combos.selectForChain"), "info");
+
   while (true) {
     clearScreen();
-    console.log(`Creating combo: ${name}`);
-    console.log(`Selected models (${selectedModels.length}):`);
-    
+    console.log(t("menus.combos.creatingNamed", { name }));
+    console.log(t("menus.combos.selectedModels", { count: selectedModels.length }));
+
     if (selectedModels.length > 0) {
       selectedModels.forEach((m, i) => {
         console.log(`  ${i + 1}. ${m.provider}/${m.model}`);
       });
     } else {
-      console.log("  (none)");
+      console.log("  " + t("menus.combos.noneInParens"));
     }
-    
+
     console.log();
-    console.log("Available models:");
+    console.log(t("menus.combos.availableModels"));
     availableModels.forEach((m, i) => {
       console.log(`  ${i + 1}. ${m.provider}/${m.model}`);
     });
-    
+
     console.log();
-    console.log("Actions:");
-    console.log("  - Enter number to add model");
-    console.log("  - Type 'done' to finish (min 2 models)");
-    console.log("  - Type 'cancel' to abort");
-    
-    const input = await prompt("\nAction: ");
-    
+    console.log(t("menus.combos.actionsTitle"));
+    console.log("  " + t("menus.combos.hintEnterNumber"));
+    console.log("  " + t("menus.combos.hintDone"));
+    console.log("  " + t("menus.combos.hintCancel"));
+
+    const input = await prompt(t("menus.combos.actionPrompt"));
+
     if (input.toLowerCase() === "cancel") {
-      showStatus("Cancelled", "warning");
+      showStatus(t("menus.combos.cancelled"), "warning");
       await pause();
       return;
     }
-    
+
     if (input.toLowerCase() === "done") {
       if (selectedModels.length < 2) {
-        showStatus("Please select at least 2 models", "error");
+        showStatus(t("menus.combos.minTwoModels"), "error");
         await pause();
         continue;
       }
       break;
     }
-    
+
     const num = parseInt(input, 10);
     if (isNaN(num) || num < 1 || num > availableModels.length) {
-      showStatus("Invalid model number", "error");
+      showStatus(t("menus.combos.invalidNumber"), "error");
       await pause();
       continue;
     }
-    
+
     selectedModels.push(availableModels[num - 1]);
   }
-  
+
   // Create combo
-  showStatus("Creating combo...", "info");
-  
+  showStatus(t("menus.combos.creating"), "info");
+
   const createResult = await api.createCombo({
     name,
     models: selectedModels
   });
-  
+
   if (!createResult.success) {
-    showStatus(`Failed to create combo: ${createResult.error}`, "error");
+    showStatus(t("menus.combos.createFailed", { error: createResult.error }), "error");
     await pause();
     return;
   }
-  
-  showStatus(`Combo "${name}" created successfully!`, "success");
+
+  showStatus(t("menus.combos.createSuccess", { name }), "success");
   await pause();
 }
 
@@ -321,15 +322,15 @@ async function handleCreateCombo() {
  */
 async function handleEditCombo(combos) {
   if (combos.length === 0) {
-    showStatus("No combos available", "warning");
+    showStatus(t("menus.combos.noCombos"), "warning");
     await pause();
     return;
   }
-  
+
   let selectedCombo = null;
-  
+
   await showMenuWithBack({
-    title: "✏️  Select Combo to Edit",
+    title: t("menus.combos.selectToEdit"),
     items: combos.map(combo => ({
       label: formatComboLabel(combo),
       action: async () => {
@@ -348,74 +349,74 @@ async function handleEditCombo(combos) {
  */
 async function editSingleCombo(combo) {
   clearScreen();
-  showStatus(`Editing combo: ${combo.name}`, "info");
+  showStatus(t("menus.combos.editingNamed", { name: combo.name }), "info");
   console.log();
-  
-  const newName = await prompt(`New name (current: ${combo.name}, press Enter to keep): `);
-  const editModels = await confirm("Edit model chain?");
-  
+
+  const newName = await prompt(t("menus.combos.newNameCurrentPrompt", { name: combo.name }));
+  const editModels = await confirm(t("menus.combos.editChainPrompt"));
+
   let newModels = combo.models;
-  
+
   if (editModels) {
     newModels = [];
-    
+
     while (true) {
       clearScreen();
-      console.log(`Editing combo: ${combo.name}`);
-      console.log(`Selected models (${newModels.length}):`);
-      
+      console.log(t("menus.combos.editingNamed", { name: combo.name }));
+      console.log(t("menus.combos.selectedModels", { count: newModels.length }));
+
       if (newModels.length > 0) {
         newModels.forEach((m, i) => console.log(`  ${i + 1}. ${m}`));
       } else {
-        console.log("  (none)");
+        console.log("  " + t("menus.combos.noneInParens"));
       }
-      
-      console.log("\nType 'done' to finish (min 2 models) or 'cancel' to abort\n");
-      
-      const model = await selectModelFromList("Add Model", "");
-      
+
+      console.log("\n" + t("menus.combos.doneOrCancel") + "\n");
+
+      const model = await selectModelFromList(t("menus.combos.addModelTitle"), "");
+
       if (model === null) {
-        showStatus("Cancelled", "warning");
+        showStatus(t("menus.combos.cancelled"), "warning");
         await pause();
         return;
       }
-      
+
       if (model === "done") {
         if (newModels.length < 2) {
-          showStatus("Please select at least 2 models", "error");
+          showStatus(t("menus.combos.minTwoModels"), "error");
           await pause();
           continue;
         }
         break;
       }
-      
+
       newModels.push(model);
-      showStatus(`Added: ${model}`, "success");
+      showStatus(t("menus.combos.addedModel", { model }), "success");
       await pause();
     }
   }
-  
+
   const updateData = {};
   if (newName) updateData.name = newName;
   if (editModels) updateData.models = newModels;
-  
+
   if (Object.keys(updateData).length === 0) {
-    showStatus("No changes made", "warning");
+    showStatus(t("menus.combos.noChanges"), "warning");
     await pause();
     return;
   }
-  
-  showStatus("Updating combo...", "info");
-  
+
+  showStatus(t("menus.combos.updating"), "info");
+
   const updateResult = await api.updateCombo(combo.id, updateData);
-  
+
   if (!updateResult.success) {
-    showStatus(`Failed to update combo: ${updateResult.error}`, "error");
+    showStatus(t("menus.combos.updateFailed", { error: updateResult.error }), "error");
     await pause();
     return;
   }
-  
-  showStatus("Combo updated successfully!", "success");
+
+  showStatus(t("menus.combos.updateSuccessFull"), "success");
   await pause();
 }
 
@@ -424,15 +425,15 @@ async function editSingleCombo(combo) {
  */
 async function handleDeleteCombo(combos) {
   if (combos.length === 0) {
-    showStatus("No combos available", "warning");
+    showStatus(t("menus.combos.noCombos"), "warning");
     await pause();
     return;
   }
-  
+
   let selectedCombo = null;
-  
+
   await showMenuWithBack({
-    title: "🗑️  Select Combo to Delete",
+    title: t("menus.combos.selectToDelete"),
     items: combos.map(combo => ({
       label: formatComboLabel(combo),
       action: async () => {
@@ -445,32 +446,32 @@ async function handleDeleteCombo(combos) {
   if (!selectedCombo) return;
   
   clearScreen();
-  showStatus(`Combo: ${selectedCombo.name}`, "warning");
-  const modelsDisplay = Array.isArray(selectedCombo.models) 
-    ? selectedCombo.models.map(formatModel).join(" → ") 
+  showStatus(t("menus.combos.comboLabel", { name: selectedCombo.name }), "warning");
+  const modelsDisplay = Array.isArray(selectedCombo.models)
+    ? selectedCombo.models.map(formatModel).join(" → ")
     : "";
-  console.log(`Models: ${modelsDisplay}`);
+  console.log(t("menus.combos.modelsLabel", { models: modelsDisplay }));
   console.log();
-  
-  const confirmed = await confirm("Are you sure you want to delete this combo?");
-  
+
+  const confirmed = await confirm(t("menus.combos.deleteConfirm"));
+
   if (!confirmed) {
-    showStatus("Cancelled", "info");
+    showStatus(t("menus.combos.cancelled"), "info");
     await pause();
     return;
   }
-  
-  showStatus("Deleting combo...", "info");
-  
+
+  showStatus(t("menus.combos.deleting"), "info");
+
   const deleteResult = await api.deleteCombo(selectedCombo.id);
-  
+
   if (!deleteResult.success) {
-    showStatus(`Failed to delete combo: ${deleteResult.error}`, "error");
+    showStatus(t("menus.combos.deleteFailed", { error: deleteResult.error }), "error");
     await pause();
     return;
   }
-  
-  showStatus("Combo deleted successfully!", "success");
+
+  showStatus(t("menus.combos.deleteSuccessFull"), "success");
   await pause();
 }
 

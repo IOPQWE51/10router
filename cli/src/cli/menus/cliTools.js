@@ -1,4 +1,5 @@
 const api = require("../api/client");
+const { t } = require("../i18n");
 const { pause, confirm } = require("../utils/input");
 const { showStatus } = require("../utils/display");
 const { selectModelFromList } = require("../utils/modelSelector");
@@ -40,7 +41,7 @@ async function getFirstApiKey() {
  */
 async function buildClaudeHeader() {
   const result = await api.getCliToolSettings("claude");
-  if (!result.success) return `  ${COLORS.red}Failed to load settings${COLORS.reset}`;
+  if (!result.success) return `  ${COLORS.red}${t("menus.cliTools.loadFailed")}${COLORS.reset}`;
 
   const settings = result.data.settings;
   const currentUrl = settings?.env?.ANTHROPIC_BASE_URL;
@@ -48,14 +49,14 @@ async function buildClaudeHeader() {
   const lines = [];
 
   if (currentUrl) {
-    lines.push(`Status:   ${COLORS.green}✓ Configured${COLORS.reset}`);
-    lines.push(`Endpoint: ${COLORS.cyan}${currentUrl}${COLORS.reset}`);
+    lines.push(t("menus.cliTools.statusLine", { value: `${COLORS.green}${t("menus.cliTools.configured")}${COLORS.reset}` }));
+    lines.push(t("menus.cliTools.endpointLine", { value: `${COLORS.cyan}${currentUrl}${COLORS.reset}` }));
     if (currentKey) {
-      lines.push(`API Key:  ${COLORS.dim}${currentKey.substring(0, 10)}...${COLORS.reset}`);
+      lines.push(t("menus.cliTools.apiKeyLine", { value: `${COLORS.dim}${currentKey.substring(0, 10)}...${COLORS.reset}` }));
     }
   } else {
-    lines.push(`Status:   ${COLORS.red}✗ Not configured${COLORS.reset}`);
-    lines.push(`${COLORS.dim}Run "Quick Setup" to configure${COLORS.reset}`);
+    lines.push(t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notConfigured")}${COLORS.reset}` }));
+    lines.push(`${COLORS.dim}${t("menus.cliTools.runQuickSetup")}${COLORS.reset}`);
   }
 
   return lines.join("\n");
@@ -68,7 +69,7 @@ async function buildClaudeHeader() {
  */
 async function getClaudeModel(envKey) {
   const result = await api.getCliToolSettings("claude");
-  return result.success ? (result.data.settings?.env?.[envKey] || "Not set") : "Not set";
+  return result.success ? (result.data.settings?.env?.[envKey] || t("menus.cliTools.notSetValue")) : t("menus.cliTools.notSetValue");
 }
 
 /**
@@ -80,16 +81,16 @@ async function claudeQuickSetup(port) {
   const apiKey = await getFirstApiKey();
 
   if (!apiKey) {
-    showStatus("No API keys found. Create one in API Keys menu first.", "error");
+    showStatus(t("menus.cliTools.noApiKeys"), "error");
     await pause();
     return;
   }
 
   const env = { ANTHROPIC_BASE_URL: endpoint, ANTHROPIC_AUTH_TOKEN: apiKey, API_TIMEOUT_MS: "600000" };
-  CLAUDE_MODEL_TYPES.forEach(t => { env[t.envKey] = t.defaultValue; });
+  CLAUDE_MODEL_TYPES.forEach(item => { env[item.envKey] = item.defaultValue; });
 
   const result = await api.applyCliToolSettings("claude", { env });
-  showStatus(result.success ? "Quick Setup completed!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.quickSetupDone") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -100,7 +101,7 @@ async function claudeQuickSetup(port) {
  */
 async function claudeSelectModel(modelType, port) {
   const current = await getClaudeModel(modelType.envKey);
-  const selected = await selectModelFromList(`Select ${modelType.name} Model`, current, { excludeCombos: true });
+  const selected = await selectModelFromList(t("menus.cliTools.selectModelType", { type: modelType.name }), current, { excludeCombos: true });
   if (!selected) return;
 
   const env = { [modelType.envKey]: selected };
@@ -116,7 +117,7 @@ async function claudeSelectModel(modelType, port) {
   }
 
   const result = await api.applyCliToolSettings("claude", { env });
-  showStatus(result.success ? `${modelType.name} → ${selected} saved!` : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.modelSaved", { type: modelType.name, model: selected }) : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -125,7 +126,7 @@ async function claudeSelectModel(modelType, port) {
  */
 async function claudeReset() {
   const result = await api.resetCliToolSettings("claude");
-  showStatus(result.success ? "Settings reset successfully!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.claudeResetOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -146,7 +147,7 @@ async function showClaudeCodeMenu(port, breadcrumb = []) {
     }),
     items: [
       {
-        label: "⚡ Quick Setup (recommended)",
+        label: t("menus.cliTools.quickSetupRecommended"),
         action: async () => { await claudeQuickSetup(port); return true; }
       },
       {
@@ -162,7 +163,7 @@ async function showClaudeCodeMenu(port, breadcrumb = []) {
         action: async () => { await claudeSelectModel(CLAUDE_MODEL_TYPES[2], port); return true; }
       },
       {
-        label: "Reset to Default",
+        label: t("menus.cliTools.resetToDefault"),
         action: async () => { await claudeReset(); return true; }
       }
     ]
@@ -177,15 +178,15 @@ async function showClaudeCodeMenu(port, breadcrumb = []) {
  */
 async function buildCodexHeader() {
   const result = await api.getCliToolSettings("codex");
-  if (!result.success) return `  ${COLORS.red}Failed to load settings${COLORS.reset}`;
+  if (!result.success) return `  ${COLORS.red}${t("menus.cliTools.loadFailed")}${COLORS.reset}`;
 
   const { installed, has10Router, config } = result.data;
-  if (!installed) return `Status:   ${COLORS.red}✗ Codex CLI not installed${COLORS.reset}`;
+  if (!installed) return t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notInstalled", { tool: "Codex CLI" })}${COLORS.reset}` });
 
   if (!has10Router) {
     return [
-      `Status:   ${COLORS.red}✗ Not configured${COLORS.reset}`,
-      `${COLORS.dim}Run "Quick Setup" to configure${COLORS.reset}`
+      t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notConfigured")}${COLORS.reset}` }),
+      `${COLORS.dim}${t("menus.cliTools.runQuickSetup")}${COLORS.reset}`
     ].join("\n");
   }
 
@@ -195,9 +196,9 @@ async function buildCodexHeader() {
   const baseUrl = baseUrlMatch ? baseUrlMatch[1] : "";
   const model = modelMatch ? modelMatch[1] : "";
 
-  const lines = [`Status:   ${COLORS.green}✓ Configured${COLORS.reset}`];
-  if (baseUrl) lines.push(`Endpoint: ${COLORS.cyan}${baseUrl}${COLORS.reset}`);
-  if (model)   lines.push(`Model:    ${COLORS.dim}${model}${COLORS.reset}`);
+  const lines = [t("menus.cliTools.statusLine", { value: `${COLORS.green}${t("menus.cliTools.configured")}${COLORS.reset}` })];
+  if (baseUrl) lines.push(t("menus.cliTools.endpointLine", { value: `${COLORS.cyan}${baseUrl}${COLORS.reset}` }));
+  if (model)   lines.push(t("menus.cliTools.modelLine", { value: `${COLORS.dim}${model}${COLORS.reset}` }));
   return lines.join("\n");
 }
 
@@ -210,17 +211,17 @@ async function codexQuickSetup(port) {
   const apiKey = await getFirstApiKey();
 
   if (!apiKey) {
-    showStatus("No API keys found. Create one in API Keys menu first.", "error");
+    showStatus(t("menus.cliTools.noApiKeys"), "error");
     await pause();
     return;
   }
 
   // Get model selection
-  const model = await selectModelFromList("Select Codex Model", "cx/claude-sonnet-4-5-20250929", { excludeCombos: true });
+  const model = await selectModelFromList(t("menus.cliTools.selectCodexModel"), "cx/claude-sonnet-4-5-20250929", { excludeCombos: true });
   if (!model) return;
 
   const result = await api.applyCliToolSettings("codex", { baseUrl: endpoint, apiKey, model });
-  showStatus(result.success ? "Codex setup completed!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.codexSetupOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -229,7 +230,7 @@ async function codexQuickSetup(port) {
  */
 async function codexReset() {
   const result = await api.resetCliToolSettings("codex");
-  showStatus(result.success ? "Codex settings reset!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.codexResetOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -240,17 +241,17 @@ async function codexReset() {
  */
 async function showCodexMenu(port, breadcrumb = []) {
   await showMenuWithBack({
-    title: "🤖 Codex CLI Settings",
+    title: t("menus.cliTools.codexTitle"),
     breadcrumb,
     headerContent: buildCodexHeader,
     refresh: async () => ({}),
     items: [
       {
-        label: "⚡ Quick Setup",
+        label: t("menus.cliTools.quickSetup"),
         action: async () => { await codexQuickSetup(port); return true; }
       },
       {
-        label: "Reset to Default",
+        label: t("menus.cliTools.resetToDefault"),
         action: async () => { await codexReset(); return true; }
       }
     ]
@@ -265,23 +266,23 @@ async function showCodexMenu(port, breadcrumb = []) {
  */
 async function buildDroidHeader() {
   const result = await api.getCliToolSettings("droid");
-  if (!result.success) return `  ${COLORS.red}Failed to load settings${COLORS.reset}`;
+  if (!result.success) return `  ${COLORS.red}${t("menus.cliTools.loadFailed")}${COLORS.reset}`;
 
   const { installed, has10Router, settings } = result.data;
-  if (!installed) return `Status:   ${COLORS.red}✗ Factory Droid not installed${COLORS.reset}`;
+  if (!installed) return t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notInstalled", { tool: "Factory Droid" })}${COLORS.reset}` });
 
   if (!has10Router) {
     return [
-      `Status:   ${COLORS.red}✗ Not configured${COLORS.reset}`,
-      `${COLORS.dim}Run "Quick Setup" to configure${COLORS.reset}`
+      t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notConfigured")}${COLORS.reset}` }),
+      `${COLORS.dim}${t("menus.cliTools.runQuickSetup")}${COLORS.reset}`
     ].join("\n");
   }
 
   // Extract 10Router custom model config
   const custom = settings?.customModels?.find(m => m.id === "custom:10Router-0");
-  const lines = [`Status:   ${COLORS.green}✓ Configured${COLORS.reset}`];
-  if (custom?.baseUrl) lines.push(`Endpoint: ${COLORS.cyan}${custom.baseUrl}${COLORS.reset}`);
-  if (custom?.model)   lines.push(`Model:    ${COLORS.dim}${custom.model}${COLORS.reset}`);
+  const lines = [t("menus.cliTools.statusLine", { value: `${COLORS.green}${t("menus.cliTools.configured")}${COLORS.reset}` })];
+  if (custom?.baseUrl) lines.push(t("menus.cliTools.endpointLine", { value: `${COLORS.cyan}${custom.baseUrl}${COLORS.reset}` }));
+  if (custom?.model)   lines.push(t("menus.cliTools.modelLine", { value: `${COLORS.dim}${custom.model}${COLORS.reset}` }));
   return lines.join("\n");
 }
 
@@ -294,16 +295,16 @@ async function droidQuickSetup(port) {
   const apiKey = await getFirstApiKey();
 
   if (!apiKey) {
-    showStatus("No API keys found. Create one in API Keys menu first.", "error");
+    showStatus(t("menus.cliTools.noApiKeys"), "error");
     await pause();
     return;
   }
 
-  const model = await selectModelFromList("Select Droid Model", "cc/claude-sonnet-4-5-20250929", { excludeCombos: true });
+  const model = await selectModelFromList(t("menus.cliTools.selectDroidModel"), "cc/claude-sonnet-4-5-20250929", { excludeCombos: true });
   if (!model) return;
 
   const result = await api.applyCliToolSettings("droid", { baseUrl: endpoint, apiKey, model });
-  showStatus(result.success ? "Factory Droid setup completed!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.droidSetupOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -312,7 +313,7 @@ async function droidQuickSetup(port) {
  */
 async function droidReset() {
   const result = await api.resetCliToolSettings("droid");
-  showStatus(result.success ? "Factory Droid settings reset!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.droidResetOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -323,17 +324,17 @@ async function droidReset() {
  */
 async function showDroidMenu(port, breadcrumb = []) {
   await showMenuWithBack({
-    title: "🤖 Factory Droid Settings",
+    title: t("menus.cliTools.droidTitle"),
     breadcrumb,
     headerContent: buildDroidHeader,
     refresh: async () => ({}),
     items: [
       {
-        label: "⚡ Quick Setup",
+        label: t("menus.cliTools.quickSetup"),
         action: async () => { await droidQuickSetup(port); return true; }
       },
       {
-        label: "Reset to Default",
+        label: t("menus.cliTools.resetToDefault"),
         action: async () => { await droidReset(); return true; }
       }
     ]
@@ -348,15 +349,15 @@ async function showDroidMenu(port, breadcrumb = []) {
  */
 async function buildOpenClawHeader() {
   const result = await api.getCliToolSettings("openclaw");
-  if (!result.success) return `  ${COLORS.red}Failed to load settings${COLORS.reset}`;
+  if (!result.success) return `  ${COLORS.red}${t("menus.cliTools.loadFailed")}${COLORS.reset}`;
 
   const { installed, has10Router, settings } = result.data;
-  if (!installed) return `Status:   ${COLORS.red}✗ Open Claw not installed${COLORS.reset}`;
+  if (!installed) return t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notInstalled", { tool: "Open Claw" })}${COLORS.reset}` });
 
   if (!has10Router) {
     return [
-      `Status:   ${COLORS.red}✗ Not configured${COLORS.reset}`,
-      `${COLORS.dim}Run "Quick Setup" to configure${COLORS.reset}`
+      t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notConfigured")}${COLORS.reset}` }),
+      `${COLORS.dim}${t("menus.cliTools.runQuickSetup")}${COLORS.reset}`
     ].join("\n");
   }
 
@@ -364,9 +365,9 @@ async function buildOpenClawHeader() {
   const provider = settings?.models?.providers?.["10router"];
   const primary = settings?.agents?.defaults?.model?.primary || "";
   const model = primary.startsWith("10router/") ? primary.replace("10router/", "") : (provider?.models?.[0]?.id || "");
-  const lines = [`Status:   ${COLORS.green}✓ Configured${COLORS.reset}`];
-  if (provider?.baseUrl) lines.push(`Endpoint: ${COLORS.cyan}${provider.baseUrl}${COLORS.reset}`);
-  if (model)             lines.push(`Model:    ${COLORS.dim}${model}${COLORS.reset}`);
+  const lines = [t("menus.cliTools.statusLine", { value: `${COLORS.green}${t("menus.cliTools.configured")}${COLORS.reset}` })];
+  if (provider?.baseUrl) lines.push(t("menus.cliTools.endpointLine", { value: `${COLORS.cyan}${provider.baseUrl}${COLORS.reset}` }));
+  if (model)             lines.push(t("menus.cliTools.modelLine", { value: `${COLORS.dim}${model}${COLORS.reset}` }));
   return lines.join("\n");
 }
 
@@ -379,16 +380,16 @@ async function openClawQuickSetup(port) {
   const apiKey = await getFirstApiKey();
 
   if (!apiKey) {
-    showStatus("No API keys found. Create one in API Keys menu first.", "error");
+    showStatus(t("menus.cliTools.noApiKeys"), "error");
     await pause();
     return;
   }
 
-  const model = await selectModelFromList("Select OpenClaw Model", "cc/claude-sonnet-4-5-20250929", { excludeCombos: true });
+  const model = await selectModelFromList(t("menus.cliTools.selectOpenclawModel"), "cc/claude-sonnet-4-5-20250929", { excludeCombos: true });
   if (!model) return;
 
   const result = await api.applyCliToolSettings("openclaw", { baseUrl: endpoint, apiKey, model });
-  showStatus(result.success ? "Open Claw setup completed!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.openclawSetupOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -397,7 +398,7 @@ async function openClawQuickSetup(port) {
  */
 async function openClawReset() {
   const result = await api.resetCliToolSettings("openclaw");
-  showStatus(result.success ? "Open Claw settings reset!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.openclawResetOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
@@ -408,17 +409,17 @@ async function openClawReset() {
  */
 async function showOpenClawMenu(port, breadcrumb = []) {
   await showMenuWithBack({
-    title: "🦞 Open Claw Settings",
+    title: t("menus.cliTools.openclawTitle"),
     breadcrumb,
     headerContent: buildOpenClawHeader,
     refresh: async () => ({}),
     items: [
       {
-        label: "⚡ Quick Setup",
+        label: t("menus.cliTools.quickSetup"),
         action: async () => { await openClawQuickSetup(port); return true; }
       },
       {
-        label: "Reset to Default",
+        label: t("menus.cliTools.resetToDefault"),
         action: async () => { await openClawReset(); return true; }
       }
     ]
@@ -429,23 +430,23 @@ async function showOpenClawMenu(port, breadcrumb = []) {
 
 async function buildOpenCodeHeader() {
   const result = await api.getCliToolSettings("opencode");
-  if (!result.success) return `  ${COLORS.red}Failed to load settings${COLORS.reset}`;
+  if (!result.success) return `  ${COLORS.red}${t("menus.cliTools.loadFailed")}${COLORS.reset}`;
 
   const { installed, has10Router, opencode } = result.data;
-  if (!installed) return `Status:   ${COLORS.red}✗ OpenCode CLI not installed${COLORS.reset}`;
+  if (!installed) return t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notInstalled", { tool: "OpenCode CLI" })}${COLORS.reset}` });
 
   if (!has10Router) {
     return [
-      `Status:   ${COLORS.red}✗ Not configured${COLORS.reset}`,
-      `${COLORS.dim}Run "Quick Setup" to configure${COLORS.reset}`
+      t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notConfigured")}${COLORS.reset}` }),
+      `${COLORS.dim}${t("menus.cliTools.runQuickSetup")}${COLORS.reset}`
     ].join("\n");
   }
 
-  const lines = [`Status:   ${COLORS.green}✓ Configured${COLORS.reset}`];
-  if (opencode?.baseURL) lines.push(`Endpoint: ${COLORS.cyan}${opencode.baseURL}${COLORS.reset}`);
-  if (opencode?.activeModel) lines.push(`Active:   ${COLORS.dim}${opencode.activeModel}${COLORS.reset}`);
+  const lines = [t("menus.cliTools.statusLine", { value: `${COLORS.green}${t("menus.cliTools.configured")}${COLORS.reset}` })];
+  if (opencode?.baseURL) lines.push(t("menus.cliTools.endpointLine", { value: `${COLORS.cyan}${opencode.baseURL}${COLORS.reset}` }));
+  if (opencode?.activeModel) lines.push(t("menus.cliTools.activeLine", { value: `${COLORS.dim}${opencode.activeModel}${COLORS.reset}` }));
   if (Array.isArray(opencode?.models) && opencode.models.length > 0) {
-    lines.push(`Models:   ${COLORS.dim}${opencode.models.join(", ")}${COLORS.reset}`);
+    lines.push(t("menus.cliTools.modelsLine", { value: `${COLORS.dim}${opencode.models.join(", ")}${COLORS.reset}` }));
   }
   return lines.join("\n");
 }
@@ -455,31 +456,31 @@ async function openCodeQuickSetup(port) {
   const apiKey = await getFirstApiKey();
 
   if (!apiKey) {
-    showStatus("No API keys found. Create one in API Keys menu first.", "error");
+    showStatus(t("menus.cliTools.noApiKeys"), "error");
     await pause();
     return;
   }
 
   // Pick first model (also becomes active model by default)
-  const firstModel = await selectModelFromList("Select Active Model (OpenCode)", "", { excludeCombos: true });
+  const firstModel = await selectModelFromList(t("menus.cliTools.selectActiveModel"), "", { excludeCombos: true });
   if (!firstModel) return;
 
   const models = [firstModel];
 
   // Optionally add more models
   while (true) {
-    const more = await confirm(`Add another model? (current: ${models.length})`);
+    const more = await confirm(t("menus.cliTools.addAnotherModel", { count: models.length }));
     if (!more) break;
-    const next = await selectModelFromList(`Add Model #${models.length + 1}`, models.join(", "), { excludeCombos: true });
+    const next = await selectModelFromList(t("menus.cliTools.addModelN", { count: models.length + 1 }), models.join(", "), { excludeCombos: true });
     if (!next) break;
     if (!models.includes(next)) models.push(next);
   }
 
   // Optional subagent model
   let subagentModel = firstModel;
-  const wantSubagent = await confirm(`Set a different subagent model? (default: ${firstModel})`);
+  const wantSubagent = await confirm(t("menus.cliTools.subagentPrompt", { model: firstModel }));
   if (wantSubagent) {
-    const picked = await selectModelFromList("Select Subagent Model", firstModel, { excludeCombos: true });
+    const picked = await selectModelFromList(t("menus.cliTools.selectSubagentModel"), firstModel, { excludeCombos: true });
     if (picked) subagentModel = picked;
   }
 
@@ -490,25 +491,25 @@ async function openCodeQuickSetup(port) {
     activeModel: firstModel,
     subagentModel,
   });
-  showStatus(result.success ? "OpenCode setup completed!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.opencodeSetupOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
 async function openCodeReset() {
   const result = await api.resetCliToolSettings("opencode");
-  showStatus(result.success ? "OpenCode settings reset!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.opencodeResetOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
 async function showOpenCodeMenu(port, breadcrumb = []) {
   await showMenuWithBack({
-    title: "💻 OpenCode CLI Settings",
+    title: t("menus.cliTools.opencodeTitle"),
     breadcrumb,
     headerContent: buildOpenCodeHeader,
     refresh: async () => ({}),
     items: [
-      { label: "⚡ Quick Setup", action: async () => { await openCodeQuickSetup(port); return true; } },
-      { label: "Reset to Default", action: async () => { await openCodeReset(); return true; } }
+      { label: t("menus.cliTools.quickSetup"), action: async () => { await openCodeQuickSetup(port); return true; } },
+      { label: t("menus.cliTools.resetToDefault"), action: async () => { await openCodeReset(); return true; } }
     ]
   });
 }
@@ -517,22 +518,22 @@ async function showOpenCodeMenu(port, breadcrumb = []) {
 
 async function buildHermesHeader() {
   const result = await api.getCliToolSettings("hermes");
-  if (!result.success) return `  ${COLORS.red}Failed to load settings${COLORS.reset}`;
+  if (!result.success) return `  ${COLORS.red}${t("menus.cliTools.loadFailed")}${COLORS.reset}`;
 
   const { installed, has10Router, settings } = result.data;
-  if (!installed) return `Status:   ${COLORS.red}✗ Hermes Agent not installed${COLORS.reset}`;
+  if (!installed) return t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notInstalled", { tool: "Hermes Agent" })}${COLORS.reset}` });
 
   if (!has10Router) {
     return [
-      `Status:   ${COLORS.red}✗ Not configured${COLORS.reset}`,
-      `${COLORS.dim}Run "Quick Setup" to configure${COLORS.reset}`
+      t("menus.cliTools.statusLine", { value: `${COLORS.red}${t("menus.cliTools.notConfigured")}${COLORS.reset}` }),
+      `${COLORS.dim}${t("menus.cliTools.runQuickSetup")}${COLORS.reset}`
     ].join("\n");
   }
 
   const model = settings?.model || {};
-  const lines = [`Status:   ${COLORS.green}✓ Configured${COLORS.reset}`];
-  if (model.base_url) lines.push(`Endpoint: ${COLORS.cyan}${model.base_url}${COLORS.reset}`);
-  if (model.default)  lines.push(`Model:    ${COLORS.dim}${model.default}${COLORS.reset}`);
+  const lines = [t("menus.cliTools.statusLine", { value: `${COLORS.green}${t("menus.cliTools.configured")}${COLORS.reset}` })];
+  if (model.base_url) lines.push(t("menus.cliTools.endpointLine", { value: `${COLORS.cyan}${model.base_url}${COLORS.reset}` }));
+  if (model.default)  lines.push(t("menus.cliTools.modelLine", { value: `${COLORS.dim}${model.default}${COLORS.reset}` }));
   return lines.join("\n");
 }
 
@@ -541,34 +542,34 @@ async function hermesQuickSetup(port) {
   const apiKey = await getFirstApiKey();
 
   if (!apiKey) {
-    showStatus("No API keys found. Create one in API Keys menu first.", "error");
+    showStatus(t("menus.cliTools.noApiKeys"), "error");
     await pause();
     return;
   }
 
-  const model = await selectModelFromList("Select Hermes Model", "", { excludeCombos: true });
+  const model = await selectModelFromList(t("menus.cliTools.selectHermesModel"), "", { excludeCombos: true });
   if (!model) return;
 
   const result = await api.applyCliToolSettings("hermes", { baseUrl: endpoint, apiKey, model });
-  showStatus(result.success ? "Hermes setup completed!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.hermesSetupOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
 async function hermesReset() {
   const result = await api.resetCliToolSettings("hermes");
-  showStatus(result.success ? "Hermes settings reset!" : `Failed: ${result.error}`, result.success ? "success" : "error");
+  showStatus(result.success ? t("menus.cliTools.hermesResetOk") : t("menus.cliTools.failed", { error: result.error }), result.success ? "success" : "error");
   await pause();
 }
 
 async function showHermesMenu(port, breadcrumb = []) {
   await showMenuWithBack({
-    title: "⚡ Hermes Agent Settings",
+    title: t("menus.cliTools.hermesTitle"),
     breadcrumb,
     headerContent: buildHermesHeader,
     refresh: async () => ({}),
     items: [
-      { label: "⚡ Quick Setup", action: async () => { await hermesQuickSetup(port); return true; } },
-      { label: "Reset to Default", action: async () => { await hermesReset(); return true; } }
+      { label: t("menus.cliTools.quickSetup"), action: async () => { await hermesQuickSetup(port); return true; } },
+      { label: t("menus.cliTools.resetToDefault"), action: async () => { await hermesReset(); return true; } }
     ]
   });
 }
@@ -583,9 +584,9 @@ async function showHermesMenu(port, breadcrumb = []) {
 async function showCliToolsMenu(port, breadcrumb = []) {
   const { endpoint } = await getEndpoint(port);
   await showMenuWithBack({
-    title: "🔧 CLI Tools",
+    title: t("menus.cliTools.mainTitle"),
     breadcrumb,
-    headerContent: `Configure CLI tools to use 10Router\nEndpoint: ${endpoint}`,
+    headerContent: t("menus.cliTools.mainHeader", { endpoint }),
     items: [
       {
         label: "Claude Code",

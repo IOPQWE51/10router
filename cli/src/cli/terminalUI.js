@@ -1,4 +1,5 @@
 const api = require("./api/client");
+const { t } = require("./i18n");
 const { showMenuWithBack } = require("./utils/menuHelper");
 const { showProvidersMenu } = require("./menus/providers");
 const { showApiKeysMenu } = require("./menus/apiKeys");
@@ -22,16 +23,22 @@ function renderHeader(port, keys, tunnel) {
   const tunnelEnabled = tunnel && tunnel.enabled === true;
   const lines = [];
   if (tunnelEnabled && tunnel.publicUrl) {
-    lines.push(`Endpoint: ${COLORS.green}${tunnel.publicUrl}/v1${COLORS.reset}`);
-    lines.push(`Tunnel:   ${COLORS.green}ON${COLORS.reset} ${COLORS.dim}(${tunnel.shortId})${COLORS.reset}`);
+    lines.push(t("terminal.endpointUrl", { url: `${COLORS.green}${tunnel.publicUrl}/v1${COLORS.reset}` }));
+    lines.push(t("terminal.tunnelOn", {
+      status: `${COLORS.green}${t("terminal.on")}${COLORS.reset}`,
+      shortId: `${COLORS.dim}(${tunnel.shortId})${COLORS.reset}`
+    }));
   } else {
-    lines.push(`Endpoint: http://localhost:${port}/v1`);
-    lines.push(`Tunnel:   ${COLORS.red}OFF${COLORS.reset} ${COLORS.dim}(local only)${COLORS.reset}`);
+    lines.push(t("terminal.endpointLocal", { port }));
+    lines.push(t("terminal.tunnelOff", {
+      status: `${COLORS.red}${t("terminal.off")}${COLORS.reset}`,
+      note: `${COLORS.dim}${t("terminal.localOnly")}${COLORS.reset}`
+    }));
   }
   if (!keys || keys.length === 0) {
-    lines.push(`Key:      ${COLORS.dim}No API keys yet${COLORS.reset}`);
+    lines.push(t("terminal.keyLine", { value: `${COLORS.dim}${t("terminal.noKeysYet")}${COLORS.reset}` }));
   } else {
-    lines.push(`Key:      ${COLORS.cyan}${keys[0].key}${COLORS.reset}`);
+    lines.push(t("terminal.keyLine", { value: `${COLORS.cyan}${keys[0].key}${COLORS.reset}` }));
     keys.slice(1).forEach(k => lines.push(`          ${COLORS.cyan}${k.key}${COLORS.reset}`));
   }
   return lines.join("\n");
@@ -56,7 +63,7 @@ async function refreshHeaderBg(port) {
 function getHeader(port) {
   // Kick off background refresh; return cache (or placeholder on first call).
   refreshHeaderBg(port);
-  return cachedHeader || `Endpoint: http://localhost:${port}/v1\nTunnel:   ${COLORS.dim}...${COLORS.reset}\nKey:      ${COLORS.dim}...${COLORS.reset}`;
+  return cachedHeader || t("terminal.headerPlaceholder", { port, dots: `${COLORS.dim}...${COLORS.reset}` });
 }
 
 /**
@@ -74,47 +81,47 @@ async function startTerminalUI(port) {
 
   // Main menu
   await showMenuWithBack({
-    title: "📡 10Router Terminal UI",
+    title: t("terminal.title"),
     breadcrumb: basePath,
     headerContent: () => getHeader(port),
     items: [
       {
-        label: "Providers",
+        label: t("terminal.providers"),
         action: async () => {
-          await showProvidersMenu([...basePath, "Providers"]);
+          await showProvidersMenu([...basePath, t("terminal.providers")]);
           return true; // Continue
         }
       },
       {
-        label: "API Keys",
+        label: t("terminal.apiKeys"),
         action: async () => {
-          await showApiKeysMenu(port, [...basePath, "API Keys"]);
+          await showApiKeysMenu(port, [...basePath, t("terminal.apiKeys")]);
           return true;
         }
       },
       {
-        label: "Combos",
+        label: t("terminal.combos"),
         action: async () => {
-          await showCombosMenu([...basePath, "Combos"]);
+          await showCombosMenu([...basePath, t("terminal.combos")]);
           return true;
         }
       },
       {
-        label: "CLI Tools",
+        label: t("terminal.cliTools"),
         action: async () => {
-          await showCliToolsMenu(port, [...basePath, "CLI Tools"]);
+          await showCliToolsMenu(port, [...basePath, t("terminal.cliTools")]);
           return true;
         }
       },
       {
-        label: "Settings",
+        label: t("terminal.settings"),
         action: async () => {
-          await showSettingsMenu([...basePath, "Settings"]);
+          await showSettingsMenu([...basePath, t("terminal.settings")]);
           return true;
         }
       }
     ],
-    backLabel: "← Back to Interface Menu"
+    backLabel: t("terminal.backToInterfaceMenu")
   });
 }
 

@@ -1,0 +1,15 @@
+{
+  "tray.status": "10Router (Port {port})",
+  "tray.statusTooltip": "Server is running",
+  "tray.openDashboard": "Open Dashboard",
+  "tray.openDashboardTooltip": "Open in browser",
+  "tray.autostartEnabled": "✓ Auto-start Enabled",
+  "tray.enableAutostart": "Enable Auto-start",
+  "tray.autostartTooltip": "Run on OS startup",
+  "tray.quit": "Quit",
+  "tray.quitTooltip": "Stop server and exit",
+  "tray.tooltip": "10Router - Port {port}",
+  "tray.shutdown": "\n👋 Shutting down...",
+  "tray.failedToStart": "[10router] tray failed to start: {message}",
+  "tray.initError": "[10router] tray init error: {message}"
+}

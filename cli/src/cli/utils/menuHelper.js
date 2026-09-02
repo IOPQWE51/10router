@@ -1,4 +1,5 @@
 const { selectMenu } = require("./input");
+const { t } = require("../i18n");
 
 /**
  * Show a menu with back button at top and handle selection
@@ -17,7 +18,7 @@ async function showMenuWithBack(config) {
     title,
     headerContent = "",
     items,
-    backLabel = "← Back",
+    backLabel = t("utils.menuHelper.back"),
     defaultIndex = 0,
     refresh = null,
     breadcrumb = []
@@ -97,7 +98,7 @@ async function showListMenu(config) {
     formatItem,
     onSelect,
     createAction = null,
-    backLabel = "← Back",
+    backLabel = t("utils.menuHelper.back"),
     breadcrumb = []
   } = config;
 

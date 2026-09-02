@@ -1,4 +1,5 @@
 const api = require("../api/client");
+const { t } = require("../i18n");
 const { confirm, pause } = require("../utils/input");
 const { showStatus } = require("../utils/display");
 const { showMenuWithBack } = require("../utils/menuHelper");
@@ -21,7 +22,7 @@ const DEFAULT_PASSWORD = "123456";
  */
 async function showSettingsMenu(breadcrumb = []) {
   await showMenuWithBack({
-    title: "⚙️  Settings",
+    title: t("menus.settings.title"),
     breadcrumb,
     headerContent: async (data) => {
       const lines = [];
@@ -29,23 +30,23 @@ async function showSettingsMenu(breadcrumb = []) {
       // Tunnel section
       const tunnel = data?.tunnel || {};
       if (tunnel.enabled && tunnel.publicUrl) {
-        lines.push(`  Endpoint: ${COLORS.green}${tunnel.publicUrl}/v1${COLORS.reset}`);
-        lines.push(`  Tunnel:   ${COLORS.green}ON${COLORS.reset} ${COLORS.dim}(${tunnel.shortId})${COLORS.reset}`);
+        lines.push(t("menus.settings.endpointLabel", { value: `${COLORS.green}${tunnel.publicUrl}/v1${COLORS.reset}` }));
+        lines.push(t("menus.settings.tunnelLabel", { value: `${COLORS.green}${t("menus.settings.on")}${COLORS.reset} ${COLORS.dim}(${tunnel.shortId})${COLORS.reset}` }));
       } else {
-        lines.push(`  Endpoint: http://localhost:20128/v1`);
-        lines.push(`  Tunnel:   ${COLORS.red}OFF${COLORS.reset} ${COLORS.dim}(local only)${COLORS.reset}`);
+        lines.push(t("menus.settings.endpointLabel", { value: `http://localhost:20128/v1` }));
+        lines.push(t("menus.settings.tunnelLabel", { value: `${COLORS.red}${t("menus.settings.off")}${COLORS.reset} ${COLORS.dim}${t("menus.settings.localOnly")}${COLORS.reset}` }));
       }
 
       // RTK section
       const rtkOn = data?.settings?.rtkEnabled !== false;
-      lines.push(`  RTK:      ${rtkOn ? `${COLORS.green}ON${COLORS.reset}` : `${COLORS.red}OFF${COLORS.reset}`} ${COLORS.dim}(Token Saver)${COLORS.reset}`);
+      lines.push(t("menus.settings.rtkLabel", { value: `${rtkOn ? `${COLORS.green}${t("menus.settings.on")}${COLORS.reset}` : `${COLORS.red}${t("menus.settings.off")}${COLORS.reset}`} ${COLORS.dim}${t("menus.settings.tagTokenSaver")}${COLORS.reset}` }));
       const headroomOn = data?.settings?.headroomEnabled === true;
-      lines.push(`  Headroom: ${headroomOn ? `${COLORS.green}ON${COLORS.reset}` : `${COLORS.red}OFF${COLORS.reset}`} ${COLORS.dim}(${data?.settings?.headroomUrl || "http://localhost:8787"})${COLORS.reset}`);
+      lines.push(t("menus.settings.headroomLabel", { value: `${headroomOn ? `${COLORS.green}${t("menus.settings.on")}${COLORS.reset}` : `${COLORS.red}${t("menus.settings.off")}${COLORS.reset}`} ${COLORS.dim}(${data?.settings?.headroomUrl || "http://localhost:8787"})${COLORS.reset}` }));
 
       // Auth mode section
       const authMode = data?.settings?.authMode || "password";
       const authColor = authMode === "password" ? COLORS.green : COLORS.yellow;
-      lines.push(`  Auth:     ${authColor}${authMode.toUpperCase()}${COLORS.reset} ${COLORS.dim}(login mode)${COLORS.reset}`);
+      lines.push(t("menus.settings.authLabel", { value: `${authColor}${authMode.toUpperCase()}${COLORS.reset} ${COLORS.dim}${t("menus.settings.tagLoginMode")}${COLORS.reset}` }));
 
       return lines.join("\n");
     },
@@ -61,35 +62,35 @@ async function showSettingsMenu(breadcrumb = []) {
     },
     items: [
       {
-        label: "Tunnel ON",
+        label: t("menus.settings.tunnelOn"),
         action: async () => { await enableTunnel(); return true; }
       },
       {
-        label: "Tunnel OFF",
+        label: t("menus.settings.tunnelOff"),
         action: async () => { await disableTunnel(); return true; }
       },
       {
         label: (d) => {
           const on = d?.settings?.rtkEnabled !== false;
-          return `Token Saver (RTK): ${on ? "ON" : "OFF"} → toggle`;
+          return t("menus.settings.rtkToggle", { state: on ? t("menus.settings.on") : t("menus.settings.off") });
         },
         action: async (d) => { await toggleRtk(d?.settings?.rtkEnabled !== false); return true; }
       },
       {
         label: (d) => {
           const on = d?.settings?.headroomEnabled === true;
-          return `Token Saver (Headroom): ${on ? "ON" : "OFF"} → toggle`;
+          return t("menus.settings.headroomToggle", { state: on ? t("menus.settings.on") : t("menus.settings.off") });
         },
         action: async (d) => { await toggleHeadroom(d?.settings?.headroomEnabled === true); return true; }
       },
       {
-        label: "🔑 Reset Password to Default",
+        label: t("menus.settings.resetPassword"),
         action: async () => { await resetPassword(); return true; }
       },
       {
         label: (d) => {
           const mode = d?.settings?.authMode || "password";
-          return mode === "password" ? "🔓 Reset Auth Mode (already password)" : `🔓 Reset Auth Mode to Password (current: ${mode})`;
+          return mode === "password" ? t("menus.settings.authModeAlready") : t("menus.settings.authModeReset", { mode });
         },
         action: async () => { await resetAuthMode(); return true; }
       }
@@ -102,18 +103,18 @@ async function showSettingsMenu(breadcrumb = []) {
  * and user is locked out of dashboard. CLI bypasses auth via x-9r-cli-token.
  */
 async function resetAuthMode() {
-  const ok = await confirm("Reset auth mode to PASSWORD (disable OIDC)?");
+  const ok = await confirm(t("menus.settings.resetAuthConfirm"));
   if (!ok) {
-    showStatus("Cancelled", "info");
+    showStatus(t("menus.settings.cancelled"), "info");
     await pause();
     return;
   }
 
   const result = await api.updateSettings({ authMode: "password" });
   if (result.success) {
-    showStatus("Auth mode reset to password. OIDC disabled.", "success");
+    showStatus(t("menus.settings.authModeDone"), "success");
   } else {
-    showStatus(`Failed: ${result.error}`, "error");
+    showStatus(t("menus.settings.failed", { error: result.error }), "error");
   }
   await pause();
 }
@@ -122,18 +123,18 @@ async function resetAuthMode() {
  * Enable tunnel via API
  */
 async function enableTunnel() {
-  showStatus("Creating tunnel...", "info");
+  showStatus(t("menus.settings.creatingTunnel"), "info");
   const result = await api.enableTunnel();
 
   if (result.success) {
     const { publicUrl, shortId, alreadyRunning } = result.data || {};
     if (alreadyRunning) {
-      showStatus(`Tunnel already running: ${publicUrl}`, "success");
+      showStatus(t("menus.settings.tunnelRunning", { url: publicUrl }), "success");
     } else {
-      showStatus(`Tunnel enabled: ${publicUrl} (${shortId})`, "success");
+      showStatus(t("menus.settings.tunnelEnabled", { url: publicUrl, shortId }), "success");
     }
   } else {
-    showStatus(`Failed: ${result.error}`, "error");
+    showStatus(t("menus.settings.failed", { error: result.error }), "error");
   }
 
   await pause();
@@ -146,9 +147,9 @@ async function disableTunnel() {
   const result = await api.disableTunnel();
 
   if (result.success) {
-    showStatus("Tunnel disabled", "success");
+    showStatus(t("menus.settings.tunnelDisabled"), "success");
   } else {
-    showStatus(`Failed: ${result.error}`, "error");
+    showStatus(t("menus.settings.failed", { error: result.error }), "error");
   }
 
   await pause();
@@ -162,9 +163,9 @@ async function toggleRtk(currentlyOn) {
   const next = !currentlyOn;
   const result = await api.updateSettings({ rtkEnabled: next });
   if (result.success) {
-    showStatus(`Token Saver ${next ? "enabled" : "disabled"}`, "success");
+    showStatus(t(next ? "menus.settings.tokenSaverEnabled" : "menus.settings.tokenSaverDisabled"), "success");
   } else {
-    showStatus(`Failed: ${result.error}`, "error");
+    showStatus(t("menus.settings.failed", { error: result.error }), "error");
   }
   await pause();
 }
@@ -173,9 +174,9 @@ async function toggleHeadroom(currentlyOn) {
   const next = !currentlyOn;
   const result = await api.updateSettings({ headroomEnabled: next });
   if (result.success) {
-    showStatus(`Headroom ${next ? "enabled" : "disabled"}`, "success");
+    showStatus(t(next ? "menus.settings.headroomEnabledMsg" : "menus.settings.headroomDisabledMsg"), "success");
   } else {
-    showStatus(`Failed: ${result.error}`, "error");
+    showStatus(t("menus.settings.failed", { error: result.error }), "error");
   }
   await pause();
 }
@@ -185,18 +186,18 @@ async function toggleHeadroom(currentlyOn) {
  * After reset, user can log in with the default password "123456".
  */
 async function resetPassword() {
-  const ok = await confirm(`Reset dashboard password to default "${DEFAULT_PASSWORD}"?`);
+  const ok = await confirm(t("menus.settings.resetPwConfirm", { default: DEFAULT_PASSWORD }));
   if (!ok) {
-    showStatus("Cancelled", "info");
+    showStatus(t("menus.settings.cancelled"), "info");
     await pause();
     return;
   }
 
   const result = await api.resetPassword();
   if (result.success) {
-    showStatus(`Password reset. Default: ${DEFAULT_PASSWORD}`, "success");
+    showStatus(t("menus.settings.resetPwDone", { default: DEFAULT_PASSWORD }), "success");
   } else {
-    showStatus(`Failed to reset password: ${result.error}`, "error");
+    showStatus(t("menus.settings.resetPwFailed", { error: result.error }), "error");
   }
   await pause();
 }

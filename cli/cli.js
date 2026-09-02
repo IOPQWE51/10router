@@ -6,6 +6,7 @@ const fs = require("fs");
 const https = require("https");
 const net = require("net");
 const os = require("os");
+const { t } = require("./src/cli/i18n");
 
 // Poll until the server accepts TCP connections on port, or timeout — avoids blind fixed waits.
 function waitServerReady(port, { timeoutMs = 15000, intervalMs = 150 } = {}) {
@@ -143,24 +144,7 @@ for (let i = 0; i < args.length; i++) {
     trayMode = true;
     process.env.TRAY_MODE = "1";
   } else if (args[i] === "--help" || args[i] === "-h") {
-    console.log(`
-Usage: ${BIN_NAME} [options]
-
-Options:
-  -p, --port <port>   Port to run the server (default: ${DEFAULT_PORT})
-  -H, --host <host>   Host to bind (default: ${DEFAULT_HOST})
-  -n, --no-browser    Don't open browser automatically
-  -l, --log           Show server logs (default: hidden)
-  -t, --tray          Run in system tray mode (background)
-  --skip-update       Skip auto-update check
-  -h, --help          Show this help message
-  -v, --version       Show version
-
-Commands:
-  xai video --prompt "..." --output video.mp4
-                      Generate a Grok Imagine video via the running gateway
-                      (see: ${BIN_NAME} xai video --help)
-`);
+    console.log(t("help.text", { bin: BIN_NAME, port: DEFAULT_PORT, host: DEFAULT_HOST }));
     process.exit(0);
   } else if (args[i] === "--version" || args[i] === "-v") {
     console.log(pkg.version);
@@ -466,7 +450,7 @@ function checkForUpdate() {
       return;
     }
 
-    const spinner = createSpinner("Checking for updates...").start();
+    const spinner = createSpinner(t("update.checking")).start();
     let resolved = false;
 
     const safetyTimeout = setTimeout(() => {
@@ -522,7 +506,7 @@ function openBrowser(url) {
 
   exec(cmd, { windowsHide: true }, (err) => {
     if (err) {
-      console.log(`Open browser manually: ${url}`);
+      console.log(t("update.openManually", { url }));
     }
   });
 }
@@ -536,8 +520,8 @@ const serverPath = fs.existsSync(customServerPath)
   : path.join(standaloneDir, "server.js");
 
 if (!fs.existsSync(serverPath)) {
-  console.error("Error: Standalone build not found.");
-  console.error("Please run 'npm run build:cli' first.");
+  console.error(t("error.standaloneMissing"));
+  console.error(t("error.standaloneHint"));
   process.exit(1);
 }
 
@@ -566,22 +550,22 @@ async function showInterfaceMenu(latestVersion) {
     serverUrl = `http://${displayHost}:${port}`;
   }
 
-  const subtitle = `🚀 Server: \x1b[32m${serverUrl}\x1b[0m`;
+  const subtitle = t("menu.serverSubtitle", { url: `\x1b[32m${serverUrl}\x1b[0m` });
 
   const menuItems = [];
 
   if (latestVersion) {
-    menuItems.push({ label: `Update to v${latestVersion} (current: v${pkg.version})`, icon: "⬆" });
+    menuItems.push({ label: t("menu.updateTo", { latest: latestVersion, current: pkg.version }), icon: "⬆" });
   }
 
   menuItems.push(
-    { label: "Web UI (Open in Browser)", icon: "🌐" },
-    { label: "Terminal UI (Interactive CLI)", icon: "💻" },
-    { label: "Hide to Tray (Background)", icon: "🔔" },
-    { label: "Exit", icon: "🚪" }
+    { label: t("menu.webUi"), icon: "🌐" },
+    { label: t("menu.terminalUi"), icon: "💻" },
+    { label: t("menu.hideToTray"), icon: "🔔" },
+    { label: t("menu.exit"), icon: "🚪" }
   );
 
-  const selected = await selectMenu(`Choose Interface (v${pkg.version})`, menuItems, 0, subtitle);
+  const selected = await selectMenu(t("menu.interfaceTitle", { version: pkg.version }), menuItems, 0, subtitle);
 
   const offset = latestVersion ? 1 : 0;
 
@@ -603,7 +587,7 @@ function startServer(updatePromise) {
   // Surface real network exposure when bound to all interfaces (default 0.0.0.0).
   if (host === DEFAULT_HOST) {
     const lanIp = getLanIp();
-    if (lanIp) console.log(`\x1b[33m⚠ Network-exposed: reachable at http://${lanIp}:${port} (bound 0.0.0.0). Use --host 127.0.0.1 for local-only.\x1b[0m`);
+    if (lanIp) console.log(`\x1b[33m${t("launcher.networkExposed", { url: `http://${lanIp}:${port}` })}\x1b[0m`);
   }
 
   let restartCount = 0;
@@ -666,14 +650,14 @@ function startServer(updatePromise) {
   let isShuttingDown = false;
   process.on("uncaughtException", (err) => {
     if (isShuttingDown) return;
-    console.error("Error:", err.message);
+    console.error(t("common.error"), err.message);
   });
 
   // Handle all exit scenarios
   process.on("SIGINT", () => {
     if (isShuttingDown) return;
     isShuttingDown = true;
-    console.log("\nExiting...");
+    console.log(t("launcher.exiting"));
     cleanup();
     setTimeout(() => process.exit(0), 100);
   });
@@ -698,7 +682,7 @@ function startServer(updatePromise) {
         port,
         onQuit: () => {
           isShuttingDown = true;
-          console.log("\n👋 Shutting down from tray...");
+          console.log(t("launcher.shutdownFromTray"));
           cleanup();
           setTimeout(() => process.exit(0), 100);
         },
@@ -715,13 +699,13 @@ function startServer(updatePromise) {
     process.removeAllListeners("SIGHUP");
     process.on("SIGHUP", () => {});
 
-    console.log(`\n🚀 ${pkg.name} v${pkg.version}`);
-    console.log(`Server: http://${displayHost}:${port}`);
+    console.log(t("launcher.banner", { name: pkg.name, version: pkg.version }));
+    console.log(t("launcher.serverLine", { url: `http://${displayHost}:${port}` }));
 
     waitServerReady(port).then(() => {
       initTrayIcon();
-      console.log("\n💡 Router is now running in system tray. Close this terminal if you want.");
-      console.log("   Right-click tray icon to open dashboard or quit.\n");
+      console.log(t("launcher.trayReady"));
+      console.log(t("launcher.trayReadyHint"));
     });
 
     return;
@@ -742,8 +726,8 @@ function startServer(updatePromise) {
           isShuttingDown = true;
           const { clearScreen } = require("./src/cli/utils/display");
           clearScreen();
-          console.log(`\n⬆  Update v${pkg.version} → v${latestVersion}\n`);
-          console.log(`Run this after exit:\n`);
+          console.log(t("launcher.updateHeader", { current: pkg.version, latest: latestVersion }));
+          console.log(t("launcher.updateRunAfterExit"));
           console.log(`   \x1b[33m${INSTALL_CMD_LATEST}\x1b[0m\n`);
           cleanup();
           await killAllAppProcesses(port);
@@ -754,7 +738,7 @@ function startServer(updatePromise) {
           openBrowser(url);
           // Wait for user to come back
           const { pause } = require("./src/cli/utils/input");
-          await pause("\nPress Enter to go back to menu...");
+          await pause(t("launcher.pressEnterBack"));
         } else if (choice === "terminal") {
           // Start Terminal UI - it will return when user selects Back
           const { startTerminalUI } = require("./src/cli/terminalUI");
@@ -776,17 +760,17 @@ function startServer(updatePromise) {
             process.removeAllListeners("SIGHUP");
             process.on("SIGHUP", () => {});
 
-            console.log(`\n⏳ Switching to tray mode... (icon already visible in menu bar)`);
-            console.log(`🔔 10Router is running in tray (PID: ${process.pid})`);
-            console.log(`   Server: http://${displayHost}:${port}`);
-            console.log(`\n💡 You can close this terminal. Right-click tray icon to quit.\n`);
+            console.log(t("launcher.switchingToTray"));
+            console.log(t("launcher.trayRunning", { pid: process.pid }));
+            console.log(t("launcher.serverLineIndent", { url: `http://${displayHost}:${port}` }));
+            console.log(t("launcher.closeTerminalHint"));
 
             // Tray already init'd at startup — just keep event loop alive.
             return;
           }
 
           // Windows/Linux: spawn detached bgProcess (systray works fine in child)
-          console.log(`\n⏳ Starting background process... (tray icon will appear in ~3s)`);
+          console.log(t("launcher.startingBackground"));
 
           const bgProcess = spawn(process.execPath, ["--dns-result-order=ipv4first", __filename, "--tray", "--skip-update", "-p", port.toString()], {
             detached: true,
@@ -796,22 +780,22 @@ function startServer(updatePromise) {
           });
           bgProcess.unref();
 
-          console.log(`🔔 10Router is now running in background (PID: ${bgProcess.pid})`);
-          console.log(`   Server: http://${displayHost}:${port}`);
-          console.log(`\n💡 You can close this terminal. Right-click tray icon to quit.\n`);
+          console.log(t("launcher.backgroundRunning", { pid: bgProcess.pid }));
+          console.log(t("launcher.serverLineIndent", { url: `http://${displayHost}:${port}` }));
+          console.log(t("launcher.closeTerminalHint"));
 
           // cleanup() kills server so bgProcess can claim the port fresh
           cleanup();
           process.exit(0);
         } else if (choice === "exit") {
           isShuttingDown = true;
-          console.log("\nExiting...");
+          console.log(t("launcher.exiting"));
           cleanup();
           setTimeout(() => process.exit(0), 100);
         }
       }
     } catch (err) {
-      console.error("Error:", err.message);
+      console.error(t("common.error"), err.message);
       cleanup();
       process.exit(1);
     }
@@ -819,7 +803,7 @@ function startServer(updatePromise) {
 
   function attachServerEvents() {
     server.on("error", (err) => {
-      console.error("Failed to start server:", err.message);
+      console.error(t("launcher.startFailed", { message: err.message }));
       if (!isShuttingDown) tryRestart();
       else { cleanup(); process.exit(1); }
     });
@@ -839,7 +823,7 @@ function startServer(updatePromise) {
     if (aliveMs >= RESTART_RESET_MS) restartCount = 0;
 
     if (restartCount >= MAX_RESTARTS) {
-      console.error(`\n⚠️  Server crashed ${MAX_RESTARTS} times. Disabling MIT and restarting...`);
+      console.error(t("launcher.crashedDisablingMit", { count: MAX_RESTARTS }));
       try {
         const dbPath = path.join(os.homedir(), process.platform === "win32" ? path.join("AppData", "Roaming", "10router", "db.json") : path.join(".10router", "db.json"));
         if (fs.existsSync(dbPath)) {
@@ -856,11 +840,11 @@ function startServer(updatePromise) {
 
     restartCount++;
     const delay = Math.min(1000 * restartCount, 10000);
-    console.error(`\n⚠️  Server exited (code=${code ?? "unknown"}). Restarting in ${delay / 1000}s... (${restartCount}/${MAX_RESTARTS})`);
+    console.error(t("launcher.crashedRestarting", { code: code ?? "unknown", seconds: delay / 1000, attempt: restartCount, max: MAX_RESTARTS }));
     if (crashLog.length) {
-      console.error("\n--- Server crash log ---");
+      console.error(t("launcher.crashLogHeader"));
       crashLog.forEach(l => console.error(l));
-      console.error("--- End crash log ---\n");
+      console.error(t("launcher.crashLogFooter"));
     }
 
     setTimeout(() => {

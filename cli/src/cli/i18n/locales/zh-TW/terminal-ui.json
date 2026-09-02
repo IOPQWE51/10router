@@ -1,0 +1,19 @@
+{
+  "terminal.title": "📡 10Router 終端機介面",
+  "terminal.endpointUrl": "端點：{url}",
+  "terminal.endpointLocal": "端點：http://localhost:{port}/v1",
+  "terminal.tunnelOn": "隧道：{status} {shortId}",
+  "terminal.tunnelOff": "隧道：{status} {note}",
+  "terminal.on": "開啟",
+  "terminal.off": "關閉",
+  "terminal.localOnly": "（僅本地）",
+  "terminal.keyLine": "金鑰：{value}",
+  "terminal.noKeysYet": "還沒有 API 金鑰",
+  "terminal.headerPlaceholder": "端點：http://localhost:{port}/v1\n隧道：{dots}\n金鑰：{dots}",
+  "terminal.providers": "提供者",
+  "terminal.apiKeys": "API 金鑰",
+  "terminal.combos": "組合",
+  "terminal.cliTools": "CLI 工具",
+  "terminal.settings": "設置",
+  "terminal.backToInterfaceMenu": "← 返回介面選單"
+}

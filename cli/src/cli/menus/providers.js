@@ -1,4 +1,5 @@
 const api = require("../api/client");
+const { t } = require("../i18n");
 const { prompt, confirm, pause } = require("../utils/input");
 const { clearScreen, showStatus, showHeader } = require("../utils/display");
 const { formatDate, getRelativeTime } = require("../utils/format");
@@ -184,7 +185,7 @@ async function showProvidersMenu(breadcrumb = []) {
       authType: "oauth",
       label: (data) => {
         const count = data.counts[provider.id] || 0;
-        return `${provider.name} (OAuth) - ${count} Connected`;
+        return t("menus.providers.oauthCount", { name: provider.name, count });
       },
       action: async (data) => {
         await showProviderDetail(provider.id, "oauth", data.connections, [...breadcrumb, provider.name]);
@@ -199,7 +200,7 @@ async function showProvidersMenu(breadcrumb = []) {
       authType: "apikey",
       label: (data) => {
         const count = data.counts[provider.id] || 0;
-        return `${provider.name} (API) - ${count} Connected`;
+        return t("menus.providers.apiCount", { name: provider.name, count });
       },
       action: async (data) => {
         await showProviderDetail(provider.id, "apikey", data.connections, [...breadcrumb, provider.name]);
@@ -210,28 +211,28 @@ async function showProvidersMenu(breadcrumb = []) {
 
   // Custom provider nodes section
   providerItems.push({
-    label: () => `${COLORS.dim}── Custom Providers ──${COLORS.reset}`,
+    label: () => `${COLORS.dim}${t("menus.providers.customSeparator")}${COLORS.reset}`,
     action: async () => true, // separator, no-op
     isSeparator: true,
   });
   providerItems.push({
     label: (data) => {
       const count = data.nodeCount || 0;
-      return `Custom Providers - ${count} Configured`;
+      return t("menus.providers.customCount", { count });
     },
     action: async () => {
-      await showCustomProvidersMenu([...breadcrumb, "Custom Providers"]);
+      await showCustomProvidersMenu([...breadcrumb, t("menus.providers.customProviders")]);
       return true;
     }
   });
 
   await showMenuWithBack({
-    title: "🔌 Providers Management",
+    title: t("menus.providers.title"),
     breadcrumb,
     refresh: async () => {
       const [provRes, nodeRes] = await Promise.all([api.getProviders(), api.getProviderNodes()]);
       if (!provRes.success) {
-        showStatus(`Failed to fetch providers: ${provRes.error}`, "error");
+        showStatus(t("menus.providers.fetchFailed", { error: provRes.error }), "error");
         await pause();
         return null;
       }
@@ -257,8 +258,8 @@ function buildProviderHeader(providerId) {
   const alias = provider.alias || providerId;
   
   const lines = [];
-  lines.push(`Alias: ${COLORS.cyan}${alias}${COLORS.reset}`);
-  
+  lines.push(t("menus.providers.aliasLabel", { value: `${COLORS.cyan}${alias}${COLORS.reset}` }));
+
   // Get models from static config
   const models = PROVIDER_MODELS[alias] || [];
   if (models.length > 0) {
@@ -266,10 +267,10 @@ function buildProviderHeader(providerId) {
       .slice(0, 5)
       .map(m => `${alias}/${m.id}`)
       .join(", ");
-    const more = models.length > 5 ? ` (+${models.length - 5} more)` : "";
-    lines.push(`Models: ${COLORS.dim}${modelList}${more}${COLORS.reset}`);
+    const more = models.length > 5 ? t("menus.providers.moreModels", { count: models.length - 5 }) : "";
+    lines.push(t("menus.providers.modelsLabel", { value: `${COLORS.dim}${modelList}${more}${COLORS.reset}` }));
   } else {
-    lines.push(`Models: ${COLORS.dim}No models configured${COLORS.reset}`);
+    lines.push(t("menus.providers.modelsLabel", { value: `${COLORS.dim}${t("menus.providers.noModels")}${COLORS.reset}` }));
   }
   
   return lines.join("\n");
@@ -289,7 +290,7 @@ async function showProviderDetail(providerId, authType, allConnections, breadcru
   await showListMenu({
     title: `🔌 ${provider.name} (${authType.toUpperCase()})`,
     breadcrumb,
-    backLabel: "← Back to Providers",
+    backLabel: t("menus.providers.back"),
     headerContent: buildProviderHeader(providerId),
     fetchItems: async () => {
       const response = await api.getProviders();
@@ -304,14 +305,14 @@ async function showProviderDetail(providerId, authType, allConnections, breadcru
     },
     formatItem: (conn) => {
       const status = conn.testStatus === "active" ? "✓" : conn.testStatus === "error" ? "✗" : "?";
-      const name = conn.name || conn.email || conn.displayName || "Unnamed";
+      const name = conn.name || conn.email || conn.displayName || t("menus.providers.unnamed");
       return `${name} (${status})`;
     },
     onSelect: async (conn) => {
       await showConnectionActions(conn, providerId, breadcrumb);
     },
     createAction: {
-      label: "Add New Connection",
+      label: t("menus.providers.addNew"),
       action: async () => {
         await handleAddConnection(providerId, authType);
       }
@@ -326,27 +327,27 @@ async function showProviderDetail(providerId, authType, allConnections, breadcru
  * @param {Array<string>} breadcrumb - Breadcrumb path
  */
 async function showConnectionActions(connection, providerId, breadcrumb = []) {
-  const name = connection.name || connection.email || connection.displayName || "Unnamed";
-  const status = connection.testStatus === "active" ? "✓ Active" : 
-                 connection.testStatus === "error" ? "✗ Error" : "? Unknown";
-  
+  const name = connection.name || connection.email || connection.displayName || t("menus.providers.unnamed");
+  const status = connection.testStatus === "active" ? t("menus.providers.statusActive") :
+                 connection.testStatus === "error" ? t("menus.providers.statusError") : t("menus.providers.statusUnknown");
+
   await showMenuWithBack({
     title: `🔌 ${name}`,
     breadcrumb: [...breadcrumb, name],
-    headerContent: `Connection: ${name}\nStatus: ${status}`,
+    headerContent: t("menus.providers.connHeader", { name, status }),
     items: [
       {
-        label: "Rename Connection",
+        label: t("menus.providers.rename"),
         action: async () => {
-          const newName = await prompt(`New name (current: ${name}): `);
+          const newName = await prompt(t("menus.providers.newNamePrompt", { name }));
           if (newName && newName.trim()) {
-            showStatus("Renaming connection...", "info");
+            showStatus(t("menus.providers.renaming"), "info");
             const result = await api.updateConnection(connection.id, { name: newName.trim() });
             if (result.success) {
-              showStatus("Connection renamed!", "success");
+              showStatus(t("menus.providers.renamed"), "success");
               connection.name = newName.trim();
             } else {
-              showStatus(`Rename failed: ${result.error}`, "error");
+              showStatus(t("menus.providers.renameFailed", { error: result.error }), "error");
             }
             await pause();
           }
@@ -354,29 +355,29 @@ async function showConnectionActions(connection, providerId, breadcrumb = []) {
         }
       },
       {
-        label: "Test Connection",
+        label: t("menus.providers.test"),
         action: async () => {
-          showStatus("Testing connection...", "info");
+          showStatus(t("menus.providers.testing"), "info");
           const result = await api.testConnection(connection.id);
           if (result.success) {
-            showStatus("Connection is working!", "success");
+            showStatus(t("menus.providers.testOk"), "success");
           } else {
-            showStatus(`Test failed: ${result.error}`, "error");
+            showStatus(t("menus.providers.testFailed", { error: result.error }), "error");
           }
           await pause();
           return true;
         }
       },
       {
-        label: "Delete Connection",
+        label: t("menus.providers.delete"),
         action: async () => {
-          const confirmed = await confirm(`Delete connection "${name}"?`);
+          const confirmed = await confirm(t("menus.providers.deleteConfirm", { name }));
           if (confirmed) {
             const result = await api.deleteConnection(connection.id);
             if (result.success) {
-              showStatus("Connection deleted!", "success");
+              showStatus(t("menus.providers.deleted"), "success");
             } else {
-              showStatus(`Delete failed: ${result.error}`, "error");
+              showStatus(t("menus.providers.deleteFailed", { error: result.error }), "error");
             }
             await pause();
             return false; // Exit menu after delete
@@ -423,36 +424,36 @@ async function handleAddConnection(providerId, authType) {
 async function handleAddApiKeyConnection(providerId) {
   clearScreen();
   const provider = ALL_PROVIDERS[providerId];
-  console.log(`\n➕ Add ${provider.name} API Key Connection\n`);
-  
-  const name = await prompt("Connection Name: ");
+  console.log(t("menus.providers.addApiKeyTitle", { name: provider.name }));
+
+  const name = await prompt(t("menus.providers.connNamePrompt"));
   if (!name) {
-    showStatus("Cancelled", "warning");
+    showStatus(t("menus.providers.cancelled"), "warning");
     await pause();
     return;
   }
-  
-  const apiKey = await prompt("API Key: ");
+
+  const apiKey = await prompt(t("menus.providers.apiKeyPrompt"));
   if (!apiKey) {
-    showStatus("Cancelled", "warning");
+    showStatus(t("menus.providers.cancelled"), "warning");
     await pause();
     return;
   }
-  
-  showStatus("Creating connection...", "info");
-  
+
+  showStatus(t("menus.providers.creating"), "info");
+
   const result = await api.createApiKeyProvider({
     provider: providerId,
     name,
     apiKey
   });
-  
+
   if (result.success) {
-    showStatus("✓ Connection created successfully!", "success");
+    showStatus(t("menus.providers.created"), "success");
   } else {
-    showStatus(`✗ Failed: ${result.error}`, "error");
+    showStatus(t("menus.providers.failed", { error: result.error }), "error");
   }
-  
+
   await pause();
 }
 
@@ -466,46 +467,46 @@ async function handleAddOAuthConnection(providerId) {
   const provider = ALL_PROVIDERS[providerId];
   
   // Step 1: Get auth URL
-  showStatus("Requesting authorization URL...", "info");
+  showStatus(t("menus.providers.requestingAuthUrl"), "info");
   const authResult = await api.getOAuthAuthUrl(providerId);
-  
+
   if (!authResult.success) {
-    showStatus(`Failed: ${authResult.error}`, "error");
+    showStatus(t("menus.providers.failed", { error: authResult.error }), "error");
     await pause();
     return;
   }
-  
+
   const authData = authResult.data || authResult;
   const authUrl = authData.authUrl;
   const codeVerifier = authData.codeVerifier;
   const state = authData.state;
   const redirectUri = authData.redirectUri;
-  
+
   if (!authUrl) {
-    showStatus("Failed: No auth URL received", "error");
+    showStatus(t("menus.providers.noAuthUrl"), "error");
     await pause();
     return;
   }
-  
+
   // Step 2: Show URL and instructions
   clearScreen();
-  showHeader("🔐 OAuth Login", `Providers > ${provider.name} > Add Connection`);
-  
-  console.log(`  ${COLORS.bold}${COLORS.cyan}1.${COLORS.reset} Open this URL in your browser:`);
+  showHeader(t("menus.providers.oauthLogin"), t("menus.providers.breadcrumbAdd", { name: provider.name }));
+
+  console.log(`  ${COLORS.bold}${COLORS.cyan}1.${COLORS.reset} ${t("menus.providers.openUrlLine")}`);
   console.log(`     ${COLORS.dim}${authUrl}${COLORS.reset}`);
   if (copyToClipboard(authUrl)) {
-    console.log(`     \x1b[32m✓ Link copied to clipboard!\x1b[0m`);
+    console.log(t("menus.providers.copied"));
   }
   console.log();
-  console.log(`  ${COLORS.bold}${COLORS.cyan}2.${COLORS.reset} Complete authorization in browser`);
+  console.log(`  ${COLORS.bold}${COLORS.cyan}2.${COLORS.reset} ${t("menus.providers.completeAuth")}`);
   console.log();
-  console.log(`  ${COLORS.bold}${COLORS.cyan}3.${COLORS.reset} Copy the callback URL from address bar`);
-  console.log(`     ${COLORS.dim}(looks like: http://localhost:20128/callback?code=...)${COLORS.reset}`);
+  console.log(`  ${COLORS.bold}${COLORS.cyan}3.${COLORS.reset} ${t("menus.providers.copyCallback")}`);
+  console.log(t("menus.providers.callbackLooksLike"));
   console.log();
-  
-  const callbackUrl = await prompt("  Paste callback URL: ");
+
+  const callbackUrl = await prompt(t("menus.providers.pasteCallback"));
   if (!callbackUrl) {
-    showStatus("Cancelled", "warning");
+    showStatus(t("menus.providers.cancelled"), "warning");
     await pause();
     return;
   }
@@ -520,25 +521,25 @@ async function handleAddOAuthConnection(providerId) {
     
     if (error) {
       const errorDesc = url.searchParams.get("error_description") || error;
-      showStatus(`Authorization failed: ${errorDesc}`, "error");
+      showStatus(t("menus.providers.authFailed", { error: errorDesc }), "error");
       await pause();
       return;
     }
-    
+
     if (!code) {
-      showStatus("No authorization code found in URL", "error");
+      showStatus(t("menus.providers.noCode"), "error");
       await pause();
       return;
     }
   } catch (err) {
-    showStatus("Invalid URL format", "error");
+    showStatus(t("menus.providers.invalidUrl"), "error");
     await pause();
     return;
   }
-  
+
   // Step 4: Exchange code for tokens
   console.log();
-  showStatus("Exchanging code for tokens...", "info");
+  showStatus(t("menus.providers.exchanging"), "info");
   const exchangeResult = await api.exchangeOAuthCode(providerId, {
     code,
     redirectUri,
@@ -547,11 +548,11 @@ async function handleAddOAuthConnection(providerId) {
   });
   
   if (exchangeResult.success) {
-    showStatus("Connection created successfully!", "success");
+    showStatus(t("menus.providers.created"), "success");
   } else {
-    showStatus(`Failed: ${exchangeResult.error}`, "error");
+    showStatus(t("menus.providers.failed", { error: exchangeResult.error }), "error");
   }
-  
+
   await pause();
 }
 
@@ -564,11 +565,11 @@ async function handleAddDeviceCodeConnection(providerId) {
   const provider = ALL_PROVIDERS[providerId];
   
   // Step 1: Request device code
-  showStatus("Requesting device code...", "info");
+  showStatus(t("menus.providers.requestingDeviceCode"), "info");
   const deviceResult = await api.getOAuthDeviceCode(providerId);
-  
+
   if (!deviceResult.success) {
-    showStatus(`Failed: ${deviceResult.error}`, "error");
+    showStatus(t("menus.providers.failed", { error: deviceResult.error }), "error");
     await pause();
     return;
   }
@@ -582,26 +583,26 @@ async function handleAddDeviceCodeConnection(providerId) {
   const extraData = deviceData.extraData || deviceData;
   
   if (!device_code) {
-    showStatus("Failed: No device code received", "error");
+    showStatus(t("menus.providers.noDeviceCode"), "error");
     await pause();
     return;
   }
-  
+
   // Step 2: Show instructions
   clearScreen();
   const deviceUrl = verification_uri_complete || verification_uri;
-  showHeader("📱 Device Login", `Providers > ${provider.name} > Add Connection`);
-  
-  console.log(`  ${COLORS.bold}${COLORS.cyan}1.${COLORS.reset} Open: ${COLORS.dim}${deviceUrl}${COLORS.reset}`);
+  showHeader(t("menus.providers.deviceLogin"), t("menus.providers.breadcrumbAdd", { name: provider.name }));
+
+  console.log(`  ${COLORS.bold}${COLORS.cyan}1.${COLORS.reset} ${t("menus.providers.open")} ${COLORS.dim}${deviceUrl}${COLORS.reset}`);
   if (copyToClipboard(deviceUrl)) {
-    console.log(`     \x1b[32m✓ Link copied to clipboard!\x1b[0m`);
+    console.log(t("menus.providers.copied"));
   }
   console.log();
   if (!verification_uri_complete && user_code) {
-    console.log(`  ${COLORS.bold}${COLORS.cyan}2.${COLORS.reset} Enter code: ${COLORS.bold}${user_code}${COLORS.reset}`);
+    console.log(`  ${COLORS.bold}${COLORS.cyan}2.${COLORS.reset} ${t("menus.providers.enterCode")} ${COLORS.bold}${user_code}${COLORS.reset}`);
     console.log();
   }
-  console.log(`  ${COLORS.dim}Waiting for authorization...${COLORS.reset}`);
+  console.log(`  ${COLORS.dim}${t("menus.providers.waitingAuth")}${COLORS.reset}`);
   console.log();
   
   // Step 3: Poll for token
@@ -616,23 +617,23 @@ async function handleAddDeviceCodeConnection(providerId) {
     });
     
     if (pollResult.success) {
-      showStatus("\nConnection created successfully!", "success");
+      showStatus(t("menus.providers.createdNl"), "success");
       await pause();
       return;
     }
-    
+
     // Check if still pending (pending flag is at root level, not in data)
     const isPending = pollResult.pending || pollResult.error === "authorization_pending" || pollResult.error === "slow_down";
     if (!isPending) {
-      showStatus(`\nFailed: ${pollResult.error || "Unknown error"}`, "error");
+      showStatus(t("menus.providers.failedNl", { error: pollResult.error || t("menus.providers.unknownError") }), "error");
       await pause();
       return;
     }
-    
+
     process.stdout.write(".");
   }
-  
-  showStatus("\nTimeout waiting for authorization", "error");
+
+  showStatus(t("menus.providers.timeout"), "error");
   await pause();
 }
 
@@ -653,9 +654,9 @@ async function showCustomProvidersMenu(breadcrumb = []) {
   const { showListMenu } = require("../utils/menuHelper");
 
   await showListMenu({
-    title: "🔧 Custom Providers",
+    title: t("menus.providers.customTitle"),
     breadcrumb,
-    backLabel: "← Back to Providers",
+    backLabel: t("menus.providers.back"),
     fetchItems: async () => {
       const res = await api.getProviderNodes();
       if (!res.success) return { items: [] };
@@ -666,7 +667,7 @@ async function showCustomProvidersMenu(breadcrumb = []) {
       await showCustomNodeDetail(node, [...breadcrumb, node.name]);
     },
     createAction: {
-      label: "➕ Add Custom Provider",
+      label: t("menus.providers.addCustom"),
       action: async () => {
         await handleAddCustomNode();
       }
@@ -682,35 +683,35 @@ async function showCustomNodeDetail(node, breadcrumb = []) {
     title: `🔧 ${node.name}`,
     breadcrumb,
     headerContent: [
-      `Type: ${node.type}`,
-      `Prefix: ${COLORS.cyan}${node.prefix}${COLORS.reset}`,
-      `Base URL: ${COLORS.dim}${node.baseUrl}${COLORS.reset}`,
+      t("menus.providers.typeLabel", { value: node.type }),
+      t("menus.providers.prefixLabel", { value: `${COLORS.cyan}${node.prefix}${COLORS.reset}` }),
+      t("menus.providers.baseUrlLabel", { value: `${COLORS.dim}${node.baseUrl}${COLORS.reset}` }),
     ].join("\n"),
     items: [
       {
-        label: "Connections",
+        label: t("menus.providers.connections"),
         action: async () => {
           await showCustomNodeConnections(node, breadcrumb);
           return true;
         }
       },
       {
-        label: "Edit Node",
+        label: t("menus.providers.editNode"),
         action: async () => {
           await handleEditCustomNode(node);
           return true;
         }
       },
       {
-        label: "Delete Node",
+        label: t("menus.providers.deleteNode"),
         action: async () => {
-          const confirmed = await confirm(`Delete "${node.name}" and all its connections?`);
+          const confirmed = await confirm(t("menus.providers.deleteNodeConfirm", { name: node.name }));
           if (confirmed) {
             const res = await api.deleteProviderNode(node.id);
             if (res.success) {
-              showStatus("Node deleted!", "success");
+              showStatus(t("menus.providers.nodeDeleted"), "success");
             } else {
-              showStatus(`Delete failed: ${res.error}`, "error");
+              showStatus(t("menus.providers.deleteFailed", { error: res.error }), "error");
             }
             await pause();
             return false;
@@ -729,9 +730,9 @@ async function showCustomNodeConnections(node, breadcrumb = []) {
   const { showListMenu } = require("../utils/menuHelper");
 
   await showListMenu({
-    title: `🔌 ${node.name} – Connections`,
+    title: t("menus.providers.nodeConnectionsTitle", { name: node.name }),
     breadcrumb,
-    backLabel: "← Back",
+    backLabel: t("menus.providers.backShort"),
     fetchItems: async () => {
       const res = await api.getProviders();
       if (!res.success) return { items: [] };
@@ -741,13 +742,13 @@ async function showCustomNodeConnections(node, breadcrumb = []) {
     },
     formatItem: (conn) => {
       const status = conn.testStatus === "active" ? "✓" : conn.testStatus === "error" ? "✗" : "?";
-      return `${conn.name || "Unnamed"} (${status})`;
+      return `${conn.name || t("menus.providers.unnamed")} (${status})`;
     },
     onSelect: async (conn) => {
       await showConnectionActions(conn, node.id, breadcrumb);
     },
     createAction: {
-      label: "Add API Key Connection",
+      label: t("menus.providers.addApiKeyConn"),
       action: async () => {
         await handleAddCustomNodeConnection(node);
       }
@@ -760,18 +761,18 @@ async function showCustomNodeConnections(node, breadcrumb = []) {
  */
 async function handleAddCustomNodeConnection(node) {
   clearScreen();
-  console.log(`\n➕ Add Connection to ${node.name}\n`);
+  console.log(t("menus.providers.addToNodeTitle", { name: node.name }));
 
-  const name = await prompt("Connection Name: ");
-  if (!name) { showStatus("Cancelled", "warning"); await pause(); return; }
+  const name = await prompt(t("menus.providers.connNamePrompt"));
+  if (!name) { showStatus(t("menus.providers.cancelled"), "warning"); await pause(); return; }
 
-  const apiKey = await prompt("API Key: ");
-  if (!apiKey) { showStatus("Cancelled", "warning"); await pause(); return; }
+  const apiKey = await prompt(t("menus.providers.apiKeyPrompt"));
+  if (!apiKey) { showStatus(t("menus.providers.cancelled"), "warning"); await pause(); return; }
 
-  showStatus("Creating connection...", "info");
+  showStatus(t("menus.providers.creating"), "info");
   const res = await api.createApiKeyProvider({ provider: node.id, name, apiKey });
 
-  showStatus(res.success ? "✓ Connection created!" : `✗ Failed: ${res.error}`, res.success ? "success" : "error");
+  showStatus(res.success ? t("menus.providers.createdShort") : t("menus.providers.failed", { error: res.error }), res.success ? "success" : "error");
   await pause();
 }
 
@@ -780,43 +781,43 @@ async function handleAddCustomNodeConnection(node) {
  */
 async function handleAddCustomNode() {
   clearScreen();
-  console.log("\n➕ Add Custom Provider\n");
+  console.log(t("menus.providers.addCustomTitle"));
 
   // Step 1: Select type
-  const typeChoices = CUSTOM_NODE_TYPES.map((t, i) => `  ${i + 1}. ${t}`).join("\n");
-  console.log(`Select type:\n${typeChoices}\n`);
-  const typeInput = await prompt("Type (1/2): ");
+  const typeChoices = CUSTOM_NODE_TYPES.map((item, i) => `  ${i + 1}. ${item}`).join("\n");
+  console.log(`${t("menus.providers.selectType")}\n${typeChoices}\n`);
+  const typeInput = await prompt(t("menus.providers.typePrompt"));
   const typeIdx = parseInt(typeInput) - 1;
   if (isNaN(typeIdx) || !CUSTOM_NODE_TYPES[typeIdx]) {
-    showStatus("Cancelled", "warning"); await pause(); return;
+    showStatus(t("menus.providers.cancelled"), "warning"); await pause(); return;
   }
   const type = CUSTOM_NODE_TYPES[typeIdx];
 
   // Step 2: Inputs
-  const name = await prompt("Name: ");
-  if (!name) { showStatus("Cancelled", "warning"); await pause(); return; }
+  const name = await prompt(t("menus.providers.namePrompt"));
+  if (!name) { showStatus(t("menus.providers.cancelled"), "warning"); await pause(); return; }
 
-  const prefix = await prompt("Prefix (used in model IDs, e.g. myapi): ");
-  if (!prefix) { showStatus("Cancelled", "warning"); await pause(); return; }
+  const prefix = await prompt(t("menus.providers.prefixPrompt"));
+  if (!prefix) { showStatus(t("menus.providers.cancelled"), "warning"); await pause(); return; }
 
-  const baseUrl = await prompt("Base URL (e.g. https://api.example.com/v1): ");
-  if (!baseUrl) { showStatus("Cancelled", "warning"); await pause(); return; }
+  const baseUrl = await prompt(t("menus.providers.baseUrlPrompt"));
+  if (!baseUrl) { showStatus(t("menus.providers.cancelled"), "warning"); await pause(); return; }
 
   // Step 3: API type (OpenAI only)
   let apiType;
   if (type === "openai-compatible") {
-    const apiTypeChoices = OPENAI_API_TYPES.map((t, i) => `  ${i + 1}. ${t}`).join("\n");
-    console.log(`\nAPI Type:\n${apiTypeChoices}\n`);
-    const apiTypeInput = await prompt("API Type (1/2, default 1): ");
+    const apiTypeChoices = OPENAI_API_TYPES.map((item, i) => `  ${i + 1}. ${item}`).join("\n");
+    console.log(`${t("menus.providers.apiTypeHeader")}${apiTypeChoices}\n`);
+    const apiTypeInput = await prompt(t("menus.providers.apiTypePrompt"));
     const apiTypeIdx = parseInt(apiTypeInput) - 1;
     apiType = OPENAI_API_TYPES[apiTypeIdx] || "chat";
   }
 
-  showStatus("Creating provider node...", "info");
+  showStatus(t("menus.providers.creatingNode"), "info");
   const body = { name, prefix, baseUrl, type, ...(apiType && { apiType }) };
   const res = await api.createProviderNode(body);
 
-  showStatus(res.success ? "✓ Provider created!" : `✗ Failed: ${res.error}`, res.success ? "success" : "error");
+  showStatus(res.success ? t("menus.providers.providerCreated") : t("menus.providers.failed", { error: res.error }), res.success ? "success" : "error");
   await pause();
 }
 
@@ -825,12 +826,12 @@ async function handleAddCustomNode() {
  */
 async function handleEditCustomNode(node) {
   clearScreen();
-  console.log(`\n✏️  Edit ${node.name}\n`);
-  console.log(`${COLORS.dim}Leave blank to keep current value${COLORS.reset}\n`);
+  console.log(t("menus.providers.editTitle", { name: node.name }));
+  console.log(`${COLORS.dim}${t("menus.providers.leaveBlank")}${COLORS.reset}\n`);
 
-  const name = await prompt(`Name (${node.name}): `);
-  const baseUrl = await prompt(`Base URL (${node.baseUrl}): `);
-  const prefix = await prompt(`Prefix (${node.prefix}): `);
+  const name = await prompt(t("menus.providers.nameCurrent", { current: node.name }));
+  const baseUrl = await prompt(t("menus.providers.baseUrlCurrent", { current: node.baseUrl }));
+  const prefix = await prompt(t("menus.providers.prefixCurrent", { current: node.prefix }));
 
   const updates = {};
   if (name && name.trim()) updates.name = name.trim();
@@ -838,16 +839,16 @@ async function handleEditCustomNode(node) {
   if (prefix && prefix.trim()) updates.prefix = prefix.trim();
 
   if (!Object.keys(updates).length) {
-    showStatus("No changes", "warning"); await pause(); return;
+    showStatus(t("menus.providers.noChanges"), "warning"); await pause(); return;
   }
 
-  showStatus("Updating...", "info");
+  showStatus(t("menus.providers.updating"), "info");
   const res = await api.updateProviderNode(node.id, updates);
   if (res.success) {
     Object.assign(node, updates);
-    showStatus("✓ Updated!", "success");
+    showStatus(t("menus.providers.updated"), "success");
   } else {
-    showStatus(`✗ Failed: ${res.error}`, "error");
+    showStatus(t("menus.providers.failed", { error: res.error }), "error");
   }
   await pause();
 }

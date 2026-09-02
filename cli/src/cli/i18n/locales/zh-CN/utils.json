@@ -1,0 +1,27 @@
+{
+  "utils.input.selectOption": "\n请选择选项（数字）：",
+  "utils.input.invalidSelection": "选择无效，请输入 1 到 {max} 之间的数字",
+  "utils.input.confirmPrompt": "{question}（y/n）：",
+  "utils.input.invalidYesNo": "请输入 'y' 或 'n'",
+  "utils.input.pressEnterToContinue": "按 Enter 继续...",
+
+  "utils.menuHelper.back": "← 返回",
+
+  "utils.modelSelector.current": "当前：{value}",
+  "utils.modelSelector.combosHeader": "【组合】",
+  "utils.modelSelector.cancelOption": "  0. 取消\n",
+  "utils.modelSelector.enterNumber": "请输入编号：",
+
+  "utils.format.invalidDate": "无效日期",
+  "utils.format.justNow": "刚刚",
+  "utils.format.minuteAgo": "{count} 分钟前",
+  "utils.format.minutesAgo": "{count} 分钟前",
+  "utils.format.hourAgo": "{count} 小时前",
+  "utils.format.hoursAgo": "{count} 小时前",
+  "utils.format.dayAgo": "{count} 天前",
+  "utils.format.daysAgo": "{count} 天前",
+  "utils.format.monthAgo": "{count} 个月前",
+  "utils.format.monthsAgo": "{count} 个月前",
+  "utils.format.yearAgo": "{count} 年前",
+  "utils.format.yearsAgo": "{count} 年前"
+}

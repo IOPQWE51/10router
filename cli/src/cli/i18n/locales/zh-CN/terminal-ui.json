@@ -1,0 +1,19 @@
+{
+  "terminal.title": "📡 10Router 终端界面",
+  "terminal.endpointUrl": "端点：{url}",
+  "terminal.endpointLocal": "端点：http://localhost:{port}/v1",
+  "terminal.tunnelOn": "隧道：{status} {shortId}",
+  "terminal.tunnelOff": "隧道：{status} {note}",
+  "terminal.on": "开启",
+  "terminal.off": "关闭",
+  "terminal.localOnly": "（仅本地）",
+  "terminal.keyLine": "密钥：{value}",
+  "terminal.noKeysYet": "还没有 API 密钥",
+  "terminal.headerPlaceholder": "端点：http://localhost:{port}/v1\n隧道：{dots}\n密钥：{dots}",
+  "terminal.providers": "提供商",
+  "terminal.apiKeys": "API 密钥",
+  "terminal.combos": "组合",
+  "terminal.cliTools": "命令行工具",
+  "terminal.settings": "设置",
+  "terminal.backToInterfaceMenu": "← 返回界面菜单"
+}

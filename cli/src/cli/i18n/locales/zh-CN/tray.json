@@ -1,0 +1,15 @@
+{
+  "tray.status": "10Router (端口 {port})",
+  "tray.statusTooltip": "服务正在运行",
+  "tray.openDashboard": "打开仪表盘",
+  "tray.openDashboardTooltip": "在浏览器中打开",
+  "tray.autostartEnabled": "✓ 已开启开机自启",
+  "tray.enableAutostart": "开启开机自启",
+  "tray.autostartTooltip": "系统启动时运行",
+  "tray.quit": "退出",
+  "tray.quitTooltip": "停止服务并退出",
+  "tray.tooltip": "10Router - 端口 {port}",
+  "tray.shutdown": "\n👋 正在关闭...",
+  "tray.failedToStart": "[10router] 托盘启动失败: {message}",
+  "tray.initError": "[10router] 托盘初始化出错: {message}"
+}

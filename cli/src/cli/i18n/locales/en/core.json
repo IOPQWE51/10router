@@ -1,0 +1,40 @@
+{
+  "help.text": "Usage: {bin} [options]\n\nOptions:\n  -p, --port <port>   Port to run the server (default: {port})\n  -H, --host <host>   Host to bind (default: {host})\n  -n, --no-browser    Don't open browser automatically\n  -l, --log           Show server logs (default: hidden)\n  -t, --tray          Run in system tray mode (background)\n  --skip-update       Skip auto-update check\n  -h, --help          Show this help message\n  -v, --version       Show version\n\nCommands:\n  xai video --prompt \"...\" --output video.mp4\n                      Generate a Grok Imagine video via the running gateway\n                      (see: {bin} xai video --help)",
+
+  "error.standaloneMissing": "Error: Standalone build not found.",
+  "error.standaloneHint": "Please run 'npm run build:cli' first.",
+  "common.error": "Error:",
+
+  "update.checking": "Checking for updates...",
+  "update.openManually": "Open browser manually: {url}",
+
+  "launcher.networkExposed": "⚠ Network-exposed: reachable at {url} (bound 0.0.0.0). Use --host 127.0.0.1 for local-only.",
+  "launcher.exiting": "\nExiting...",
+  "launcher.shutdownFromTray": "\n👋 Shutting down from tray...",
+  "launcher.banner": "\n🚀 {name} v{version}",
+  "launcher.serverLine": "Server: {url}",
+  "launcher.trayReady": "\n💡 Router is now running in system tray. Close this terminal if you want.",
+  "launcher.trayReadyHint": "   Right-click tray icon to open dashboard or quit.",
+  "launcher.updateHeader": "\n⬆  Update v{current} → v{latest}",
+  "launcher.updateRunAfterExit": "Run this after exit:\n",
+  "launcher.pressEnterBack": "\nPress Enter to go back to menu...",
+  "launcher.switchingToTray": "\n⏳ Switching to tray mode... (icon already visible in menu bar)",
+  "launcher.trayRunning": "🔔 10Router is running in tray (PID: {pid})",
+  "launcher.serverLineIndent": "   Server: {url}",
+  "launcher.closeTerminalHint": "\n💡 You can close this terminal. Right-click tray icon to quit.",
+  "launcher.startingBackground": "\n⏳ Starting background process... (tray icon will appear in ~3s)",
+  "launcher.backgroundRunning": "🔔 10Router is now running in background (PID: {pid})",
+  "launcher.startFailed": "Failed to start server: {message}",
+  "launcher.crashedDisablingMit": "\n⚠️  Server crashed {count} times. Disabling MIT and restarting...",
+  "launcher.crashedRestarting": "\n⚠️  Server exited (code={code}). Restarting in {seconds}s... ({attempt}/{max})",
+  "launcher.crashLogHeader": "\n--- Server crash log ---",
+  "launcher.crashLogFooter": "--- End crash log ---",
+
+  "menu.interfaceTitle": "Choose Interface (v{version})",
+  "menu.serverSubtitle": "🚀 Server: {url}",
+  "menu.updateTo": "Update to v{latest} (current: v{current})",
+  "menu.webUi": "Web UI (Open in Browser)",
+  "menu.terminalUi": "Terminal UI (Interactive CLI)",
+  "menu.hideToTray": "Hide to Tray (Background)",
+  "menu.exit": "Exit"
+}

@@ -1,0 +1,15 @@
+{
+  "tray.status": "10Router (連接埠 {port})",
+  "tray.statusTooltip": "服務正在執行",
+  "tray.openDashboard": "開啟儀表板",
+  "tray.openDashboardTooltip": "在瀏覽器中開啟",
+  "tray.autostartEnabled": "✓ 已開機自啟",
+  "tray.enableAutostart": "開啟開機自啟",
+  "tray.autostartTooltip": "系統啟動時執行",
+  "tray.quit": "結束",
+  "tray.quitTooltip": "停止服務並結束",
+  "tray.tooltip": "10Router - 連接埠 {port}",
+  "tray.shutdown": "\n👋 正在關閉...",
+  "tray.failedToStart": "[10router] 系統列啟動失敗: {message}",
+  "tray.initError": "[10router] 系統列初始化錯誤: {message}"
+}

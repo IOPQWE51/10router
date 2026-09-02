@@ -1,4 +1,9 @@
 /**
+ * CLI i18n helper
+ */
+const { t } = require("../i18n");
+
+/**
  * Truncate text with ellipsis
  * @param {string} text - Text to truncate
  * @param {number} maxLength - Maximum length
@@ -33,7 +38,7 @@ function maskKey(key) {
 function formatDate(date) {
   const d = new Date(date);
   if (isNaN(d.getTime())) {
-    return "Invalid Date";
+    return t("utils.format.invalidDate");
   }
 
   const year = d.getFullYear();
@@ -88,7 +93,7 @@ function formatBytes(bytes) {
 function getRelativeTime(date) {
   const d = new Date(date);
   if (isNaN(d.getTime())) {
-    return "Invalid Date";
+    return t("utils.format.invalidDate");
   }
 
   const now = new Date();
@@ -101,17 +106,17 @@ function getRelativeTime(date) {
   const diffYear = Math.floor(diffDay / 365);
 
   if (diffSec < 60) {
-    return "just now";
+    return t("utils.format.justNow");
   } else if (diffMin < 60) {
-    return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`;
+    return t(diffMin > 1 ? "utils.format.minutesAgo" : "utils.format.minuteAgo", { count: diffMin });
   } else if (diffHour < 24) {
-    return `${diffHour} hour${diffHour > 1 ? "s" : ""} ago`;
+    return t(diffHour > 1 ? "utils.format.hoursAgo" : "utils.format.hourAgo", { count: diffHour });
   } else if (diffDay < 30) {
-    return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
+    return t(diffDay > 1 ? "utils.format.daysAgo" : "utils.format.dayAgo", { count: diffDay });
   } else if (diffMonth < 12) {
-    return `${diffMonth} month${diffMonth > 1 ? "s" : ""} ago`;
+    return t(diffMonth > 1 ? "utils.format.monthsAgo" : "utils.format.monthAgo", { count: diffMonth });
   } else {
-    return `${diffYear} year${diffYear > 1 ? "s" : ""} ago`;
+    return t(diffYear > 1 ? "utils.format.yearsAgo" : "utils.format.yearAgo", { count: diffYear });
   }
 }
 

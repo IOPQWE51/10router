@@ -1,0 +1,19 @@
+{
+  "terminal.title": "📡 10Router Terminal UI",
+  "terminal.endpointUrl": "Endpoint: {url}",
+  "terminal.endpointLocal": "Endpoint: http://localhost:{port}/v1",
+  "terminal.tunnelOn": "Tunnel:   {status} {shortId}",
+  "terminal.tunnelOff": "Tunnel:   {status} {note}",
+  "terminal.on": "ON",
+  "terminal.off": "OFF",
+  "terminal.localOnly": "(local only)",
+  "terminal.keyLine": "Key:      {value}",
+  "terminal.noKeysYet": "No API keys yet",
+  "terminal.headerPlaceholder": "Endpoint: http://localhost:{port}/v1\nTunnel:   {dots}\nKey:      {dots}",
+  "terminal.providers": "Providers",
+  "terminal.apiKeys": "API Keys",
+  "terminal.combos": "Combos",
+  "terminal.cliTools": "CLI Tools",
+  "terminal.settings": "Settings",
+  "terminal.backToInterfaceMenu": "← Back to Interface Menu"
+}

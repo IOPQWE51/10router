@@ -1,4 +1,5 @@
 const api = require("../api/client");
+const { t } = require("../i18n");
 const { prompt, confirm, pause } = require("../utils/input");
 const { clearScreen, showStatus, showHeader } = require("../utils/display");
 const { maskKey, formatDate, getRelativeTime } = require("../utils/format");
@@ -57,40 +58,40 @@ function displayApiKeys(keys, port) {
  * @returns {Promise<boolean>} Success status
  */
 async function handleCreateKey() {
-  console.log("\n📝 Create New API Key");
+  console.log(t("menus.apiKeys.createTitle"));
   console.log("─".repeat(30));
-  
-  const name = await prompt("Enter key name: ");
-  
+
+  const name = await prompt(t("menus.apiKeys.namePrompt"));
+
   if (!name) {
-    showStatus("Key name cannot be empty", "error");
+    showStatus(t("menus.apiKeys.nameEmpty"), "error");
     await pause();
     return false;
   }
-  
+
   const result = await api.createApiKey(name);
-  
+
   if (!result.success) {
-    showStatus(`Failed to create key: ${result.error}`, "error");
+    showStatus(t("menus.apiKeys.createFailed", { error: result.error }), "error");
     await pause();
     return false;
   }
-  
-  console.log("\n✅ API Key created successfully!");
-  console.log("\n⚠️  IMPORTANT: Save this key now. You won't be able to see it again!");
-  console.log(`\nKey: ${result.data.key}`);
-  console.log(`Name: ${result.data.name}`);
-  console.log(`ID: ${result.data.id}`);
-  
-  const shouldCopy = await confirm("\nCopy key to clipboard?");
+
+  console.log(t("menus.apiKeys.created"));
+  console.log(t("menus.apiKeys.saveWarning"));
+  console.log(t("menus.apiKeys.keyLine", { value: result.data.key }));
+  console.log(t("menus.apiKeys.nameLine", { value: result.data.name }));
+  console.log(t("menus.apiKeys.idLine", { value: result.data.id }));
+
+  const shouldCopy = await confirm(t("menus.apiKeys.copyConfirm"));
   if (shouldCopy) {
     if (copyToClipboard(result.data.key)) {
-      showStatus("Key copied to clipboard!", "success");
+      showStatus(t("menus.apiKeys.copied"), "success");
     } else {
-      showStatus("Failed to copy to clipboard", "error");
+      showStatus(t("menus.apiKeys.copyFailed"), "error");
     }
   }
-  
+
   await pause();
   return true;
 }
@@ -100,19 +101,19 @@ async function handleCreateKey() {
  * @param {Object} key - API key object
  */
 async function handleViewFullKey(key) {
-  console.log("\n🔍 Full API Key");
+  console.log(t("menus.apiKeys.viewTitle"));
   console.log("─".repeat(30));
-  console.log(`Name: ${key.name}`);
-  console.log(`Key: ${key.key}`);
-  console.log(`ID: ${key.id}`);
-  console.log(`Created: ${formatDate(key.createdAt)}`);
-  
+  console.log(t("menus.apiKeys.nameLine", { value: key.name }));
+  console.log(t("menus.apiKeys.keyLine", { value: key.key }));
+  console.log(t("menus.apiKeys.idLine", { value: key.id }));
+  console.log(t("menus.apiKeys.createdLine", { value: formatDate(key.createdAt) }));
+
   if (key.lastUsedAt) {
-    console.log(`Last used: ${getRelativeTime(key.lastUsedAt)}`);
+    console.log(t("menus.apiKeys.lastUsedLine", { value: getRelativeTime(key.lastUsedAt) }));
   } else {
-    console.log("Last used: Never");
+    console.log(t("menus.apiKeys.lastUsedNever"));
   }
-  
+
   await pause();
 }
 
@@ -122,9 +123,9 @@ async function handleViewFullKey(key) {
  */
 async function handleCopyKey(key) {
   if (copyToClipboard(key.key)) {
-    showStatus(`Key "${key.name}" copied to clipboard!`, "success");
+    showStatus(t("menus.apiKeys.copiedNamed", { name: key.name }), "success");
   } else {
-    showStatus("Failed to copy to clipboard", "error");
+    showStatus(t("menus.apiKeys.copyFailed"), "error");
   }
   await pause();
 }
@@ -135,28 +136,28 @@ async function handleCopyKey(key) {
  * @returns {Promise<boolean>} Success status
  */
 async function handleDeleteKey(key) {
-  console.log(`\n⚠️  Delete API Key: ${key.name}`);
+  console.log(t("menus.apiKeys.deleteTitle", { name: key.name }));
   console.log("─".repeat(30));
-  console.log(`Key: ${maskKey(key.key)}`);
-  console.log(`Created: ${formatDate(key.createdAt)}`);
-  
-  const confirmed = await confirm("\nAre you sure you want to delete this key?");
-  
+  console.log(t("menus.apiKeys.keyLine", { value: maskKey(key.key) }));
+  console.log(t("menus.apiKeys.createdLine", { value: formatDate(key.createdAt) }));
+
+  const confirmed = await confirm(t("menus.apiKeys.deleteConfirm"));
+
   if (!confirmed) {
-    showStatus("Deletion cancelled", "info");
+    showStatus(t("menus.apiKeys.deleteCancelled"), "info");
     await pause();
     return false;
   }
-  
+
   const result = await api.deleteApiKey(key.id);
-  
+
   if (!result.success) {
-    showStatus(`Failed to delete key: ${result.error}`, "error");
+    showStatus(t("menus.apiKeys.deleteFailed", { error: result.error }), "error");
     await pause();
     return false;
   }
-  
-  showStatus("API key deleted successfully", "success");
+
+  showStatus(t("menus.apiKeys.deleted"), "success");
   await pause();
   return true;
 }
@@ -172,17 +173,17 @@ async function showKeyActions(key, port, breadcrumb = []) {
   await showMenuWithBack({
     title: `🔑 ${key.name}`,
     breadcrumb: [...breadcrumb, key.name],
-    headerContent: `Name: ${key.name}\nKey: ${key.key}\nEndpoint: ${endpoint}`,
+    headerContent: t("menus.apiKeys.actionsHeader", { name: key.name, key: key.key, endpoint }),
     items: [
       {
-        label: "Copy to Clipboard",
+        label: t("menus.apiKeys.copyAction"),
         action: async () => {
           await handleCopyKey(key);
           return true;
         }
       },
       {
-        label: "Delete Key",
+        label: t("menus.apiKeys.deleteAction"),
         action: async () => {
           await handleDeleteKey(key);
           return false; // Exit after delete
@@ -202,14 +203,14 @@ async function showApiKeysMenu(port, breadcrumb = []) {
   
   const { endpoint } = await getEndpoint(port);
   await showListMenu({
-    title: "🔑 API Keys Management",
+    title: t("menus.apiKeys.title"),
     breadcrumb,
-    headerContent: `Endpoint: ${endpoint}`,
+    headerContent: t("menus.apiKeys.endpointHeader", { endpoint }),
     fetchItems: async () => {
       const result = await api.getApiKeys();
       if (!result.success) {
         clearScreen();
-        showStatus(`Failed to fetch API keys: ${result.error}`, "error");
+        showStatus(t("menus.apiKeys.fetchFailed", { error: result.error }), "error");
         await pause();
         return null;
       }
@@ -220,7 +221,7 @@ async function showApiKeysMenu(port, breadcrumb = []) {
       await showKeyActions(key, port, breadcrumb);
     },
     createAction: {
-      label: "Create New API Key",
+      label: t("menus.apiKeys.createAction"),
       action: async () => {
         await handleCreateKey();
       }

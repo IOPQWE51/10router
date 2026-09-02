@@ -1,4 +1,5 @@
 const readline = require("readline");
+const { t } = require("../i18n");
 
 const COLORS = {
   reset: "\x1b[0m",
@@ -60,24 +61,24 @@ async function select(question, options) {
   console.log(question);
   options.forEach((opt, i) => console.log(`  ${i + 1}. ${opt}`));
   while (true) {
-    const answer = await prompt("\nSelect option (number): ");
+    const answer = await prompt(t("utils.input.selectOption"));
     const num = parseInt(answer, 10);
     if (!isNaN(num) && num >= 1 && num <= options.length) return num - 1;
-    console.log(`Invalid selection. Please enter a number between 1 and ${options.length}`);
+    console.log(t("utils.input.invalidSelection", { max: options.length }));
   }
 }
 
 async function confirm(question) {
   while (true) {
-    const answer = await prompt(`${question} (y/n): `);
+    const answer = await prompt(t("utils.input.confirmPrompt", { question }));
     const lower = answer.toLowerCase();
     if (lower === "y" || lower === "yes") return true;
     if (lower === "n" || lower === "no") return false;
-    console.log("Please answer 'y' or 'n'");
+    console.log(t("utils.input.invalidYesNo"));
   }
 }
 
-async function pause(message = "Press Enter to continue...") {
+async function pause(message = t("utils.input.pressEnterToContinue")) {
   return suspendRawFor(() => new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     rl.question(message, () => { rl.close(); resolve(); });

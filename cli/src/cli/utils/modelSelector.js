@@ -1,4 +1,5 @@
 const api = require("../api/client");
+const { t } = require("../i18n");
 const { prompt } = require("./input");
 const { clearScreen } = require("./display");
 
@@ -79,7 +80,7 @@ async function selectModelFromList(title, currentValue = "", options = {}) {
   console.log(`\n🎯 ${title}`);
   console.log("=".repeat(50));
   if (currentValue) {
-    console.log(`Current: ${currentValue}\n`);
+    console.log(`${t("utils.modelSelector.current", { value: currentValue })}\n`);
   } else {
     console.log();
   }
@@ -88,7 +89,7 @@ async function selectModelFromList(title, currentValue = "", options = {}) {
   
   // Combos first (skipped when excludeCombos is true)
   if (combos.length > 0) {
-    console.log("[Combos]");
+    console.log(t("utils.modelSelector.combosHeader"));
     combos.forEach(combo => {
       console.log(`  ${idx}. ${combo}`);
       allModels.push(combo);
@@ -115,10 +116,10 @@ async function selectModelFromList(title, currentValue = "", options = {}) {
     console.log();
   });
   
-  console.log("  0. Cancel\n");
-  
+  console.log(t("utils.modelSelector.cancelOption"));
+
   // Prompt for number input
-  const input = await prompt("Enter number: ");
+  const input = await prompt(t("utils.modelSelector.enterNumber"));
   const num = parseInt(input, 10);
   
   if (isNaN(num) || num === 0 || num < 0 || num > allModels.length) {

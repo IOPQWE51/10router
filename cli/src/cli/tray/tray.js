@@ -1,6 +1,7 @@
 const { exec } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const { t } = require("../i18n");
 
 let trayInstance = null;
 let isWinTray = false;
@@ -58,14 +59,14 @@ function initTray(options) {
  */
 function buildMenuItems(port, autostartEnabled) {
   return [
-    { title: `10Router (Port ${port})`, tooltip: "Server is running", enabled: false },
-    { title: "Open Dashboard", tooltip: "Open in browser", enabled: true },
+    { title: t("tray.status", { port }), tooltip: t("tray.statusTooltip"), enabled: false },
+    { title: t("tray.openDashboard"), tooltip: t("tray.openDashboardTooltip"), enabled: true },
     {
-      title: autostartEnabled ? "✓ Auto-start Enabled" : "Enable Auto-start",
-      tooltip: "Run on OS startup",
+      title: autostartEnabled ? t("tray.autostartEnabled") : t("tray.enableAutostart"),
+      tooltip: t("tray.autostartTooltip"),
       enabled: true
     },
-    { title: "Quit", tooltip: "Stop server and exit", enabled: true }
+    { title: t("tray.quit"), tooltip: t("tray.quitTooltip"), enabled: true }
   ];
 }
 
@@ -101,7 +102,7 @@ function handleClick(index, options, onAutostartToggle) {
       onAutostartToggle(!enabled);
     } catch (e) {}
   } else if (index === MENU_INDEX.QUIT) {
-    console.log("\n👋 Shutting down...");
+    console.log(t("tray.shutdown"));
     if (onQuit) onQuit();
     killTray();
     setTimeout(() => process.exit(0), 500);
@@ -121,11 +122,11 @@ function initWindowsTray(options) {
 
     trayInstance = initWinTray({
       iconPath,
-      tooltip: `10Router - Port ${port}`,
+      tooltip: t("tray.tooltip", { port }),
       items,
       onClick: (index) => {
         handleClick(index, options, (newEnabled) => {
-          const newTitle = newEnabled ? "✓ Auto-start Enabled" : "Enable Auto-start";
+          const newTitle = newEnabled ? t("tray.autostartEnabled") : t("tray.enableAutostart");
           trayInstance.updateItem(MENU_INDEX.AUTOSTART, newTitle, true);
         });
       }
@@ -204,7 +205,7 @@ function initUnixTray(options) {
       // because template mode only uses the alpha channel.
       isTemplateIcon: false,
       title: "",
-      tooltip: `10Router - Port ${port}`,
+      tooltip: t("tray.tooltip", { port }),
       items
     };
 
@@ -216,8 +217,8 @@ function initUnixTray(options) {
         trayInstance.sendAction({
           type: "update-item",
           item: {
-            title: newEnabled ? "✓ Auto-start Enabled" : "Enable Auto-start",
-            tooltip: "Run on OS startup",
+            title: newEnabled ? t("tray.autostartEnabled") : t("tray.enableAutostart"),
+            tooltip: t("tray.autostartTooltip"),
             enabled: true
           },
           seq_id: MENU_INDEX.AUTOSTART
@@ -230,7 +231,7 @@ function initUnixTray(options) {
       // failures (binary crash, EACCES, etc.) so users can see why the icon
       // didn't appear instead of getting a misleading "running in tray" log.
       trayInstance.ready().catch((err) => {
-        process.stderr.write(`[10router] tray failed to start: ${err && err.message ? err.message : err}\n`);
+        process.stderr.write(`${t("tray.failedToStart", { message: err && err.message ? err.message : err })}\n`);
       });
     } else {
       trayInstance.onReady(() => {});
@@ -239,7 +240,7 @@ function initUnixTray(options) {
 
     return trayInstance;
   } catch (err) {
-    process.stderr.write(`[10router] tray init error: ${err.message}\n`);
+    process.stderr.write(`${t("tray.initError", { message: err.message })}\n`);
     return null;
   }
 }

@@ -1,0 +1,27 @@
+{
+  "utils.input.selectOption": "\nSelect option (number): ",
+  "utils.input.invalidSelection": "Invalid selection. Please enter a number between 1 and {max}",
+  "utils.input.confirmPrompt": "{question} (y/n): ",
+  "utils.input.invalidYesNo": "Please answer 'y' or 'n'",
+  "utils.input.pressEnterToContinue": "Press Enter to continue...",
+
+  "utils.menuHelper.back": "← Back",
+
+  "utils.modelSelector.current": "Current: {value}",
+  "utils.modelSelector.combosHeader": "[Combos]",
+  "utils.modelSelector.cancelOption": "  0. Cancel\n",
+  "utils.modelSelector.enterNumber": "Enter number: ",
+
+  "utils.format.invalidDate": "Invalid Date",
+  "utils.format.justNow": "just now",
+  "utils.format.minuteAgo": "{count} minute ago",
+  "utils.format.minutesAgo": "{count} minutes ago",
+  "utils.format.hourAgo": "{count} hour ago",
+  "utils.format.hoursAgo": "{count} hours ago",
+  "utils.format.dayAgo": "{count} day ago",
+  "utils.format.daysAgo": "{count} days ago",
+  "utils.format.monthAgo": "{count} month ago",
+  "utils.format.monthsAgo": "{count} months ago",
+  "utils.format.yearAgo": "{count} year ago",
+  "utils.format.yearsAgo": "{count} years ago"
+}
