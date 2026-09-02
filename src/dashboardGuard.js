@@ -208,9 +208,20 @@ export async function proxy(request) {
     }
   }
 
-  // Always protected - require valid JWT or local CLI token (machineId-based)
+  // Always protected - require valid JWT or local CLI token (machineId-based).
+  // Exception: agent-managed custom provider write (POST create node / add
+  // connection) may use a dashboard LLM API key, so remote agents can self-serve
+  // custom OpenAI/Anthropic-compatible endpoints without a CLI token. Only the
+  // bare root paths + POST match; list/update/delete on [id] routes stay protected.
+  const isAgentProviderWrite =
+    request.method === "POST" &&
+    (pathname === "/api/provider-nodes" || pathname === "/api/providers");
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
-    if (await hasValidCliToken(request) || await hasValidToken(request))
+    if (
+      (await hasValidCliToken(request)) ||
+      (await hasValidToken(request)) ||
+      (isAgentProviderWrite && (await hasValidApiKey(request)))
+    )
       return NextResponse.next();
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
