@@ -64,8 +64,10 @@ export default {
     { id: "kimi-k2.7-code", name: "Kimi K2.7 Code" },
     { id: "kimi-k2.7-code-highspeed", name: "Kimi K2.7 Code Highspeed" },
     { id: "kimi-k2.6", name: "Kimi K2.6" },
-    { id: "kimi-k2.5", name: "Kimi K2.5" },
-    { id: "kimi-k2.5-thinking", name: "Kimi K2.5 Thinking" },
+    // kimi-k2.5 / kimi-k2.5-thinking removed: Moonshot retired kimi-k2.5 and the
+    // moonshot-v1 series on 2026-08-31 (platform-side 404s). Third-party gateway
+    // registries (codebuddy/bai/cursor/ollama/…) keep their own kimi-k2.5 rows —
+    // those are hosted by the respective gateways, not Moonshot.
     { id: "kimi-latest", name: "Kimi Latest" },
   ],
   serviceKinds: ["llm", "webSearch"],
