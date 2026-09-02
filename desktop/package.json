@@ -1,0 +1,88 @@
+{
+  "name": "10router-desktop",
+  "productName": "10Router",
+  "version": "1.0.4",
+  "description": "10Router 桌面托盘版 — Electron 托盘壳 + Node sidecar",
+  "main": "main.js",
+  "author": "techysy",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:dir": "electron-builder --win --dir"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "comment_electron": "Electron 37 内置 Node 22.16+:服务的 db 驱动链 better-sqlite3(缺,ABI 不匹配会回退) → node:sqlite(原生可用) → sql.js(已捆绑兜底)。sidecar 直接复用 Electron 二进制(ELECTRON_RUN_AS_NODE=1),无需内嵌独立 Node 运行时。",
+  "comment_build": "build 对象内不能加自定义注释键(electron-builder 按 API schema 严格校验,未知属性直接报错)。extraResources 说明:cli/app 是 build-cli.js 产出的 Next standalone 包(纯 JS + WASM,平台无关),win/mac 共用同一份,以打包机器平台构建即可。",
+  "build": {
+    "appId": "com.techysy.10router",
+    "productName": "10Router",
+    "directories": {
+      "output": "dist",
+      "buildResources": "."
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "icon.ico",
+      "icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "../cli/app",
+        "to": "app"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "10Router"
+    },
+    "portable": {
+      "artifactName": "10Router-Portable-${version}.exe"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "icon.png",
+      "category": "public.app-category.developer-tools"
+    },
+    "dmg": {
+      "artifactName": "10Router-${version}-${arch}.dmg"
+    }
+  },
+  "allowScripts": {
+    "electron@37.10.3": true
+  }
+}

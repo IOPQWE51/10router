@@ -88,3 +88,12 @@ graphify-out/*
 .codegraph/
 .PR/
 .next-analyze/*
+
+# Desktop shell (Electron) build artifacts
+/desktop/node_modules/
+/desktop/dist/
+
+# Local tool artifacts
+.v2c/
+.zcode/
+tmpwebapp-node-modulesprepare.log
