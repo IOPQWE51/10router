@@ -2,6 +2,12 @@
 
 这里展示面向用户的关键更新；完整开发明细见 [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md)。
 
+## v1.0.5 (2026-09-02)
+
+### ✨ 新增
+- **桌面托盘版（Windows / macOS）**：装完即用的桌面应用——系统托盘菜单（打开控制台 / 启动 / 重启 / 停止 / 开机自启）+ 内嵌窗口，关闭窗口即缩到托盘；与 npm CLI 共享数据、密钥与端口，两种形态互斥运行。Windows 提供安装版（NSIS，支持 `/S` 静默安装）与便携版，macOS 提供 Intel + Apple Silicon 双 dmg
+- **CLI / 桌面版界面多语言**：npm CLI 与桌面托盘自动跟随系统语言显示简体中文、繁体中文或英文，可用环境变量 `TENROUTER_LANG`（`zh-CN` / `zh-TW` / `en`）强制指定
+
 ## v1.0.4 (2026-09-01)
 
 ### ✨ 新增
