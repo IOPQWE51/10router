@@ -100,6 +100,28 @@ export function createDisconnectAwareStream(transformStream, streamController, o
   const writer = transformStream.writable.getWriter();
   let terminalEmitted = false;
 
+  // TTFT keep-alive: large-context upstreams (codebuddy DeepSeek/GLM on 100K+ token
+  // prompts) can take 20-30s before the first byte. During that silence the client
+  // (gateway/card sidecar) sees an idle connection and times out → ResponseAborted
+  // loop. SSE comment lines (`: keep-alive`) are spec-legal and ignored by every
+  // OpenAI/Claude/Gemini client parser, so emit them while waiting for first byte.
+  const KEEPALIVE_INTERVAL_MS = 5000;
+  let firstByteSeen = false;
+  let keepAliveTimer = null;
+  let pendingKeepAlives = 0;
+  const stopKeepAlive = () => {
+    if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
+  };
+  const startKeepAlive = (controller) => {
+    keepAliveTimer = setInterval(() => {
+      if (!streamController.isConnected() || firstByteSeen) { stopKeepAlive(); return; }
+      try {
+        controller.enqueue(new TextEncoder().encode(": keep-alive\n\n"));
+        pendingKeepAlives++;
+      } catch { /* downstream gone */ }
+    }, KEEPALIVE_INTERVAL_MS);
+  };
+
   // Emit a synthesized terminal payload (e.g. Responses response.failed + [DONE]) once
   const emitTerminal = (controller) => {
     if (terminalEmitted || !onAbortTerminal) return;
@@ -113,25 +135,38 @@ export function createDisconnectAwareStream(transformStream, streamController, o
   return new ReadableStream({
     async pull(controller) {
       if (!streamController.isConnected()) {
+        stopKeepAlive();
         emitTerminal(controller);
         controller.close();
         return;
       }
 
       try {
+        // While waiting for the first upstream byte, emit keep-alive comments so
+        // the downstream connection stays active during long TTFT windows.
+        if (!firstByteSeen && !keepAliveTimer) startKeepAlive(controller);
         const { done, value } = await reader.read();
+        if (!firstByteSeen && value) {
+          firstByteSeen = true;
+          stopKeepAlive();
+        }
 
         if (done) {
+          stopKeepAlive();
           streamController.handleComplete();
           controller.close();
           return;
         }
         controller.enqueue(value);
       } catch (error) {
+        stopKeepAlive();
         const wasConnected = streamController.isConnected();
         // Controller already closed = downstream ended; not an upstream error, skip noisy log.
         const msg0 = error?.message || "";
         const isControllerClosed = msg0.includes("already closed") || msg0.includes("Invalid state");
+        // Observed upstream error/disconnect state (production log, not dbg-only) to tell
+        // whether the break happened during the TTFT window (no first byte yet) vs mid-stream.
+        console.log(`[${getTimeString()}] 🔍 STREAM-ERR name=${error?.name} | msg=${msg0} | firstByteSeen=${firstByteSeen} | keepalivesSent=${pendingKeepAlives} | wasConnected=${wasConnected} | sinceStart=${Date.now() - streamController.startTime}ms`);
         if (!isControllerClosed) streamController.handleError(error);
         reader.cancel().catch(() => {});
         writer.abort().catch(() => {});
@@ -165,6 +200,9 @@ export function createDisconnectAwareStream(transformStream, streamController, o
     },
 
     cancel(reason) {
+      stopKeepAlive();
+      const disconnectState = `cancel reason=${reason} | firstByteSeen=${firstByteSeen} | keepalivesSent=${pendingKeepAlives} | sinceStart=${Date.now() - streamController.startTime}ms`;
+      console.log(`[${getTimeString()}] 🔍 STREAM-CANCEL ${disconnectState}`);
       streamController.handleDisconnect(reason || "cancelled");
       reader.cancel();
       writer.abort();
