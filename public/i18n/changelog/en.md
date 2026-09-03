@@ -2,9 +2,12 @@
 
 User-facing highlights per release. See [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md) for the full developer log.
 
-## v1.0.5 (2026-09-03)
+## v1.0.5 (2026-09-04)
 
 ### ✨ New
+
+- **New provider APInex (apinex.bond)**: prepaid USD-credit third-party gateway (OpenAI-compatible) with 18 models — GPT-5.6 Sol / Terra / Luna, Claude Opus 5 / Sonnet 5, Gemini 3.1 Pro / 3.8 Flash, Grok 4.6, DeepSeek V4, GLM-5.3, Kimi K3, plus 5 `free/`-prefixed free models (GLM-5.3 Flash, DeepSeek V4 ×2, GPT-5.6 Luna, Qwen 3.8 MAX)
+- **Invite code one-click copy**: provider pages show a copyable invite-code chip next to Get API Key (APInex: `SLEWP68C`)
 - **Desktop tray app (Windows / macOS)**: an install-and-go desktop app — system tray menu (open console / start / restart / stop / launch at login) plus an embedded window; closing the window minimizes to the tray. Shares data, keys and port with the npm CLI (the two forms run exclusively). Windows ships an NSIS installer (silent `/S` supported) and a portable exe; macOS ships separate Intel + Apple Silicon dmgs
 - **CLI / desktop UI localization**: the npm CLI and the desktop tray now follow the system language (Simplified Chinese / Traditional Chinese / English); override with the `TENROUTER_LANG` env var (`zh-CN` / `zh-TW` / `en`)
 - **Self-serve custom providers + new Skills-page skill**: register a custom OpenAI/Anthropic-compatible endpoint (baseUrl + upstream key + models) at runtime with a dashboard LLM key — no source change, no repackage. The Dashboard **Skills** page gains a **10router-add-provider** card and now links to the `main` branch (previously `master`, which 404'd)
@@ -14,6 +17,10 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 - **New Agnes AI dual-site providers**: international **Agnes AI** (com) + **Agnes AI (CN)** — each with Agnes 2.5 Flash / 2.5 Pro text models (512K / 1M context, vision + reasoning), plus Agnes Image 2.x Flash image models (standard images/generations endpoint; image-to-image / editing)
 - **New "Experimental" settings group**: Profile gains a dedicated Experimental card gathering the developer-oriented default-off toggles (Fetch models from GitHub JSON + CodeBuddy CN import/export) for easy future expansion
 
+
+### 🐛 Fixes
+- **Usage table corruption after Cost/Token switch**: toggling the display mode and sorting no longer reverts some rows to currency values; Traditional Chinese usage-table headers are now fully translated
+- **Usage table sorting semantics**: token / cost columns now sort model groups by their totals, matching the header arrow direction
 ## v1.0.4 (2026-09-01)
 
 ### ✨ New
