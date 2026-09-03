@@ -23,6 +23,8 @@ import AddApiKeyModal from "./AddApiKeyModal";
 import EditCompatibleNodeModal from "./EditCompatibleNodeModal";
 import AddCustomModelModal from "./AddCustomModelModal";
 import BulkImportCodexModal from "./BulkImportCodexModal";
+import CodeBuddyImportModal from "./CodeBuddyImportModal";
+import CodeBuddyOAuthMenuButton from "./CodeBuddyOAuthMenuButton";
 
 const ONE_BY_ONE_DELAY_MS = 1000;
 
@@ -50,6 +52,7 @@ export default function ProviderDetailPage() {
   const [showAddApiKeyModal, setShowAddApiKeyModal] = useState(false);
   const [addConnectionError, setAddConnectionError] = useState("");
   const [showBulkImportCodex, setShowBulkImportCodex] = useState(false);
+  const [showCodeBuddyImport, setShowCodeBuddyImport] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEditNodeModal, setShowEditNodeModal] = useState(false);
   const [showBulkProxyModal, setShowBulkProxyModal] = useState(false);
@@ -165,6 +168,7 @@ export default function ProviderDetailPage() {
   const isOAuth = !!OAUTH_PROVIDERS[providerId] || !!FREE_PROVIDERS[providerId] || authModes.includes("oauth");
   const supportsApiKeyAuth = !!APIKEY_PROVIDERS[providerId] || authModes.includes("apikey");
   const isFreeNoAuth = !!FREE_PROVIDERS[providerId]?.noAuth;
+  const isCodeBuddy = providerId === "codebuddy-cn";
   const staticModels = getModelsByProviderId(providerId);
   const models = providerId === "cursor" && liveModels.length > 0
     ? liveModels
@@ -1724,9 +1728,18 @@ export default function ProviderDetailPage() {
               <div className="flex gap-2">
                 {hasDualAuthModes ? (
                   <>
-                    <Button size="sm" icon="lock" variant="secondary" onClick={triggerOAuthConnection}>
-                      {oauthConnectionLabel}
-                    </Button>
+                    {isCodeBuddy ? (
+                      <CodeBuddyOAuthMenuButton
+                        onPrimary={triggerOAuthConnection}
+                        onImportJson={() => setShowCodeBuddyImport(true)}
+                      >
+                        {oauthConnectionLabel}
+                      </CodeBuddyOAuthMenuButton>
+                    ) : (
+                      <Button size="sm" icon="lock" variant="secondary" onClick={triggerOAuthConnection}>
+                        {oauthConnectionLabel}
+                      </Button>
+                    )}
                     <Button size="sm" icon="key" onClick={triggerApiKeyConnection}>
                       {apiKeyConnectionLabel}
                     </Button>
@@ -1814,15 +1827,24 @@ export default function ProviderDetailPage() {
                   )}
                   {hasDualAuthModes ? (
                     <>
-                      <Button
-                        size="sm"
-                        icon="lock"
-                        variant="secondary"
-                        onClick={triggerOAuthConnection}
-                        className="w-full sm:w-auto"
-                      >
-                        {oauthConnectionLabel}
-                      </Button>
+                      {isCodeBuddy ? (
+                        <CodeBuddyOAuthMenuButton
+                          onPrimary={triggerOAuthConnection}
+                          onImportJson={() => setShowCodeBuddyImport(true)}
+                        >
+                          {oauthConnectionLabel}
+                        </CodeBuddyOAuthMenuButton>
+                      ) : (
+                        <Button
+                          size="sm"
+                          icon="lock"
+                          variant="secondary"
+                          onClick={triggerOAuthConnection}
+                          className="w-full sm:w-auto"
+                        >
+                          {oauthConnectionLabel}
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         icon="key"
@@ -2006,6 +2028,14 @@ export default function ProviderDetailPage() {
         <BulkImportCodexModal
           isOpen={showBulkImportCodex}
           onClose={() => setShowBulkImportCodex(false)}
+          onSuccess={fetchConnections}
+        />
+      )}
+
+      {providerId === "codebuddy-cn" && (
+        <CodeBuddyImportModal
+          isOpen={showCodeBuddyImport}
+          onClose={() => setShowCodeBuddyImport(false)}
           onSuccess={fetchConnections}
         />
       )}

@@ -276,5 +276,11 @@
   "Show community welfare providers": "顯示公益站供應商",
   "Show community welfare providers (公益站) with no recharge entry": "顯示無儲值入口的公益站供應商（GoRouter / TaBiAI）",
   "Show free community gateways with no recharge entry (GoRouter / TaBiAI)": "顯示無儲值入口的免費公益站供應商（GoRouter / TaBiAI）",
-  "Add Custom Provider": "新增自訂供應商"
+  "Add Custom Provider": "新增自訂供應商",
+  "Import CodeBuddy CN Accounts": "匯入 CodeBuddy CN 帳號",
+  "Import CodeBuddy CN accounts from JSON...": "從 JSON 匯入 CodeBuddy CN 帳號…",
+  "Choose JSON file...": "選擇 JSON 檔案…",
+  "Or paste JSON": "或貼上 JSON",
+  "Failed to read file": "讀取檔案失敗",
+  "Import CodeBuddy CN OAuth accounts from a JSON export. Accounts signed by a non-CodeBuddy realm (e.g. workbuddy.cn) are skipped. Existing accounts are updated, new ones are added.": "從 JSON 檔案匯入 CodeBuddy CN 的 OAuth 帳號。非 CodeBuddy 網域（如 workbuddy.cn）簽發的帳號會被略過；既有帳號更新，新帳號則新增。"
 }
