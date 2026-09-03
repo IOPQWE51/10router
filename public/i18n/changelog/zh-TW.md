@@ -2,7 +2,7 @@
 
 這裡展示面向用戶的關鍵更新；完整開發明細見 [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md)。
 
-## v1.0.5 (2026-09-02)
+## v1.0.5 (2026-09-03)
 
 ### ✨ 新增
 - **桌面系統列版（Windows / macOS）**：裝完即用的桌面應用——系統列選單（開啟控制台 / 啟動 / 重新啟動 / 停止 / 開機自啟）+ 內嵌視窗，關閉視窗即縮到系統列；與 npm CLI 共享資料、金鑰與連接埠，兩種形態互斥執行。Windows 提供安裝版（NSIS，支援 `/S` 靜默安裝）與便攜版，macOS 提供 Intel + Apple Silicon 雙 dmg

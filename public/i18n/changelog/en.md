@@ -2,7 +2,7 @@
 
 User-facing highlights per release. See [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md) for the full developer log.
 
-## v1.0.5 (2026-09-02)
+## v1.0.5 (2026-09-03)
 
 ### ✨ New
 - **Desktop tray app (Windows / macOS)**: an install-and-go desktop app — system tray menu (open console / start / restart / stop / launch at login) plus an embedded window; closing the window minimizes to the tray. Shares data, keys and port with the npm CLI (the two forms run exclusively). Windows ships an NSIS installer (silent `/S` supported) and a portable exe; macOS ships separate Intel + Apple Silicon dmgs
