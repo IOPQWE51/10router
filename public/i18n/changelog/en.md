@@ -10,6 +10,7 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 - **Self-serve custom providers + new Skills-page skill**: register a custom OpenAI/Anthropic-compatible endpoint (baseUrl + upstream key + models) at runtime with a dashboard LLM key — no source change, no repackage. The Dashboard **Skills** page gains a **10router-add-provider** card and now links to the `main` branch (previously `master`, which 404'd)
 - **CodeBuddy CN account JSON bulk import / export** (experimental, off by default): after enabling "CodeBuddy CN OAuth import / export" under Settings → Providers, the CodeBuddy CN detail page shows Import / Export buttons to bulk-import or export account credentials in the third-party (wb) JSON format (import dedupes by identity and skips non-CodeBuddy issuers)
 - **Community welfare providers sort into one group**: in the Free Tier list, community providers (GoRouter / TaBiAI) now cluster into one adjacent block per rank group instead of interleaving with regular freeTier providers by priority/name
+- **New Agnes AI dual-site providers**: international **Agnes AI** (com) + **Agnes AI (CN)** — each with Agnes 2.5 Flash / 2.5 Pro text models (512K / 1M context, vision + reasoning)
 
 ## v1.0.4 (2026-09-01)
 

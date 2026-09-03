@@ -128,6 +128,8 @@ import p125 from "./bai.js";
 import p126 from "./tokenbom.js";
 import p127 from "./gorouter.js";
 import p128 from "./tabiauto.js";
+import p129 from "./agnes-ai.js";
+import p130 from "./agnes-ai-cn.js";
 
 export default [
   p0,
@@ -257,4 +259,6 @@ export default [
   p126,
   p127,
   p128,
+  p129,
+  p130,
 ];

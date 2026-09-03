@@ -1047,5 +1047,15 @@
     "baseUrl": "https://tabitoken.com/v1/chat/completions",
     "validateUrl": "https://tabitoken.com/v1/models",
     "format": "openai"
+  },
+  "agnes-ai": {
+    "baseUrl": "https://apihub.agnes-ai.com/v1/chat/completions",
+    "validateUrl": "https://apihub.agnes-ai.com/v1/models",
+    "format": "openai"
+  },
+  "agnes-ai-cn": {
+    "baseUrl": "https://api.agnes-ai.cn/v1/chat/completions",
+    "validateUrl": "https://api.agnes-ai.cn/v1/models",
+    "format": "openai"
   }
 }

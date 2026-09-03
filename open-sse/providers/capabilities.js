@@ -108,6 +108,14 @@ export const MODEL_CAPABILITIES = {
   "kimi-for-coding-highspeed": { vision: true, videoInput: true, reasoning: true, thinkingFormat: "kimi", thinkingCanDisable: false, contextWindow: 262144, maxOutput: 65536 },
   "kimi-k2.7-code":    { vision: true, videoInput: true, reasoning: true, thinkingFormat: "kimi", thinkingCanDisable: false, contextWindow: 262144, maxOutput: 65536 },
   "kimi-k2.7-code-highspeed": { vision: true, videoInput: true, reasoning: true, thinkingFormat: "kimi", thinkingCanDisable: false, contextWindow: 262144, maxOutput: 65536 },
+
+  // Agnes AI (agnes-ai / agnes-ai-cn) — OpenAI-compatible gateway; multimodal
+  // (text+image input) + reasoning. Specs from official docs
+  // agnes-ai.com/zh-Hans/docs/{agnes-25-flash,agnes-25-pro}. agnes-2.0-flash &
+  // 2.5-pro-alpha are deprecated upstream — not registered here (migrate to
+  // 2.5-flash / 2.5-pro).
+  "agnes-2.5-flash":  { vision: true, reasoning: true, thinkingFormat: "openai", thinkingCanDisable: false, contextWindow: 512000, maxOutput: 65536 },
+  "agnes-2.5-pro":    { vision: true, reasoning: true, thinkingFormat: "openai", thinkingCanDisable: false, contextWindow: 1000000, maxOutput: 65536 },
 };
 
 const KIRO_GPT_5_6_CAPABILITIES = { vision: true, reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 272000, maxOutput: 128000 };
