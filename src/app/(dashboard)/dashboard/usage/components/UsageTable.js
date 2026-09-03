@@ -144,10 +144,13 @@ export default function UsageTable({
         { field: "totalTokens", label: "Total Tokens" },
       ];
     }
+    // Fields must match the displayed value (sortData computes per-item
+    // inputCost/cachedCost/outputCost), otherwise the header sorts by the
+    // wrong metric.
     return [
-      { field: "promptTokens", label: "Input Cost" },
+      { field: "inputCost", label: "Input Cost" },
       { field: "cachedCost", label: "Cached Cost" },
-      { field: "completionTokens", label: "Output Cost" },
+      { field: "outputCost", label: "Output Cost" },
       { field: "cost", label: "Total Cost" },
     ];
   }, [viewMode]);

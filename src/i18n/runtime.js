@@ -57,11 +57,11 @@ export function onLocaleChange(callback) {
 // Process text node
 function processTextNode(node) {
   if (!node.nodeValue || !node.nodeValue.trim()) return;
-  
+
   // Skip if parent is script, style, code, or structural elements
   const parent = node.parentElement;
   if (!parent) return;
-  
+
   // Skip if parent or any ancestor has data-i18n-skip attribute
   let element = parent;
   while (element) {
@@ -70,31 +70,40 @@ function processTextNode(node) {
     }
     element = element.parentElement;
   }
-  
+
   const tagName = parent.tagName?.toLowerCase();
-  
+
   // Skip elements that don't allow text nodes
   const skipTags = [
     "script", "style", "code", "pre",
     "colgroup", "table", "thead", "tbody", "tfoot", "tr",
     "select", "datalist", "optgroup"
   ];
-  
+
   if (skipTags.includes(tagName)) return;
-  
+
+  // React owns these nodes and may rewrite nodeValue in place at any time
+  // (it never fires a childList mutation for that). If the current text
+  // differs from what we last applied, the framework changed it — adopt it
+  // as the new original instead of reverting it to a stale one.
+  if (node._i18nApplied !== undefined && node.nodeValue !== node._i18nApplied) {
+    node._originalText = node.nodeValue;
+  }
+
   // Store original text if not already stored
   if (!node._originalText) {
     node._originalText = node.nodeValue;
   }
-  
+
   // Use original text for translation
   const original = node._originalText;
   const translated = translate(original);
-  
+
   // Only update if different to avoid unnecessary DOM mutations
   if (translated !== node.nodeValue) {
     node.nodeValue = translated;
   }
+  node._i18nApplied = translated;
 }
 
 // Process all text nodes in element
@@ -130,9 +139,16 @@ export async function initRuntimeI18n() {
   // Process existing DOM
   processElement(document.body);
   
-  // Watch for new nodes
+  // Watch for new nodes AND in-place text changes. characterData matters:
+  // React rewrites text nodes in place (e.g. toggling a table between cost
+  // and token values) without any childList mutation, so without this those
+  // updates were invisible and later child-list passes reverted them.
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
+      if (mutation.type === "characterData") {
+        processTextNode(mutation.target);
+        return;
+      }
       mutation.addedNodes.forEach((node) => {
         if (node.nodeType === Node.ELEMENT_NODE) {
           processElement(node);
@@ -142,10 +158,11 @@ export async function initRuntimeI18n() {
       });
     });
   });
-  
+
   observer.observe(document.body, {
     childList: true,
     subtree: true,
+    characterData: true,
   });
 }
 
