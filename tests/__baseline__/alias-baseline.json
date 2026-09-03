@@ -119,9 +119,13 @@
     "morphllm": "morph",
     "tokenbom": "tokenbom",
     "gorouter": "gorouter",
-    "tabiauto": "tabiauto"
+    "tabiauto": "tabiauto",
+    "agnes-ai": "agnes-ai",
+    "agnes-ai-cn": "agnes-ai-cn"
   },
   "idToAlias": {
+    "agnes-ai": "agnes-ai",
+    "agnes-ai-cn": "agnes-ai-cn",
     "alicode": "alicode",
     "alicode-intl": "alicode-intl",
     "alims-intl": "alims-intl",
@@ -214,6 +218,8 @@
   "modelKeys": [
     "af",
     "ag",
+    "agnes-ai",
+    "agnes-ai-cn",
     "alicode",
     "alicode-intl",
     "alims-intl",
