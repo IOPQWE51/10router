@@ -275,5 +275,6 @@
   "Community": "公益站",
   "Show community welfare providers": "顯示公益站供應商",
   "Show community welfare providers (公益站) with no recharge entry": "顯示無儲值入口的公益站供應商（GoRouter / TaBiAI）",
-  "Show free community gateways with no recharge entry (GoRouter / TaBiAI)": "顯示無儲值入口的免費公益站供應商（GoRouter / TaBiAI）"
+  "Show free community gateways with no recharge entry (GoRouter / TaBiAI)": "顯示無儲值入口的免費公益站供應商（GoRouter / TaBiAI）",
+  "Add Custom Provider": "新增自訂供應商"
 }

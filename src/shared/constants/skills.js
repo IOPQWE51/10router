@@ -2,12 +2,13 @@
 // Each skill = 1 raw GitHub URL the user copies and pastes to any AI agent.
 
 const REPO = "techysy/10router";
-const BRANCH = "master";
+const BRANCH = "main";
 const SKILL_PATH = "skills";
 
 export const SKILLS_REPO_URL = `https://github.com/${REPO}`;
 export const SKILLS_RAW_BASE = `https://raw.githubusercontent.com/${REPO}/refs/heads/${BRANCH}/${SKILL_PATH}`;
 export const SKILLS_BLOB_BASE = `https://github.com/${REPO}/blob/${BRANCH}/${SKILL_PATH}`;
+export const SKILLS_TREE_URL = `https://github.com/${REPO}/tree/${BRANCH}/${SKILL_PATH}`;
 
 export const SKILLS = [
   {
@@ -66,6 +67,13 @@ export const SKILLS = [
     description: "URL → markdown / text / HTML via Firecrawl, Jina, Tavily, Exa.",
     endpoint: "/v1/web/fetch",
     icon: "language",
+  },
+  {
+    id: "10router-add-provider",
+    name: "Add Custom Provider",
+    description: "Self-serve register a custom OpenAI/Anthropic-compatible upstream (baseUrl + key + models) — no source change, live immediately.",
+    endpoint: null,
+    icon: "add_circle",
   },
 ];
 

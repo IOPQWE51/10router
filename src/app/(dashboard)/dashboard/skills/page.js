@@ -5,7 +5,7 @@ import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { translate, getCurrentLocale } from "@/i18n/runtime";
 import {
   SKILLS,
-  SKILLS_REPO_URL,
+  SKILLS_TREE_URL,
   getSkillRawUrl,
   getSkillBlobUrl,
 } from "@/shared/constants/skills";
@@ -100,7 +100,7 @@ export default function SkillsPage() {
             </p>
           </div>
           <a
-            href={`${SKILLS_REPO_URL}/tree/master/skills`}
+            href={SKILLS_TREE_URL}
             target="_blank"
             rel="noreferrer"
             className="text-sm text-primary hover:underline inline-flex items-center gap-1"
