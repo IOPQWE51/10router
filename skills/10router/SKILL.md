@@ -53,6 +53,7 @@ When the user needs a specific capability, fetch that skill's `SKILL.md` from it
 | Embeddings | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-embeddings/SKILL.md |
 | Web search | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-search/SKILL.md |
 | Web fetch (URL → markdown) | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-fetch/SKILL.md |
+| Add a custom provider (self-serve) | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-add-provider/SKILL.md |
 
 ## Errors
 

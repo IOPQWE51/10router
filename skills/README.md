@@ -21,6 +21,7 @@ Drop-in skills for any AI agent (Claude, Cursor, ChatGPT, custom SDK). Just **co
 | Embeddings 向量嵌入 | [10router-embeddings (EN)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-embeddings/SKILL.md) | [10router-embeddings (中文)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-embeddings/SKILL.zh-CN.md) |
 | Web search 网页搜索 | [10router-web-search (EN)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-search/SKILL.md) | [10router-web-search (中文)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-search/SKILL.zh-CN.md) |
 | Web fetch 网页抓取 (URL → markdown) | [10router-web-fetch (EN)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-fetch/SKILL.md) | [10router-web-fetch (中文)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-fetch/SKILL.zh-CN.md) |
+| Add custom provider 添加自定义供应商 (self-serve 自助) | [10router-add-provider (EN)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-add-provider/SKILL.md) | [10router-add-provider (中文)](https://raw.githubusercontent.com/techysy/10router/main/skills/10router-add-provider/SKILL.zh-CN.md) |
 
 ## How to use / 使用方法
 

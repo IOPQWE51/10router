@@ -53,6 +53,7 @@ curl $TENROUTER_URL/v1/models/image-to-text    # 视觉
 | 嵌入 | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-embeddings/SKILL.zh-CN.md |
 | 联网搜索 | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-search/SKILL.zh-CN.md |
 | 网页抓取（URL → markdown） | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-web-fetch/SKILL.zh-CN.md |
+| 添加自定义供应商（自助） | https://raw.githubusercontent.com/techysy/10router/main/skills/10router-add-provider/SKILL.zh-CN.md |
 
 ## 错误处理
 
