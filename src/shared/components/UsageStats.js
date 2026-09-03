@@ -240,7 +240,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
         .then((r) => (r.ok ? r.json() : null))
         .then((s) => ({
           topologyVisibility: s?.topologyVisibility || {},
-          showCommunityProviders: s?.showCommunityProviders === true,
+          showCommunityProviders: s?.showCommunityProviders !== false,
         })),
     ])
       .then(([d, nodesData, { topologyVisibility, showCommunityProviders }]) => {

@@ -101,9 +101,9 @@ export default function ProvidersPage() {
   const [providerNodes, setProviderNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllApikey, setShowAllApikey] = useState(false);
-  // Community welfare providers (公益站: gorouter/tabiauto) are hidden by
-  // default; shown when the settings toggle (Profile → Providers) is on.
-  const [showCommunityProviders, setShowCommunityProviders] = useState(false);
+  // Community welfare providers (公益站: gorouter/tabiauto) show by default;
+  // hidden only when the settings toggle (Profile → Providers) is turned off.
+  const [showCommunityProviders, setShowCommunityProviders] = useState(true);
   const [showAddCompatibleModal, setShowAddCompatibleModal] = useState(false);
   const [showAddAnthropicCompatibleModal, setShowAddAnthropicCompatibleModal] =
     useState(false);
@@ -206,7 +206,7 @@ export default function ProvidersPage() {
           const settingsData = await settingsRes.json();
           setTopologyVisibility(settingsData.topologyVisibility || {});
           setDisabledLastSort(settingsData.providerDisabledLastSort === true);
-          setShowCommunityProviders(settingsData.showCommunityProviders === true);
+          setShowCommunityProviders(settingsData.showCommunityProviders !== false);
         }
       } catch (error) {
         console.log("Error fetching data:", error);

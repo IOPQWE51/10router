@@ -135,7 +135,8 @@ export default function ProfilePage() {
   };
 
   const toggleShowCommunityProviders = async () => {
-    const next = !(settings.showCommunityProviders === true);
+    // Default is SHOWN; toggling hides/shows. Flip the stored flag.
+    const next = settings.showCommunityProviders === false;
     try {
       const res = await fetch("/api/settings", {
         method: "PATCH",
@@ -1719,7 +1720,7 @@ export default function ProfilePage() {
                 </p>
               </div>
               <Toggle
-                checked={settings.showCommunityProviders === true}
+                checked={settings.showCommunityProviders !== false}
                 onChange={toggleShowCommunityProviders}
               />
             </div>
