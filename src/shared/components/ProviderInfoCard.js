@@ -1,6 +1,7 @@
 "use client";
 
 import Card from "./Card";
+import InviteCodeChip from "./InviteCodeChip";
 import { fmtCost } from "@/shared/utils/currency";
 
 // Only show fields user actually cares about
@@ -39,17 +40,20 @@ export default function ProviderInfoCard({ config, provider, title = "Provider I
     <Card>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold">{title}</h2>
-        {signupUrl && (
-          <a
-            href={signupUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-sm">open_in_new</span>
-            Get API Key
-          </a>
-        )}
+        <div className="flex items-center gap-2">
+          {signupUrl && (
+            <a
+              href={signupUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-sm">open_in_new</span>
+              Get API Key
+            </a>
+          )}
+          <InviteCodeChip code={provider?.notice?.inviteCode} />
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
         {rows.map((r) => (
