@@ -9,7 +9,7 @@ import { translate } from "@/i18n/runtime";
 // (account-switcher / CLI token dump). Pairs are merged into codebuddy-cn by
 // identity (same Keycloak sub → update; otherwise create).
 
-export default function CodeBuddyImportModal({ isOpen, onClose, onSuccess }) {
+export default function CodeBuddyImportModal({ isOpen, onClose, onSuccess, password = "" }) {
   const [jsonText, setJsonText] = useState("");
   const [fileName, setFileName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -71,12 +71,19 @@ export default function CodeBuddyImportModal({ isOpen, onClose, onSuccess }) {
     try {
       const res = await fetch("/api/oauth/codebuddy-cn/bulk-import", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(password ? { "x-9r-password": password } : {}),
+        },
         body: JSON.stringify({ accounts }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setParseError(data?.error || `Request failed: ${res.status}`);
+        setParseError(
+          res.status === 401
+            ? translate("Invalid password")
+            : data?.error || `Request failed: ${res.status}`
+        );
         return;
       }
       setResult(data);
@@ -174,4 +181,5 @@ CodeBuddyImportModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   onSuccess: PropTypes.func,
+  password: PropTypes.string,
 };

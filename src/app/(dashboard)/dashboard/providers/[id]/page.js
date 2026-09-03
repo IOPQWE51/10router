@@ -72,6 +72,9 @@ export default function ProviderDetailPage() {
   }); // provider JSON catalog (null = not loaded/declared)
   const [modelJsonImportEnabled, setModelJsonImportEnabled] = useState(false); // server-side toggle
   const [codeBuddyOAuthImportEnabled, setCodeBuddyOAuthImportEnabled] = useState(false); // experimental toggle
+  // cbcn export/import re-auth: { open, action: 'export'|'import', value }
+  const [cbPw, setCbPw] = useState({ open: false, action: null, value: "" });
+  const [cbImportPassword, setCbImportPassword] = useState(""); // password for bulk-import (passed to modal)
   const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
@@ -135,12 +138,35 @@ export default function ProviderDetailPage() {
     triggerApiKeyConnection();
   };
 
+  // Password-confirm modal for cbcn export / import (both are sensitive).
+  const handleCbPwConfirm = async () => {
+    const { action, value } = cbPw;
+    setCbPw({ open: false, action: null, value: "" });
+    if (action === "export") {
+      await handleCodeBuddyExport(value);
+    } else if (action === "import") {
+      setCbImportPassword(value);
+      setShowCodeBuddyImport(true);
+    }
+  };
+
+  const openCbPassword = (action) => {
+    setCbImportPassword("");
+    setCbPw({ open: true, action, value: "" });
+  };
+
   // Export codebuddy-cn connections as the third-party (wb) JSON format.
-  const handleCodeBuddyExport = async () => {
+  const handleCodeBuddyExport = async (password) => {
     try {
-      const res = await fetch("/api/oauth/codebuddy-cn/export", { cache: "no-store" });
+      const res = await fetch("/api/oauth/codebuddy-cn/export", {
+        cache: "no-store",
+        headers: password ? { "x-9r-password": password } : {},
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || `Request failed: ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401) throw new Error(translate("Invalid password"));
+        throw new Error(data?.error || `Request failed: ${res.status}`);
+      }
       const list = Array.isArray(data) ? data : [];
       if (list.length === 0) {
         notify.warning(translate("No CodeBuddy CN connections to export"));
@@ -1771,10 +1797,10 @@ export default function ProviderDetailPage() {
                     </Button>
                     {codeBuddyTransferOn && (
                       <>
-                        <Button size="sm" icon="file_download" variant="secondary" onClick={handleCodeBuddyExport}>
+                        <Button size="sm" icon="file_download" variant="secondary" onClick={() => openCbPassword("export")}>
                           {translate("Export")}
                         </Button>
-                        <Button size="sm" icon="upload_file" variant="secondary" onClick={() => setShowCodeBuddyImport(true)}>
+                        <Button size="sm" icon="upload_file" variant="secondary" onClick={() => openCbPassword("import")}>
                           {translate("Import")}
                         </Button>
                       </>
@@ -1886,7 +1912,7 @@ export default function ProviderDetailPage() {
                             size="sm"
                             icon="file_download"
                             variant="secondary"
-                            onClick={handleCodeBuddyExport}
+                            onClick={() => openCbPassword("export")}
                             className="w-full sm:w-auto"
                           >
                             {translate("Export")}
@@ -1895,7 +1921,7 @@ export default function ProviderDetailPage() {
                             size="sm"
                             icon="upload_file"
                             variant="secondary"
-                            onClick={() => setShowCodeBuddyImport(true)}
+                            onClick={() => openCbPassword("import")}
                             className="w-full sm:w-auto"
                           >
                             {translate("Import")}
@@ -2084,10 +2110,54 @@ export default function ProviderDetailPage() {
       {providerId === "codebuddy-cn" && (
         <CodeBuddyImportModal
           isOpen={showCodeBuddyImport}
+          password={cbImportPassword}
           onClose={() => setShowCodeBuddyImport(false)}
           onSuccess={fetchConnections}
         />
       )}
+
+      {/* cbcn export/import password re-auth */}
+      <Modal
+        isOpen={cbPw.open}
+        onClose={() => setCbPw({ open: false, action: null, value: "" })}
+        title={translate("Confirm Password")}
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setCbPw({ open: false, action: null, value: "" })}
+            >
+              {translate("Cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCbPwConfirm}
+              disabled={!cbPw.value}
+            >
+              {translate("Confirm")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-text-muted mb-3 text-sm">
+          {translate(
+            cbPw.action === "export"
+              ? "Enter your current password to export CodeBuddy CN accounts."
+              : "Enter your current password to import CodeBuddy CN accounts."
+          )}
+        </p>
+        <Input
+          type="password"
+          autoFocus
+          value={cbPw.value}
+          onChange={(e) => setCbPw((p) => ({ ...p, value: e.target.value }))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && cbPw.value) handleCbPwConfirm();
+          }}
+          placeholder={translate("Password")}
+        />
+      </Modal>
 
       {/* AG Risk Confirmation Modal */}
       <ConfirmModal

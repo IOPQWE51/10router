@@ -4,6 +4,15 @@ import {
   createProviderConnection,
   updateProviderConnection,
 } from "@/models";
+import { verifyDashboardPassword } from "@/lib/auth/dashboardSession";
+
+const CLI_TOKEN_HEADER = "x-9r-cli-token";
+const PASSWORD_HEADER = "x-9r-password";
+
+// CLI token requests are already trusted (local machine); skip password re-auth.
+function isCliRequest(request) {
+  return Boolean(request.headers.get(CLI_TOKEN_HEADER));
+}
 
 /**
  * POST /api/oauth/codebuddy-cn/bulk-import
@@ -34,6 +43,10 @@ import {
  * Tokens are NEVER echoed back in the response.
  */
 export async function POST(request) {
+  // Sensitive write (imports credentials) — require the dashboard password (CLI token bypasses).
+  if (!isCliRequest(request) && !(await verifyDashboardPassword(request.headers.get(PASSWORD_HEADER)))) {
+    return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+  }
   let body;
   try {
     body = await request.json();

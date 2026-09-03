@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { getProviderConnections } from "@/models";
+import { verifyDashboardPassword } from "@/lib/auth/dashboardSession";
+
+const CLI_TOKEN_HEADER = "x-9r-cli-token";
+const PASSWORD_HEADER = "x-9r-password";
+
+// CLI token requests are already trusted (local machine); skip password re-auth.
+function isCliRequest(request) {
+  return Boolean(request.headers.get(CLI_TOKEN_HEADER));
+}
 
 /**
  * GET /api/oauth/codebuddy-cn/export
@@ -24,8 +33,12 @@ function decodeJwt(jwt) {
   }
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
+    // Sensitive export — require the dashboard password (CLI token bypasses).
+    if (!isCliRequest(request) && !(await verifyDashboardPassword(request.headers.get(PASSWORD_HEADER)))) {
+      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+    }
     const connections = await getProviderConnections({ provider: "codebuddy-cn" });
     const now = Date.now();
 

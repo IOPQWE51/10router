@@ -1481,5 +1481,7 @@
   "Export": "导出",
   "No CodeBuddy CN connections to export": "没有可导出的 CodeBuddy CN 连接",
   "accounts exported": "个账号已导出",
-  "Export failed": "导出失败"
+  "Export failed": "导出失败",
+  "Enter your current password to export CodeBuddy CN accounts.": "输入当前密码以导出 CodeBuddy CN 账号。",
+  "Enter your current password to import CodeBuddy CN accounts.": "输入当前密码以导入 CodeBuddy CN 账号。"
 }
