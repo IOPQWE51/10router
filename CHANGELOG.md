@@ -28,6 +28,7 @@
 - **Agent 可自助添加自定义 OpenAI/Anthropic 兼容供应商**（运行时操作，免改源码/免重打包）：`POST /api/provider-nodes` + `POST /api/providers` 根路径可用 dashboard LLM API key 认证，两步把一个 baseUrl + 上游 key + 模型注册成可路由节点（模型须带 `{prefix}/` 前缀路由）；`GET/PUT/DELETE` 及子路由仍走 CLI token/JWT。随附 agent 操作指南 `docs/zh-CN/agent-add-custom-provider.md` 与开源 skill `skills/10router-add-provider/`。
 - **公益站供应商排序归组**：Free Tier 列表中 GoRouter / TaBiAI 等公益站（`community`）供应商在 rank 分组内聚成相邻的一块，不再与普通 freeTier 供应商按 priority/名字混排（rank 连接优先语义不变，公益站块排在同 rank 普通供应商之后）。
 - **新增 Agnes AI 双站供应商**（标准 API Key 分区）：**Agnes AI**（`agnes-ai`，国际站）`https://apihub.agnes-ai.com/v1` + **Agnes AI (CN)**（`agnes-ai-cn`，中国站）`https://api.agnes-ai.cn/v1`，OpenAI 兼容、Bearer 鉴权。各登记 **Agnes 2.5 Flash**（512K 上下文，视觉+推理）与 **Agnes 2.5 Pro**（1M 上下文，视觉+推理）两个文本模型（实测 `/v1/models` 确认模型 ID；`agnes-2.0-flash` / `2.5-pro-alpha` 上游已废弃未登记）。能力按官方文档登记 contextWindow/vision/reasoning，两站共用品牌图标。
+- **设置页新增「实验性功能」分组**：Profile 设置新增独立的 **Experimental**（实验性功能）卡片，收纳开发者向/默认关闭的开关，方便后续扩展——从 Providers 卡迁入 **Fetch models from GitHub JSON**（JSON 模型目录导入）与 **CodeBuddy CN OAuth import / export**（cbcn 账号导入导出）。Providers 卡保留排序偏好与公益站显示开关。
 
 ### 🐛 Bug 修复（09-03 并入）
 

@@ -11,6 +11,7 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 - **CodeBuddy CN account JSON bulk import / export** (experimental, off by default): after enabling "CodeBuddy CN OAuth import / export" under Settings → Providers, the CodeBuddy CN detail page shows Import / Export buttons to bulk-import or export account credentials in the third-party (wb) JSON format (import dedupes by identity and skips non-CodeBuddy issuers)
 - **Community welfare providers sort into one group**: in the Free Tier list, community providers (GoRouter / TaBiAI) now cluster into one adjacent block per rank group instead of interleaving with regular freeTier providers by priority/name
 - **New Agnes AI dual-site providers**: international **Agnes AI** (com) + **Agnes AI (CN)** — each with Agnes 2.5 Flash / 2.5 Pro text models (512K / 1M context, vision + reasoning)
+- **New "Experimental" settings group**: Profile gains a dedicated Experimental card gathering the developer-oriented default-off toggles (Fetch models from GitHub JSON + CodeBuddy CN import/export) for easy future expansion
 
 ## v1.0.4 (2026-09-01)
 

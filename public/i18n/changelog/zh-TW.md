@@ -11,6 +11,7 @@
 - **CodeBuddy CN 帳號 JSON 批次匯入 / 匯出**（實驗性，預設關閉）：`設定 → Providers` 開啟 "CodeBuddy CN OAuth import / export" 後，CodeBuddy CN 詳情頁顯示 Import / Export 按鈕，可用第三方(wb) JSON 格式批次匯入或匯出帳號授權（匯入自動去重、非 CodeBuddy 簽發網域略過）
 - **公益站供應商排序歸組**：Free Tier 列表中 GoRouter / TaBiAI 等公益站供應商在 rank 分組內聚成相鄰一塊，不再與一般 freeTier 依 priority/名稱混排
 - **新增 Agnes AI 雙站供應商**：國際站 Agnes AI（com）+ 中國站 Agnes AI (CN)，各含 Agnes 2.5 Flash / 2.5 Pro 文字模型（512K / 1M 上下文，視覺+推理）
+- **設定新增「實驗性功能」分組**：Profile 獨立 Experimental 卡片，收納預設關閉的開發向開關（JSON 模型匯入 + CodeBuddy CN 匯入匯出），方便日後擴充
 
 ## v1.0.4 (2026-09-01)
 
