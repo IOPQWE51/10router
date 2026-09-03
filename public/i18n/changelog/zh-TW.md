@@ -9,6 +9,7 @@
 - **CLI / 桌面版介面多語言**：npm CLI 與桌面系統列自動跟隨系統語言顯示繁體中文、簡體中文或英文，可用環境變數 `TENROUTER_LANG`（`zh-CN` / `zh-TW` / `en`）強制指定
 - **Agent 可自助新增自訂供應商 + Skills 頁新增技能**：執行階段用 dashboard LLM key 即可兩步註冊 baseUrl + 上游 key + 模型的自訂 OpenAI/Anthropic 相容節點（免改原始碼/免重新打包）；Dashboard **Skills 頁**新增「10router-add-provider」技能卡片並修正此前連結指向不存在的 `master` 分支（點擊 404），現指向 `main`
 - **CodeBuddy CN 帳號 JSON 批次匯入 / 匯出**（實驗性，預設關閉）：`設定 → Providers` 開啟 "CodeBuddy CN OAuth import / export" 後，CodeBuddy CN 詳情頁顯示 Import / Export 按鈕，可用第三方(wb) JSON 格式批次匯入或匯出帳號授權（匯入自動去重、非 CodeBuddy 簽發網域略過）
+- **公益站供應商排序歸組**：Free Tier 列表中 GoRouter / TaBiAI 等公益站供應商在 rank 分組內聚成相鄰一塊，不再與一般 freeTier 依 priority/名稱混排
 
 ## v1.0.4 (2026-09-01)
 
