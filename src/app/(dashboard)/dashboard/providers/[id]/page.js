@@ -141,7 +141,12 @@ export default function ProviderDetailPage() {
       const res = await fetch("/api/oauth/codebuddy-cn/export", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Request failed: ${res.status}`);
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
+      const list = Array.isArray(data) ? data : [];
+      if (list.length === 0) {
+        notify.warning(translate("No CodeBuddy CN connections to export"));
+        return;
+      }
+      const blob = new Blob([JSON.stringify(list, null, 2)], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
@@ -151,9 +156,11 @@ export default function ProviderDetailPage() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      // Defer revoke so the download has started before the object URL is freed.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      notify.success(`${list.length} ${translate("accounts exported")}`);
     } catch (e) {
-      console.log("Error exporting codebuddy accounts:", e.message);
+      notify.error(translate("Export failed") + ": " + e.message);
     }
   };
 

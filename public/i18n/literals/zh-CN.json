@@ -1478,5 +1478,8 @@
   "Or paste JSON": "或粘贴 JSON",
   "Failed to read file": "读取文件失败",
   "Import CodeBuddy CN OAuth accounts from a JSON export. Accounts signed by a non-CodeBuddy realm (e.g. workbuddy.cn) are skipped. Existing accounts are updated, new ones are added.": "从 JSON 文件导入 CodeBuddy CN 的 OAuth 账号。非 CodeBuddy 域（如 workbuddy.cn）签发的账号会被跳过；已存在的账号更新，新账号则新增。",
-  "Export": "导出"
+  "Export": "导出",
+  "No CodeBuddy CN connections to export": "没有可导出的 CodeBuddy CN 连接",
+  "accounts exported": "个账号已导出",
+  "Export failed": "导出失败"
 }

@@ -282,5 +282,8 @@
   "Choose JSON file...": "選擇 JSON 檔案…",
   "Or paste JSON": "或貼上 JSON",
   "Failed to read file": "讀取檔案失敗",
-  "Import CodeBuddy CN OAuth accounts from a JSON export. Accounts signed by a non-CodeBuddy realm (e.g. workbuddy.cn) are skipped. Existing accounts are updated, new ones are added.": "從 JSON 檔案匯入 CodeBuddy CN 的 OAuth 帳號。非 CodeBuddy 網域（如 workbuddy.cn）簽發的帳號會被略過；既有帳號更新，新帳號則新增。"
+  "Import CodeBuddy CN OAuth accounts from a JSON export. Accounts signed by a non-CodeBuddy realm (e.g. workbuddy.cn) are skipped. Existing accounts are updated, new ones are added.": "從 JSON 檔案匯入 CodeBuddy CN 的 OAuth 帳號。非 CodeBuddy 網域（如 workbuddy.cn）簽發的帳號會被略過；既有帳號更新，新帳號則新增。",
+  "No CodeBuddy CN connections to export": "沒有可匯出的 CodeBuddy CN 連線",
+  "accounts exported": "個帳號已匯出",
+  "Export failed": "匯出失敗"
 }

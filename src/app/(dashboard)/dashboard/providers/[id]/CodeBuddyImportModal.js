@@ -121,7 +121,7 @@ export default function CodeBuddyImportModal({ isOpen, onClose, onSuccess }) {
           </div>
           <textarea
             className="w-full rounded border border-accent/30 bg-sidebar p-2 pt-4 text-sm font-mono resize-y min-h-[160px] focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder='[{ "access_token": "eyJ...", "refresh_token": "eyJ...", "nickname": "余论述" }]'
+            placeholder='[{ "access_token": "eyJ...", "refresh_token": "eyJ...", "nickname": "<nickname>" }]'
             value={jsonText}
             onChange={(e) => setJsonText(e.target.value)}
             disabled={submitting}
