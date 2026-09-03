@@ -26,13 +26,19 @@
 
 - **CodeBuddy CN 账号 JSON 批量导入 / 导出**（实验性，默认关）：`设置 → Providers → 打开 "CodeBuddy CN OAuth import / export"` 后，cbcn 详情页显示 **Import / Export** 按钮——用三方账号切换工具的 (wb) JSON 格式**批量导入**（选文件或粘贴）或**导出**（下载 `codebuddy-cn-accounts-<date>.json`）OAuth 授权。导入按 token 的 Keycloak `sub`（uid）或昵称去重（已存在则更新、否则新建），仅接受 `codebuddy.cn` / `copilot.tencent.com` 签发域（`workbuddy.cn` 等其它 realm 自动跳过）。实现：`GET/POST /api/oauth/codebuddy-cn/export` 与 `bulk-import`。
 - **Agent 可自助添加自定义 OpenAI/Anthropic 兼容供应商**（运行时操作，免改源码/免重打包）：`POST /api/provider-nodes` + `POST /api/providers` 根路径可用 dashboard LLM API key 认证，两步把一个 baseUrl + 上游 key + 模型注册成可路由节点（模型须带 `{prefix}/` 前缀路由）；`GET/PUT/DELETE` 及子路由仍走 CLI token/JWT。随附 agent 操作指南 `docs/zh-CN/agent-add-custom-provider.md` 与开源 skill `skills/10router-add-provider/`。
+- **公益站供应商默认改为显示**：GoRouter / TaBiAI 等公益站（`community`）供应商从「默认隐藏、需手动打开开关」改为**默认显示**（未显式关闭即显示）——供应商列表、Profile 的「显示公益站供应商」开关、用量页拓扑图三处统一为 `!== false` 语义，不再默认藏起来。
 - **公益站供应商排序归组**：Free Tier 列表中 GoRouter / TaBiAI 等公益站（`community`）供应商在 rank 分组内聚成相邻的一块，不再与普通 freeTier 供应商按 priority/名字混排（rank 连接优先语义不变，公益站块排在同 rank 普通供应商之后）。
 - **新增 Agnes AI 双站供应商**（标准 API Key 分区）：**Agnes AI**（`agnes-ai`，国际站）`https://apihub.agnes-ai.com/v1` + **Agnes AI (CN)**（`agnes-ai-cn`，中国站）`https://api.agnes-ai.cn/v1`，OpenAI 兼容、Bearer 鉴权。各登记 **Agnes 2.5 Flash**（512K 上下文，视觉+推理）与 **Agnes 2.5 Pro**（1M 上下文，视觉+推理）两个文本模型（实测 `/v1/models` 确认模型 ID；`agnes-2.0-flash` / `2.5-pro-alpha` 上游已废弃未登记）。能力按官方文档登记 contextWindow/vision/reasoning，两站共用品牌图标。国际站另含 **Agnes Image 2.0/2.1/2.5 Flash**、中国站含 **Image 2.1/2.5 Flash** 图像生成模型（走标准 `POST /v1/images/generations`，图生图/编辑能力，同 key 复用）。
 - **设置页新增「实验性功能」分组**：Profile 设置新增独立的 **Experimental**（实验性功能）卡片，收纳开发者向/默认关闭的开关，方便后续扩展——从 Providers 卡迁入 **Fetch models from GitHub JSON**（JSON 模型目录导入）与 **CodeBuddy CN OAuth import / export**（cbcn 账号导入导出）。Providers 卡保留排序偏好与公益站显示开关。
 
+### 🔒 安全加固（09-03 并入）
+
+- **CodeBuddy CN 账号导出/导入加密码二次验证**：审查发现 `requireLogin=false`（免登录本地单机模式）下 `/api/oauth/codebuddy-cn/export` 可**匿名导出全部 CodeBuddy token**（严重泄漏）——现导出与批量导入接口均要求 dashboard 密码（`x-9r-password` header），带 `x-9r-cli-token` 的 CLI 请求豁免；前端点 Export/Import 先弹密码确认框。无密码直接调用返回 401。补丁覆盖 cbcn 详情页的空连接态与有连接态两处入口。
+
 ### 🐛 Bug 修复（09-03 并入）
 
 - **Dashboard Skills 页链接指向不存在的 `master` 分支**：此前 `skills/*` 链接与 "View on GitHub" 均指向 `master`（仓库实际为 `main`），点击 404；统一改走 `main`。页面同时新增展示 **10router-add-provider** 技能卡片（可从 Skills 页复制粘贴给任意 AI agent 使用）。
+- **长 TTFT（time-to-first-token）下客户端假断连（ResponseAborted 循环）**：超大上下文上游（如 CodeBuddy 的 DeepSeek/GLM 在 100K+ token 提示词）首字节可能要 20–30s，这段静默期客户端（网关/卡片 sidecar）看到连接空闲便超时中断 → 反复 ResponseAborted。现于等待首字节期间按 5s 间隔下发 SSE 注释行（`: keep-alive`，规范合法、各 OpenAI/Claude/Gemini 解析器忽略），首字节到达即停止；同时新增断连观测日志（`STREAM-ERR`/`STREAM-CANCEL` 记录 `firstByteSeen`/`keepalivesSent`/耗时，用于判断断连发生在 TTFT 窗口还是流中段）。
 
 ## v1.0.4 (2026-09-01)
 

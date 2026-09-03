@@ -8,7 +8,8 @@
 - **桌面系統列版（Windows / macOS）**：裝完即用的桌面應用——系統列選單（開啟控制台 / 啟動 / 重新啟動 / 停止 / 開機自啟）+ 內嵌視窗，關閉視窗即縮到系統列；與 npm CLI 共享資料、金鑰與連接埠，兩種形態互斥執行。Windows 提供安裝版（NSIS，支援 `/S` 靜默安裝）與便攜版，macOS 提供 Intel + Apple Silicon 雙 dmg
 - **CLI / 桌面版介面多語言**：npm CLI 與桌面系統列自動跟隨系統語言顯示繁體中文、簡體中文或英文，可用環境變數 `TENROUTER_LANG`（`zh-CN` / `zh-TW` / `en`）強制指定
 - **Agent 可自助新增自訂供應商 + Skills 頁新增技能**：執行階段用 dashboard LLM key 即可兩步註冊 baseUrl + 上游 key + 模型的自訂 OpenAI/Anthropic 相容節點（免改原始碼/免重新打包）；Dashboard **Skills 頁**新增「10router-add-provider」技能卡片並修正此前連結指向不存在的 `master` 分支（點擊 404），現指向 `main`
-- **CodeBuddy CN 帳號 JSON 批次匯入 / 匯出**（實驗性，預設關閉）：`設定 → Providers` 開啟 "CodeBuddy CN OAuth import / export" 後，CodeBuddy CN 詳情頁顯示 Import / Export 按鈕，可用第三方(wb) JSON 格式批次匯入或匯出帳號授權（匯入自動去重、非 CodeBuddy 簽發網域略過）
+- **CodeBuddy CN 帳號 JSON 批次匯入 / 匯出**（實驗性，預設關閉）：`設定 → Providers` 開啟 "CodeBuddy CN OAuth import / export" 後，CodeBuddy CN 詳情頁顯示 Import / Export 按鈕，可用第三方(wb) JSON 格式批次匯入或匯出帳號授權（匯入自動去重、非 CodeBuddy 簽發網域略過）。匯入 / 匯出均需二次輸入 dashboard 密碼確認（防免登入模式下匿名匯出帳號令牌）
+- **公益站供應商預設顯示**：GoRouter / TaBiAI 等公益站供應商改為預設顯示（無需再手動開啟開關），列表 / Profile 開關 / 用量拓撲圖三處一致
 - **公益站供應商排序歸組**：Free Tier 列表中 GoRouter / TaBiAI 等公益站供應商在 rank 分組內聚成相鄰一塊，不再與一般 freeTier 依 priority/名稱混排
 - **新增 Agnes AI 雙站供應商**：國際站 Agnes AI（com）+ 中國站 Agnes AI (CN)，各含 Agnes 2.5 Flash / 2.5 Pro 文字模型（512K / 1M 上下文，視覺+推理）；另含 Agnes Image 2.x Flash 影像生成模型（標準 images/generations 端點，圖生圖/編輯）
 - **設定新增「實驗性功能」分組**：Profile 獨立 Experimental 卡片，收納預設關閉的開發向開關（JSON 模型匯入 + CodeBuddy CN 匯入匯出），方便日後擴充
