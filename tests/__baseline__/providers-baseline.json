@@ -1057,5 +1057,10 @@
     "baseUrl": "https://api.agnes-ai.cn/v1/chat/completions",
     "validateUrl": "https://api.agnes-ai.cn/v1/models",
     "format": "openai"
+  },
+  "apinex": {
+    "baseUrl": "https://api.apinex.bond/v1/chat/completions",
+    "validateUrl": "https://api.apinex.bond/v1/models",
+    "format": "openai"
   }
 }
