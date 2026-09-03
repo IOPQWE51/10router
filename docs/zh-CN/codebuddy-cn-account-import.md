@@ -40,27 +40,30 @@ CodeBuddy 的 access/refresh token 是 **Keycloak JWT**，payload 里的 `iss` �
 
 ---
 
-## 方式一：产品入口（长按隐藏菜单 + 文件导入）
+## 方式一：产品入口（实验开关 + 导出 / 导入按钮）
 
-> 设计为**隐藏入口**，不进正常 UI——在 codebuddy-cn 详情页的 **OAuth 按钮上长按**才会浮现。
+> 作为**插件式实验功能**，默认关闭。先在 Profile 的 Providers 实验区打开开关，codebuddy-cn
+> 详情页才会显示 Import / Export 按钮（避免污染常规 UI）。
 
-1. 进入 provider 详情页 `/dashboard/providers/codebuddy-cn`。
-2. 在 "OAuth"（Add Connection）按钮上 **按住不放约 0.6 秒**，浮现隐藏菜单。
-3. 点 **"Import CodeBuddy CN accounts from JSON…"**。
-4. 在弹出的对话框里 **选择 JSON 文件**（或直接粘贴 JSON 文本），点 **Import All**。
-5. 结果区显示 imported / updated / skipped / failed 计数；失败项会列出原因（如缺 accessToken、
-   非 CodeBuddy 域、网络错误）。
+1. **打开开关**：`/dashboard/profile` → Providers → 打开 **"CodeBuddy CN OAuth import / export"**
+   （默认关，持久化到 DB settings，跨设备生效）。
+2. 进入 provider 详情页 `/dashboard/providers/codebuddy-cn`，此时 OAuth / API Key 按钮旁会显示
+   **Export** 与 **Import** 两个按钮。
+3. **Export**：把当前全部 codebuddy-cn 连接导出为三方(wb)格式 JSON，触发浏览器下载
+   `codebuddy-cn-accounts-<date>.json`。
+4. **Import**：打开弹窗，**选择 JSON 文件**（或粘贴 JSON），点 **Import All**。结果区显示
+   imported / updated / skipped / failed 计数，失败项列出原因。
 
-仅 `codebuddy-cn` 页面的 OAuth 按钮启用该长按菜单，其它 provider 不受影响；普通点击仍走标准
-OAuth 授权。
+普通点击 OAuth 按钮仍走标准授权，与导入功能互不影响。仅 codebuddy-cn 显示这两个按钮。
 
 ### 涉及文件
 
-- 后端：`src/app/api/oauth/codebuddy-cn/bulk-import/route.js`
+- 后端导入：`src/app/api/oauth/codebuddy-cn/bulk-import/route.js`
+- 后端导出：`src/app/api/oauth/codebuddy-cn/export/route.js`
 - 前端弹窗：`src/app/(dashboard)/dashboard/providers/[id]/CodeBuddyImportModal.js`
-- 前端长按菜单按钮：`src/app/(dashboard)/dashboard/providers/[id]/CodeBuddyOAuthMenuButton.js`
-- 接线：`src/app/(dashboard)/dashboard/providers/[id]/page.js`（`isCodeBuddy` 分支两处 OAuth 按钮
-  + modal 挂载）
+- 接线：`src/app/(dashboard)/dashboard/providers/[id]/page.js`
+  （读 `settings.codeBuddyOAuthImport` → `codeBuddyTransferOn` 控制按钮显隐）
+- 实验开关：`src/app/(dashboard)/dashboard/profile/page.js`（key `codeBuddyOAuthImport`）
 - i18n：`public/i18n/literals/zh-CN.json` / `zh-TW.json`
 
 ---
@@ -84,6 +87,15 @@ curl -X POST http://<10router>:20127/api/oauth/codebuddy-cn/bulk-import \
 - 响应**绝不回显 token**。
 - 返回：`imported`（新建数）、`updated`（更新数）、`skipped`（非 CodeBuddy 域跳过数）、`failed`、
   `results[]`（逐条 ok/error/skipped 原因）。
+
+**导出**：
+
+```bash
+# 需要 dashboard session 或 CLI token 鉴权
+curl http://<10router>:20127/api/oauth/codebuddy-cn/export
+# → 返回 wb(三方) 格式的 JSON 数组，每项含 access_token/refresh_token/nickname/domain/...
+# 注意：导出含真实 token，是敏感文件，妥善保存。
+```
 
 ---
 

@@ -24,7 +24,6 @@ import EditCompatibleNodeModal from "./EditCompatibleNodeModal";
 import AddCustomModelModal from "./AddCustomModelModal";
 import BulkImportCodexModal from "./BulkImportCodexModal";
 import CodeBuddyImportModal from "./CodeBuddyImportModal";
-import CodeBuddyOAuthMenuButton from "./CodeBuddyOAuthMenuButton";
 
 const ONE_BY_ONE_DELAY_MS = 1000;
 
@@ -72,6 +71,7 @@ export default function ProviderDetailPage() {
     }
   }); // provider JSON catalog (null = not loaded/declared)
   const [modelJsonImportEnabled, setModelJsonImportEnabled] = useState(false); // server-side toggle
+  const [codeBuddyOAuthImportEnabled, setCodeBuddyOAuthImportEnabled] = useState(false); // experimental toggle
   const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
@@ -135,6 +135,28 @@ export default function ProviderDetailPage() {
     triggerApiKeyConnection();
   };
 
+  // Export codebuddy-cn connections as the third-party (wb) JSON format.
+  const handleCodeBuddyExport = async () => {
+    try {
+      const res = await fetch("/api/oauth/codebuddy-cn/export", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Request failed: ${res.status}`);
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `codebuddy-cn-accounts-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.log("Error exporting codebuddy accounts:", e.message);
+    }
+  };
+
   const handleAgRiskConfirm = () => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(AG_RISK_STORAGE_KEY, "true");
@@ -169,6 +191,9 @@ export default function ProviderDetailPage() {
   const supportsApiKeyAuth = !!APIKEY_PROVIDERS[providerId] || authModes.includes("apikey");
   const isFreeNoAuth = !!FREE_PROVIDERS[providerId]?.noAuth;
   const isCodeBuddy = providerId === "codebuddy-cn";
+  // Experimental OAuth account transfer (import/export) — shown only for
+  // codebuddy-cn AND when the settings toggle is enabled.
+  const codeBuddyTransferOn = isCodeBuddy && codeBuddyOAuthImportEnabled;
   const staticModels = getModelsByProviderId(providerId);
   const models = providerId === "cursor" && liveModels.length > 0
     ? liveModels
@@ -514,6 +539,9 @@ export default function ProviderDetailPage() {
       .then((data) => {
         if (typeof data.modelJsonImport === "boolean") {
           setModelJsonImportEnabled(data.modelJsonImport);
+        }
+        if (typeof data.codeBuddyOAuthImport === "boolean") {
+          setCodeBuddyOAuthImportEnabled(data.codeBuddyOAuthImport);
         }
       })
       .catch((e) => console.log("Error reading settings:", e));
@@ -1728,21 +1756,22 @@ export default function ProviderDetailPage() {
               <div className="flex gap-2">
                 {hasDualAuthModes ? (
                   <>
-                    {isCodeBuddy ? (
-                      <CodeBuddyOAuthMenuButton
-                        onPrimary={triggerOAuthConnection}
-                        onImportJson={() => setShowCodeBuddyImport(true)}
-                      >
-                        {oauthConnectionLabel}
-                      </CodeBuddyOAuthMenuButton>
-                    ) : (
-                      <Button size="sm" icon="lock" variant="secondary" onClick={triggerOAuthConnection}>
-                        {oauthConnectionLabel}
-                      </Button>
-                    )}
+                    <Button size="sm" icon="lock" variant="secondary" onClick={triggerOAuthConnection}>
+                      {oauthConnectionLabel}
+                    </Button>
                     <Button size="sm" icon="key" onClick={triggerApiKeyConnection}>
                       {apiKeyConnectionLabel}
                     </Button>
+                    {codeBuddyTransferOn && (
+                      <>
+                        <Button size="sm" icon="file_download" variant="secondary" onClick={handleCodeBuddyExport}>
+                          {translate("Export")}
+                        </Button>
+                        <Button size="sm" icon="upload_file" variant="secondary" onClick={() => setShowCodeBuddyImport(true)}>
+                          {translate("Import")}
+                        </Button>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -1827,24 +1856,15 @@ export default function ProviderDetailPage() {
                   )}
                   {hasDualAuthModes ? (
                     <>
-                      {isCodeBuddy ? (
-                        <CodeBuddyOAuthMenuButton
-                          onPrimary={triggerOAuthConnection}
-                          onImportJson={() => setShowCodeBuddyImport(true)}
-                        >
-                          {oauthConnectionLabel}
-                        </CodeBuddyOAuthMenuButton>
-                      ) : (
-                        <Button
-                          size="sm"
-                          icon="lock"
-                          variant="secondary"
-                          onClick={triggerOAuthConnection}
-                          className="w-full sm:w-auto"
-                        >
-                          {oauthConnectionLabel}
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        icon="lock"
+                        variant="secondary"
+                        onClick={triggerOAuthConnection}
+                        className="w-full sm:w-auto"
+                      >
+                        {oauthConnectionLabel}
+                      </Button>
                       <Button
                         size="sm"
                         icon="key"
@@ -1853,6 +1873,28 @@ export default function ProviderDetailPage() {
                       >
                         {apiKeyConnectionLabel}
                       </Button>
+                      {codeBuddyTransferOn && (
+                        <>
+                          <Button
+                            size="sm"
+                            icon="file_download"
+                            variant="secondary"
+                            onClick={handleCodeBuddyExport}
+                            className="w-full sm:w-auto"
+                          >
+                            {translate("Export")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            icon="upload_file"
+                            variant="secondary"
+                            onClick={() => setShowCodeBuddyImport(true)}
+                            className="w-full sm:w-auto"
+                          >
+                            {translate("Import")}
+                          </Button>
+                        </>
+                      )}
                     </>
                   ) : (
                     <Button

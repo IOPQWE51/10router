@@ -96,12 +96,6 @@ export default function CodeBuddyImportModal({ isOpen, onClose, onSuccess }) {
   return (
     <Modal isOpen={isOpen} title={translate("Import CodeBuddy CN Accounts")} onClose={handleClose}>
       <div className="flex flex-col gap-4">
-        <p className="text-xs text-text-muted">
-          {translate(
-            "Import CodeBuddy CN OAuth accounts from a JSON export. Accounts signed by a non-CodeBuddy realm (e.g. workbuddy.cn) are skipped. Existing accounts are updated, new ones are added."
-          )}
-        </p>
-
         <div className="flex flex-col gap-2">
           <Button
             variant="secondary"

@@ -151,6 +151,23 @@ export default function ProfilePage() {
     }
   };
 
+  const toggleCodeBuddyOAuthImport = async () => {
+    const next = !(settings.codeBuddyOAuthImport === true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codeBuddyOAuthImport: next }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+      }
+    } catch (error) {
+      console.log("Error toggling codebuddy OAuth import:", error);
+    }
+  };
+
   useEffect(() => {
     fetch("/api/settings")
       .then((res) => res.json())
@@ -1704,6 +1721,20 @@ export default function ProfilePage() {
               <Toggle
                 checked={settings.showCommunityProviders === true}
                 onChange={toggleShowCommunityProviders}
+              />
+            </div>
+
+            {/* Experimental: CodeBuddy CN account import/export (provider detail page) */}
+            <div className="flex items-start sm:items-center justify-between gap-4 pt-4 border-t border-border/50">
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm sm:text-base">CodeBuddy CN OAuth import / export</p>
+                <p className="text-xs sm:text-sm text-text-muted">
+                  Show Import / Export buttons on the CodeBuddy CN page (experimental)
+                </p>
+              </div>
+              <Toggle
+                checked={settings.codeBuddyOAuthImport === true}
+                onChange={toggleCodeBuddyOAuthImport}
               />
             </div>
           </div>
