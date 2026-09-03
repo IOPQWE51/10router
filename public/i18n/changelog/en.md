@@ -7,6 +7,8 @@ User-facing highlights per release. See [CHANGELOG.md](https://github.com/techys
 ### ✨ New
 - **Desktop tray app (Windows / macOS)**: an install-and-go desktop app — system tray menu (open console / start / restart / stop / launch at login) plus an embedded window; closing the window minimizes to the tray. Shares data, keys and port with the npm CLI (the two forms run exclusively). Windows ships an NSIS installer (silent `/S` supported) and a portable exe; macOS ships separate Intel + Apple Silicon dmgs
 - **CLI / desktop UI localization**: the npm CLI and the desktop tray now follow the system language (Simplified Chinese / Traditional Chinese / English); override with the `TENROUTER_LANG` env var (`zh-CN` / `zh-TW` / `en`)
+- **Self-serve custom providers + new Skills-page skill**: register a custom OpenAI/Anthropic-compatible endpoint (baseUrl + upstream key + models) at runtime with a dashboard LLM key — no source change, no repackage. The Dashboard **Skills** page gains a **10router-add-provider** card and now links to the `main` branch (previously `master`, which 404'd)
+- **CodeBuddy CN account JSON bulk import / export** (experimental, off by default): after enabling "CodeBuddy CN OAuth import / export" under Settings → Providers, the CodeBuddy CN detail page shows Import / Export buttons to bulk-import or export account credentials in the third-party (wb) JSON format (import dedupes by identity and skips non-CodeBuddy issuers)
 
 ## v1.0.4 (2026-09-01)
 
