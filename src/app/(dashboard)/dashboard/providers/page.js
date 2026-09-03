@@ -402,6 +402,12 @@ export default function ProvidersPage() {
     if (ra !== rb) return ra - rb;
     const noAuthDiff = (b.info.noAuth ? 1 : 0) - (a.info.noAuth ? 1 : 0);
     if (noAuthDiff !== 0) return noAuthDiff;
+    // Community welfare providers (公益站: gorouter/tabiauto) cluster together
+    // as one contiguous block at the end of their rank group, instead of
+    // interleaving with the regular free-tier providers by priority/name.
+    const ca = a.info.community ? 1 : 0;
+    const cb = b.info.community ? 1 : 0;
+    if (ca !== cb) return ca - cb;
     const pa = a.info.priority ?? 999;
     const pb = b.info.priority ?? 999;
     if (pa !== pb) return pa - pb;
