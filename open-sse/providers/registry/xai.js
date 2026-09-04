@@ -31,6 +31,7 @@ export default {
     // carry: registry/grok-cli.js (4.5 tiers), registry/grok-web.js (4.1/4.2)
     // and registry/tokenrouter.js (4.3, 4.1-fast). This direct API-key list
     // still topped out at Grok 4.
+    { id: "grok-4.6", name: "Grok 4.6" },
     { id: "grok-4.5", name: "Grok 4.5" },
     { id: "grok-4.3", name: "Grok 4.3" },
     { id: "grok-4.2", name: "Grok 4.2" },

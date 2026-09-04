@@ -18,3 +18,13 @@ export function withCodexReviewModels(models) {
     ];
   });
 }
+
+// Muse Spark (opencode Zen) models are served via the Responses API —
+// detect them by name pattern so thinking-suffixed ids ("model(high)")
+// and vendor-prefixed ids still match. See executors/opencode.js.
+export function isMuseSparkModel(modelId) {
+  if (!modelId || typeof modelId !== "string") return false;
+  const clean = modelId.replace(/\([^()]+\)\s*$/, "").trim();
+  const base = clean.includes("/") ? clean.split("/").pop() : clean;
+  return /^muse[-_]?spark(?:$|[-_:.\s])/i.test(base);
+}

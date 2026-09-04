@@ -131,6 +131,8 @@ import p128 from "./tabiauto.js";
 import p129 from "./agnes-ai.js";
 import p130 from "./agnes-ai-cn.js";
 import p131 from "./apinex.js";
+import p132 from "./ollama-search.js";
+import p133 from "./xquik.js";
 
 export default [
   p0,
@@ -263,4 +265,6 @@ export default [
   p129,
   p130,
   p131,
+  p132,
+  p133,
 ];
