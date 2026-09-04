@@ -51,6 +51,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "nsis-web",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "icon.ico"
@@ -80,6 +86,16 @@
     },
     "dmg": {
       "artifactName": "10Router-${version}-${arch}.dmg"
+    },
+    "compression": "maximum",
+    "nsisWeb": {
+      "artifactName": "10Router-Web-Setup-${version}.${ext}",
+      "appPackageUrl": "https://github.com/techysy/10router/releases/latest/download",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "10Router"
     }
   },
   "allowScripts": {
