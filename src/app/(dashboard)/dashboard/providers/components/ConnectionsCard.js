@@ -30,6 +30,17 @@ function CooldownTimer({ until }) {
 CooldownTimer.propTypes = { until: PropTypes.string.isRequired };
 
 // ── ConnectionRow ──────────────────────────────────────────────
+function formatExpiry(iso) {
+  if (!iso) return "";
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs <= 0) return translate("expired");
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  return new Date(iso).toLocaleDateString();
+}
+
 function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMoveUp, onMoveDown, onToggleActive, onUpdateProxy, onEdit, onDelete }) {
   const [showProxyDropdown, setShowProxyDropdown] = useState(false);
   const [updatingProxy, setUpdatingProxy] = useState(false);
@@ -118,6 +129,16 @@ function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMov
               {connection.isActive === false ? "disabled" : (effectiveStatus || "Unknown")}
             </Badge>
             {hasAnyProxy && <Badge variant={proxyBadgeVariant} size="sm">Proxy</Badge>}
+            {connection.earliestPackageExpiry && (
+              <Badge
+                variant="outline"
+                size="sm"
+                title={`${translate("Earliest package")}: ${connection.earliestPackageName || translate("Quota package")} (${new Date(connection.earliestPackageExpiry).toLocaleString()})`}
+              >
+                <span className="material-symbols-outlined text-[12px] mr-1">schedule</span>
+                {formatExpiry(connection.earliestPackageExpiry)}
+              </Badge>
+            )}
             {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
             {connection.lastError && connection.isActive !== false && (
               <span className="text-xs text-red-500 truncate max-w-[300px]" title={connection.lastError}>{connection.lastError}</span>
@@ -304,6 +325,7 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [providerStrategy, setProviderStrategy] = useState(null);
   const [providerStickyLimit, setProviderStickyLimit] = useState("1");
+  const [earliestExpiryFirst, setEarliestExpiryFirst] = useState(false);
   const [confirmState, setConfirmState] = useState(null);
 
   const fetch_ = useCallback(async () => {
@@ -321,20 +343,28 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
       const override = (settingsData.providerStrategies || {})[providerId] || {};
       setProviderStrategy(override.fallbackStrategy || null);
       setProviderStickyLimit(override.stickyRoundRobinLimit != null ? String(override.stickyRoundRobinLimit) : "1");
+      setEarliestExpiryFirst(override.earliestExpiryFirst === true);
     } catch (e) { console.log("ConnectionsCard fetch error:", e); }
     finally { setLoading(false); }
   }, [providerId]);
 
   useEffect(() => { fetch_(); }, [fetch_]);
 
-  const saveStrategy = async (strategy, stickyLimit) => {
+  const saveStrategy = async (strategy, stickyLimit, earliestExpiry = earliestExpiryFirst) => {
     try {
       const res = await fetch("/api/settings", { cache: "no-store" });
       const data = res.ok ? await res.json() : {};
       const current = data.providerStrategies || {};
-      const override = {};
+      const override = { ...(current[providerId] || {}) };
       if (strategy) override.fallbackStrategy = strategy;
+      else delete override.fallbackStrategy;
+
       if (strategy === "round-robin" && stickyLimit !== "") override.stickyRoundRobinLimit = Number(stickyLimit) || 3;
+      else delete override.stickyRoundRobinLimit;
+
+      if (earliestExpiry) override.earliestExpiryFirst = true;
+      else delete override.earliestExpiryFirst;
+
       const updated = { ...current };
       if (Object.keys(override).length === 0) delete updated[providerId];
       else updated[providerId] = override;
@@ -402,28 +432,45 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
     <>
       <Card>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 className="text-lg font-semibold">Connections</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-text-muted font-medium">Round Robin</span>
-            <Toggle
-              checked={providerStrategy === "round-robin"}
-              onChange={(enabled) => {
-                const strategy = enabled ? "round-robin" : null;
-                setProviderStrategy(strategy);
-                if (enabled && !providerStickyLimit) setProviderStickyLimit("1");
-                saveStrategy(strategy, enabled ? (providerStickyLimit || "1") : providerStickyLimit);
-              }}
-            />
-            {providerStrategy === "round-robin" && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-text-muted">Sticky:</span>
-                <input
-                  type="number" min={1} value={providerStickyLimit}
-                  onChange={(e) => { setProviderStickyLimit(e.target.value); saveStrategy("round-robin", e.target.value); }}
-                  className="w-16 px-2 py-1 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-primary"
-                />
-              </div>
-            )}
+          <h2 className="text-lg font-semibold">{translate("Connections")}</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs text-text-muted font-medium"
+                title={translate("Prioritize accounts with quota packages that expire soonest")}
+              >
+                {translate("Earliest Expiry First")}
+              </span>
+              <Toggle
+                checked={earliestExpiryFirst}
+                onChange={(enabled) => {
+                  setEarliestExpiryFirst(enabled);
+                  saveStrategy(providerStrategy, providerStickyLimit, enabled);
+                }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted font-medium">{translate("Round Robin")}</span>
+              <Toggle
+                checked={providerStrategy === "round-robin"}
+                onChange={(enabled) => {
+                  const strategy = enabled ? "round-robin" : null;
+                  setProviderStrategy(strategy);
+                  if (enabled && !providerStickyLimit) setProviderStickyLimit("1");
+                  saveStrategy(strategy, enabled ? (providerStickyLimit || "1") : providerStickyLimit, earliestExpiryFirst);
+                }}
+              />
+              {providerStrategy === "round-robin" && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-text-muted">{translate("Sticky:")}</span>
+                  <input
+                    type="number" min={1} value={providerStickyLimit}
+                    onChange={(e) => { setProviderStickyLimit(e.target.value); saveStrategy("round-robin", e.target.value, earliestExpiryFirst); }}
+                    className="w-16 px-2 py-1 text-xs border border-border rounded-md bg-background focus:outline-none focus:border-primary"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

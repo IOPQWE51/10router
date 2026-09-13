@@ -3,6 +3,7 @@ import "open-sse/index.js";
 
 import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
 import { getUsageForProvider } from "open-sse/services/usage.js";
+import { extractEarliestPackageExpiry } from "open-sse/services/usage/expiryExtractor.js";
 import { getExecutor } from "open-sse/executors/index.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { USAGE_APIKEY_PROVIDERS } from "@/shared/constants/providers";
@@ -181,6 +182,26 @@ export async function GET(request, { params }) {
       } catch (retryError) {
         console.warn(`[Usage] ${connection.provider}: force refresh failed: ${retryError.message}`);
       }
+    }
+
+    // Persist earliest available package expiry for expire-first routing
+    try {
+      const expiryInfo = extractEarliestPackageExpiry(usage);
+      if (expiryInfo) {
+        await updateProviderConnection(connection.id, {
+          earliestPackageExpiry: expiryInfo.expiry,
+          earliestPackageName: expiryInfo.name,
+          quotaCheckedAt: new Date().toISOString(),
+        });
+      } else if (usage && usage.quotas) {
+        await updateProviderConnection(connection.id, {
+          earliestPackageExpiry: null,
+          earliestPackageName: null,
+          quotaCheckedAt: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.warn(`[Usage API] Failed to update package expiry for ${connection.id}:`, e.message);
     }
 
     return Response.json(usage);

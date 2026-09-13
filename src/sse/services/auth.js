@@ -3,10 +3,50 @@ import { resolveConnectionProxyConfig, pickProxyPoolId } from "@/lib/network/con
 import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
+import { getUsageForProvider } from "open-sse/services/usage.js";
+import { extractEarliestPackageExpiry } from "open-sse/services/usage/expiryExtractor.js";
 import * as log from "../utils/logger.js";
 
 // Mutex to prevent race conditions during account selection
 let selectionMutex = Promise.resolve();
+
+// In-flight tracking for non-blocking background quota refresh
+const _quotaRefreshInFlight = new Set();
+
+function triggerBackgroundQuotaRefresh(connections) {
+  const STALE_MS = 15 * 60 * 1000;
+  const now = Date.now();
+
+  for (const conn of connections) {
+    if (!conn.id || _quotaRefreshInFlight.has(conn.id)) continue;
+    const checkedAt = conn.quotaCheckedAt ? new Date(conn.quotaCheckedAt).getTime() : 0;
+    if (now - checkedAt < STALE_MS) continue;
+
+    _quotaRefreshInFlight.add(conn.id);
+    (async () => {
+      try {
+        const proxyConfig = await resolveConnectionProxyConfig(conn.providerSpecificData || {});
+        const proxyOptions = {
+          connectionProxyEnabled: proxyConfig.connectionProxyEnabled === true,
+          connectionProxyUrl: proxyConfig.connectionProxyUrl || "",
+          connectionNoProxy: proxyConfig.connectionNoProxy || "",
+          vercelRelayUrl: proxyConfig.vercelRelayUrl || "",
+        };
+        const usage = await getUsageForProvider(conn, proxyOptions);
+        const expiryInfo = extractEarliestPackageExpiry(usage);
+        await updateProviderConnection(conn.id, {
+          earliestPackageExpiry: expiryInfo?.expiry || null,
+          earliestPackageName: expiryInfo?.name || null,
+          quotaCheckedAt: new Date().toISOString(),
+        });
+      } catch {
+        // Non-blocking, ignore background errors
+      } finally {
+        _quotaRefreshInFlight.delete(conn.id);
+      }
+    })();
+  }
+}
 
 const GITHUB_MONTHLY_USAGE_LIMIT = "you've reached your additional usage limit for your plan";
 
@@ -117,11 +157,37 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     // Per-provider strategy overrides global setting
     const providerOverride = (settings.providerStrategies || {})[providerId] || {};
     const strategy = providerOverride.fallbackStrategy || settings.fallbackStrategy || "fill-first";
+    const earliestExpiryFirst = providerOverride.earliestExpiryFirst === true;
+
+    // Trigger non-blocking background quota checks if earliest-expiry is active and any account is missing/stale
+    if (earliestExpiryFirst && availableConnections.length > 1) {
+      triggerBackgroundQuotaRefresh(availableConnections);
+    }
+
+    // If earliestExpiryFirst is enabled, sort available connections so that the account
+    // with the nearest future package expiration date is selected first.
+    let orderedConnections = availableConnections;
+    if (earliestExpiryFirst && availableConnections.length > 1) {
+      const now = Date.now();
+      orderedConnections = [...availableConnections].sort((a, b) => {
+        const timeA = (a.earliestPackageExpiry && new Date(a.earliestPackageExpiry).getTime() > now)
+          ? new Date(a.earliestPackageExpiry).getTime()
+          : Infinity;
+        const timeB = (b.earliestPackageExpiry && new Date(b.earliestPackageExpiry).getTime() > now)
+          ? new Date(b.earliestPackageExpiry).getTime()
+          : Infinity;
+
+        if (timeA !== timeB) {
+          return timeA - timeB;
+        }
+        return (a.priority || 999) - (b.priority || 999);
+      });
+    }
 
     let connection;
     // Pin to preferred connection if specified and available
     if (preferredConnectionId) {
-      connection = availableConnections.find((c) => c.id === preferredConnectionId);
+      connection = orderedConnections.find((c) => c.id === preferredConnectionId);
       if (connection) {
         log.info("AUTH", `${provider} | pinned to ${connection.id?.slice(0, 8)} (${connection.name || connection.email || "unnamed"})`);
       }
@@ -132,7 +198,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
       const stickyLimit = providerOverride.stickyRoundRobinLimit || settings.stickyRoundRobinLimit || 3;
 
       // Sort by lastUsed (most recent first) to find current candidate
-      const byRecency = [...availableConnections].sort((a, b) => {
+      const byRecency = [...orderedConnections].sort((a, b) => {
         if (!a.lastUsedAt && !b.lastUsedAt) return (a.priority || 999) - (b.priority || 999);
         if (!a.lastUsedAt) return 1;
         if (!b.lastUsedAt) return -1;
@@ -152,7 +218,7 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
         });
       } else {
         // Pick the least recently used (excluding current if possible)
-        const sortedByOldest = [...availableConnections].sort((a, b) => {
+        const sortedByOldest = [...orderedConnections].sort((a, b) => {
           if (!a.lastUsedAt && !b.lastUsedAt) return (a.priority || 999) - (b.priority || 999);
           if (!a.lastUsedAt) return -1;
           if (!b.lastUsedAt) return 1;
@@ -168,8 +234,12 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
         });
       }
     } else {
-      // Default: fill-first (already sorted by priority in getProviderConnections)
-      connection = availableConnections[0];
+      // Default: fill-first (already sorted by priority or earliest-expiry)
+      connection = orderedConnections[0];
+    }
+
+    if (earliestExpiryFirst && connection?.earliestPackageExpiry) {
+      log.info("AUTH", `${provider} | earliest-expiry selected ${connection.id?.slice(0, 8)} (${connection.name || connection.email || "unnamed"}) | expires in ${formatRetryAfter(connection.earliestPackageExpiry)} (${connection.earliestPackageName || "package"})`);
     }
 
     const resolvedProxy = await resolveConnectionProxyConfig(connection.providerSpecificData || {});

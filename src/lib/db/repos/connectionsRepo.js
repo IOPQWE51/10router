@@ -9,6 +9,7 @@ const OPTIONAL_FIELDS = [
   "scope", "projectId", "apiKey", "testStatus",
   "lastTested", "lastError", "lastErrorAt", "rateLimitedUntil", "expiresIn", "errorCode",
   "consecutiveUseCount", "idToken", "lastRefreshAt",
+  "earliestPackageExpiry", "earliestPackageName", "quotaCheckedAt",
 ];
 
 function rowToConn(row) {

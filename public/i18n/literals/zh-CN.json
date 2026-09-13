@@ -1671,5 +1671,9 @@
   "Web console": "网页版",
   "Use your CommandCode CLI API key (starts with user_...) from ~/.commandcode/auth.json or commandcode.ai/studio.": "使用来自 ~/.commandcode/auth.json 或 commandcode.ai/studio 的 CommandCode CLI API 密钥（以 user_ 开头）。",
   "Monthly Credits": "月度额度",
-  "Purchased Credits": "加量额度"
+  "Purchased Credits": "加量额度",
+  "Earliest Expiry First": "配额包到期优先",
+  "Prioritize accounts with quota packages that expire soonest": "跨账号优先消耗最快到期的配额包/赠送包",
+  "Earliest package": "最早到期配额包",
+  "Quota package": "配额包"
 }

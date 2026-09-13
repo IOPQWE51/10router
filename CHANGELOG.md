@@ -6,6 +6,10 @@
 
 ### ✨ 新功能
 
+- **支持跨账号「配额包到期优先」全局调度策略**：
+  - 解决多账号下「固定薅一个账号直到耗尽、导致兄弟账号短期赠送包白白过期」的痛点。供应商详情页 Connections 卡片右上角新增「配额包到期优先 (Earliest Expiry First)」独立开关。
+  - 新建 `open-sse/services/usage/expiryExtractor.js`，从配额数据中智能提取未耗尽包的最近到期时间，并在用量查询、连接测试及后台轻量刷新时持久化至数据库。
+  - 调度器 `src/sse/services/auth.js` 在开启该策略时按到期时间升序排序账号（最快到期者优先消耗），零阻塞、零请求延迟；连接行即时展示到期倒计时徽章；新增 `tests/unit/earliest-expiry-first.test.js` 6 例测试覆盖。
 - **支持 Command Code 用量追踪与配额展示（Issue #16）**：
   - 新增 `open-sse/services/usage/commandcode.js` 用量处理器，通过 Command Code CLI 协议头直接调用 `/alpha/billing/credits` 与 `/alpha/billing/subscriptions`。
   - 用量页完整展示 **5 小时会话滚动限额**（`session (5h)`）、**每周滚动限额**（`weekly (7d)`）、**月度额度**（`Monthly Credits`，含周期重置倒计时），并支持加量额度（`Purchased Credits`）与套餐名称映射（Go / GOAT / Pro / Max / Ultra 等）。

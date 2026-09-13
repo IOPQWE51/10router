@@ -25,6 +25,7 @@ import {
   getQoderUsage,
 } from "./usage/misc.js";
 import { getCommandCodeUsage } from "./usage/commandcode.js";
+import { extractEarliestPackageExpiry } from "./usage/expiryExtractor.js";
 
 /**
  * Get usage data for a provider connection
@@ -81,3 +82,5 @@ export async function getUsageForProvider(connection, proxyOptions = null, optio
     force: options.force === true,
   });
 }
+
+export { extractEarliestPackageExpiry };

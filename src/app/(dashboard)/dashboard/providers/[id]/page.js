@@ -81,6 +81,7 @@ export default function ProviderDetailPage() {
   const [bulkUpdatingProxy, setBulkUpdatingProxy] = useState(false);
   const [providerStrategy, setProviderStrategy] = useState(null);
   const [providerStickyLimit, setProviderStickyLimit] = useState("");
+  const [earliestExpiryFirst, setEarliestExpiryFirst] = useState(false);
   const [thinkingMode, setThinkingMode] = useState("auto");
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
   const [suggestedModels, setSuggestedModels] = useState([]);
@@ -454,6 +455,7 @@ export default function ProviderDetailPage() {
       const override = (settingsData.providerStrategies || {})[providerId] || {};
       setProviderStrategy(override.fallbackStrategy || null);
       setProviderStickyLimit(override.stickyRoundRobinLimit != null ? String(override.stickyRoundRobinLimit) : "1");
+      setEarliestExpiryFirst(override.earliestExpiryFirst === true);
       // Load per-provider thinking config
       const thinkingCfg = (settingsData.providerThinking || {})[providerId] || {};
       setThinkingMode(thinkingCfg.mode || "auto");
@@ -514,17 +516,27 @@ export default function ProviderDetailPage() {
     }
   };
 
-  const saveProviderStrategy = async (strategy, stickyLimit) => {
+  const saveProviderStrategy = async (strategy, stickyLimit, earliestExpiry = earliestExpiryFirst) => {
     try {
       const settingsRes = await fetch("/api/settings", { cache: "no-store" });
       const settingsData = settingsRes.ok ? await settingsRes.json() : {};
       const current = settingsData.providerStrategies || {};
 
       // Build override: null strategy means remove override, use global
-      const override = {};
+      const override = { ...(current[providerId] || {}) };
       if (strategy) override.fallbackStrategy = strategy;
+      else delete override.fallbackStrategy;
+
       if (strategy === "round-robin" && stickyLimit !== "") {
         override.stickyRoundRobinLimit = Number(stickyLimit) || 3;
+      } else {
+        delete override.stickyRoundRobinLimit;
+      }
+
+      if (earliestExpiry) {
+        override.earliestExpiryFirst = true;
+      } else {
+        delete override.earliestExpiryFirst;
       }
 
       const updated = { ...current };
@@ -549,12 +561,17 @@ export default function ProviderDetailPage() {
     const sticky = enabled ? (providerStickyLimit || "1") : providerStickyLimit;
     if (enabled && !providerStickyLimit) setProviderStickyLimit("1");
     setProviderStrategy(strategy);
-    saveProviderStrategy(strategy, sticky);
+    saveProviderStrategy(strategy, sticky, earliestExpiryFirst);
   };
 
   const handleStickyLimitChange = (value) => {
     setProviderStickyLimit(value);
-    saveProviderStrategy("round-robin", value);
+    saveProviderStrategy("round-robin", value, earliestExpiryFirst);
+  };
+
+  const handleEarliestExpiryToggle = (enabled) => {
+    setEarliestExpiryFirst(enabled);
+    saveProviderStrategy(providerStrategy, providerStickyLimit, enabled);
   };
 
   const saveThinkingConfig = async (mode) => {
@@ -1785,6 +1802,20 @@ export default function ProviderDetailPage() {
                   )}
                 </>
               )}
+              {/* Earliest Expiry First toggle */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="text-xs text-text-muted font-medium"
+                  title={translate("Prioritize accounts with quota packages that expire soonest")}
+                >
+                  {translate("Earliest Expiry First")}
+                </span>
+                <Toggle
+                  checked={earliestExpiryFirst}
+                  onChange={handleEarliestExpiryToggle}
+                />
+              </div>
+
               {/* Round Robin toggle */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-text-muted font-medium">{translate("Round Robin")}</span>

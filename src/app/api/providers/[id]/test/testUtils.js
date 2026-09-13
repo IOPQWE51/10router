@@ -1,10 +1,12 @@
 import { getProviderConnectionById, updateProviderConnection } from "@/lib/localDb";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { testProxyUrl } from "@/lib/network/proxyTest";
-import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
+import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
 import { getDefaultModel } from "open-sse/config/providerModels.js";
 import { CODEX_CLI_VERSION } from "open-sse/config/appConstants.js";
 import { resolveOllamaLocalHost, PROVIDERS } from "open-sse/config/providers.js";
+import { getUsageForProvider } from "open-sse/services/usage.js";
+import { extractEarliestPackageExpiry } from "open-sse/services/usage/expiryExtractor.js";
 import {
   refreshProviderCredentials,
   shouldRefreshCredentials,
@@ -1012,6 +1014,26 @@ export async function testSingleConnection(id) {
   }
 
   await updateProviderConnection(id, updateData);
+
+  // Background refresh of package expiry on successful connection test
+  if (result.valid && USAGE_SUPPORTED_PROVIDERS.includes(connection.provider)) {
+    (async () => {
+      try {
+        const mergedConn = { ...connection, ...updateData };
+        const usage = await getUsageForProvider(mergedConn, proxyOptions);
+        const expiryInfo = extractEarliestPackageExpiry(usage);
+        if (expiryInfo) {
+          await updateProviderConnection(id, {
+            earliestPackageExpiry: expiryInfo.expiry,
+            earliestPackageName: expiryInfo.name,
+            quotaCheckedAt: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // Non-blocking, ignore background errors
+      }
+    })();
+  }
 
   return { valid: result.valid, error: result.error, refreshed: !!result.refreshed, latencyMs, testedAt: new Date().toISOString() };
 }

@@ -9,6 +9,17 @@ import PropTypes from "prop-types";
 import { Badge, Toggle, Tooltip } from "@/shared/components";
 import CooldownTimer from "./CooldownTimer";
 
+function formatExpiry(iso) {
+  if (!iso) return "";
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs <= 0) return translate("expired");
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst, isLast, onMoveUp, onMoveDown, onToggleActive, onUpdateProxy, onEdit, onDelete, oneByOneStatus = null, autoPing = null }) {
   const [showProxyDropdown, setShowProxyDropdown] = useState(false);
   const [updatingProxy, setUpdatingProxy] = useState(false);
@@ -183,6 +194,16 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             {hasAnyProxy && (
               <Badge variant={proxyBadgeVariant} size="sm">
                 Proxy
+              </Badge>
+            )}
+            {connection.earliestPackageExpiry && (
+              <Badge
+                variant="outline"
+                size="sm"
+                title={`${translate("Earliest package")}: ${connection.earliestPackageName || translate("Quota package")} (${new Date(connection.earliestPackageExpiry).toLocaleString()})`}
+              >
+                <span className="material-symbols-outlined text-[12px] mr-1">schedule</span>
+                {formatExpiry(connection.earliestPackageExpiry)}
               </Badge>
             )}
             {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
