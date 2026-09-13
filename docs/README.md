@@ -16,6 +16,7 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 
 - [SQLite Driver Chain](/docs/en/sqlite-driver-chain.md) — how `bun:sqlite → better-sqlite3 → node:sqlite → sql.js` is selected, and why `better-sqlite3` is build-time-required but barely used at runtime.
 - [Usage Dedup usageKey Contract](/docs/en/usage-usageKey-contract.md) — the per-attempt `usageKey` dedup contract that prevents same-millisecond count loss (5 call sites).
+- [Earliest Expiry First Architecture](/docs/zh-CN/earliest-expiry-first-architecture.md) (zh-only) — multi-account "Earliest Expiry First" quota scheduling: why critical path avoids sync billing queries, SWR lightweight caching, and fallback matrix.
 - [API Key Signing & Secret Rotation](/docs/zh-CN/api-key-signing-rotation.md) — key format `sk-{machineId}-{keyId}-{crc8}`, the secret resolution chain, why local validation is a DB lookup (CRC not enforced yet — transition design), and the future strict-CRC plan (zh-only).
 - [MITM Proxy Security Hardening](/docs/en/mitm-security-hardening.md) — the four security fixes (TLS verification, 0600 root CA key, no blind port-443 kill, hosts cleanup).
 - [Mirasim-bundled dsh tool_call id/name loss](/docs/en/mirasim-dsh-toolcall-loss.md) — third-party bug causing 11133/`unknown tool ""`; 10Router does not work around it.
@@ -55,6 +56,7 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 
 - [SQLite 驱动链](/docs/zh-CN/sqlite-driver-chain.md) — `bun:sqlite → better-sqlite3 → node:sqlite → sql.js` 的选择逻辑，以及 better-sqlite3 为何"构建期必需、运行时几乎不用"。
 - [用量去重 usageKey 契约](/docs/zh-CN/usage-usageKey-contract.md) — 每次上游尝试打 `usageKey` 的去重契约，防止同毫秒丢计数（5 处调用点）。
+- [跨账号「配额包到期优先」调度架构](/docs/zh-CN/earliest-expiry-first-architecture.md) — 为什么主路径绝不发起同步账单查询、SWR（Stale-While-Revalidate）轻量缓存设计与异常回退容错矩阵。
 - [API Key 签名与密钥签名轮换](/docs/zh-CN/api-key-signing-rotation.md) — 密钥格式 `sk-{machineId}-{keyId}-{crc8}`、签名密文解析链、为何本地校验是 DB 查找（CRC 暂不强制——过渡态设计）、Rotate all 幂等防护与未来强校验规划。
 - [MITM 代理安全加固](/docs/zh-CN/mitm-security-hardening.md) — 四项安全修复（TLS 校验、root CA 私钥 0600、不再盲杀 443、hosts 清理）。
 - [Mirasim 内嵌 dsh 工具调用 id/name 丢失](/docs/zh-CN/mirasim-dsh-toolcall-loss.md) — 第三方 bug 导致 11133 / `unknown tool ""`，10Router 不做适配。
