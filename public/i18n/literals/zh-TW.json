@@ -504,5 +504,7 @@
   "Copied": "已複製",
   "Web console": "網頁版",
   "Get API Key →": "取得 API 金鑰 →",
-  "Use your CommandCode CLI API key (starts with user_...) from ~/.commandcode/auth.json or commandcode.ai/studio.": "使用來自 ~/.commandcode/auth.json 或 commandcode.ai/studio 的 CommandCode CLI API 金鑰（以 user_ 開頭）。"
+  "Use your CommandCode CLI API key (starts with user_...) from ~/.commandcode/auth.json or commandcode.ai/studio.": "使用來自 ~/.commandcode/auth.json 或 commandcode.ai/studio 的 CommandCode CLI API 金鑰（以 user_ 開頭）。",
+  "Monthly Credits": "月度額度",
+  "Purchased Credits": "加量額度"
 }

@@ -6,6 +6,10 @@
 
 ### ✨ 新功能
 
+- **支持 Command Code 用量追踪与配额展示（Issue #16）**：
+  - 新增 `open-sse/services/usage/commandcode.js` 用量处理器，通过 Command Code CLI 协议头直接调用 `/alpha/billing/credits` 与 `/alpha/billing/subscriptions`。
+  - 用量页完整展示 **5 小时会话滚动限额**（`session (5h)`）、**每周滚动限额**（`weekly (7d)`）、**月度额度**（`Monthly Credits`，含周期重置倒计时），并支持加量额度（`Purchased Credits`）与套餐名称映射（Go / GOAT / Pro / Max / Ultra 等）。
+  - 注册表开启 `features: { usage: true, usageApikey: true }`，用量数据自动归一化与排序（固定顺序：5h 会话 → 每周 → 月度 → 加量）；新增 `tests/unit/commandcode-usage.test.js` 7 例单元测试锁定。
 - **自定义模型批量启用/禁用（P2 收口）**：自定义节点/导入的 100+ 模型此前只能逐个 toggle。现①repo 新增 `setCustomModelsEnabled`（事务内 prefix 扫描、`ids` 可选子集、幂等返回改动数），API 新增 `POST /api/models/custom/bulk`；②**兼容节点与内置 provider 详情页两处**自定义模型区加「全部启用 / 全部禁用」（双向确认：enable 暴露给客户端 / disable 从 /v1/models 收回）；③**修 PUT 覆盖 bug**：`addCustomModel` 的 UPDATE 分支此前整行覆盖——只传 enabled 的单条 toggle 会把模型 `name` 重置为 id 并丢掉全部 capability 字段，现改为 merge。批量导入默认禁用的姿势此前已存在（Qoder/Import from /models），本次补齐一键恢复/收回的另一半。
 - **Endpoint 页 i18n 全量清扫**：整页此前基本未翻译——「密钥签名轮换」问号图标的机制说明、标题/描述/确认弹窗、隧道与 Tailscale 全流程状态文案（重连中/创建隧道/打开登录页…）、API 密钥区的空态/暂停/删除确认/创建弹窗等 **110 处硬编码英文**全部改走 `translate()`，zh-CN/zh-TW 新增约 70 条词条（缺失时自动回落英文原文）。顺带修正两处此前只造了词条没接上的漏网（密钥签名轮换标题、全部重签）。
 - **修正：CodeBuddy CN 的 Hy4-Preview 为「夜间免费」，与国际版分开**（用户核实）。此前两版都标 `rateMultiplier: 0`（全天免额度）——实际 CN 的免费仅限**本地时间 23:00–次日 8:00**，白天按正常倍率 **0.29x** 计费（用户提供）。注册表新增 `nightFree` 窗口字段（`{from: 23, to: 8}`，可跨午夜）：模型行徽章按本地时间**动态显示**——夜间绿色 `free`（tooltip 注明时段）、白天无倍率徽章（绝不全天误导性显示 0x）；intl 的 Hy4-Preview 维持全天免费 0 并钉住。CN/intl 倍率一致性守卫测试相应排除 hy4 并各自钉住语义（catalog 14 例绿）。

@@ -674,6 +674,22 @@ export function parseQuotaData(provider, data) {
         }
         break;
 
+      case "commandcode":
+        if (data.quotas) {
+          Object.entries(data.quotas).forEach(([name, quota]) => {
+            normalizedQuotas.push({
+              name,
+              used: quota.used || 0,
+              total: quota.total || 0,
+              remaining: quota.remaining !== undefined ? quota.remaining : Math.max(0, (quota.total || 0) - (quota.used || 0)),
+              remainingPercentage: quota.remainingPercentage !== undefined ? quota.remainingPercentage : calculatePercentage(quota.used, quota.total),
+              resetAt: quota.resetAt || null,
+              recurring: quota.recurring === true,
+            });
+          });
+        }
+        break;
+
       default:
         // Generic fallback for unknown providers
         if (data.quotas) {
@@ -703,6 +719,17 @@ export function parseQuotaData(provider, data) {
       "weekly sonnet (7d)": 4,
     };
     normalizedQuotas.sort((a, b) => (CLAUDE_QUOTA_ORDER[a.name] ?? 99) - (CLAUDE_QUOTA_ORDER[b.name] ?? 99));
+    return normalizedQuotas;
+  }
+
+  if (provider?.toLowerCase() === "commandcode") {
+    const COMMANDCODE_QUOTA_ORDER = {
+      "session (5h)": 0,
+      "weekly (7d)": 1,
+      "Monthly Credits": 2,
+      "Purchased Credits": 3,
+    };
+    normalizedQuotas.sort((a, b) => (COMMANDCODE_QUOTA_ORDER[a.name] ?? 99) - (COMMANDCODE_QUOTA_ORDER[b.name] ?? 99));
     return normalizedQuotas;
   }
 
