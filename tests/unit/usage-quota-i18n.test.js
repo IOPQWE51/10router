@@ -1,0 +1,76 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const rootDir = resolve(__dirname, "../..");
+
+describe("Usage Quota & Provider Limits i18n", () => {
+  const zhCN = JSON.parse(readFileSync(resolve(rootDir, "public/i18n/literals/zh-CN.json"), "utf8"));
+  const zhTW = JSON.parse(readFileSync(resolve(rootDir, "public/i18n/literals/zh-TW.json"), "utf8"));
+
+  it("zh-CN dictionary contains required quota names and notice translations", () => {
+    expect(zhCN["session (5h)"]).toBe("滚动");
+    expect(zhCN["weekly (7d)"]).toBe("每周");
+    expect(zhCN["Personal"]).toBe("个人");
+    expect(zhCN["Organization"]).toBe("组织");
+    expect(zhCN["Balance"]).toBe("余额");
+    expect(zhCN["Balance (CNY)"]).toBe("余额 (CNY)");
+    expect(zhCN["Balance (USD)"]).toBe("余额 (USD)");
+    expect(zhCN["Balance ($)"]).toBe("余额 ($)");
+    expect(zhCN["MiniMax API key invalid or inactive. Use an active Token/Coding Plan key."]).toContain("MiniMax API 密钥无效或未激活");
+    expect(zhCN["Xiaomi MiMo Desktop not connected. Add credentials to view usage."]).toContain("小米 MiMo 桌面版未连接");
+    expect(zhCN["MiniMax API key not available."]).toBe("未提供 MiniMax API 密钥。");
+    expect(zhCN["Command Code API key not configured."]).toBe("Command Code API 密钥未配置。");
+    expect(zhCN["Command Code API key invalid or expired."]).toBe("Command Code API 密钥无效或已过期。");
+    expect(zhCN["Qoder usage unavailable: no access token"]).toBe("Qoder 用量不可用：无访问令牌");
+  });
+
+  it("zh-TW dictionary contains required quota names and notice translations", () => {
+    expect(zhTW["session (5h)"]).toBe("滾動");
+    expect(zhTW["weekly (7d)"]).toBe("每週");
+    expect(zhTW["Personal"]).toBe("個人");
+    expect(zhTW["Organization"]).toBe("組織");
+    expect(zhTW["Balance"]).toBe("餘額");
+    expect(zhTW["Balance (CNY)"]).toBe("餘額 (CNY)");
+    expect(zhTW["Balance (USD)"]).toBe("餘額 (USD)");
+    expect(zhTW["Balance ($)"]).toBe("餘額 ($)");
+    expect(zhTW["MiniMax API key invalid or inactive. Use an active Token/Coding Plan key."]).toContain("MiniMax API 金鑰無效或未啟用");
+    expect(zhTW["Xiaomi MiMo Desktop not connected. Add credentials to view usage."]).toContain("小米 MiMo 桌面版未連線");
+    expect(zhTW["MiniMax API key not available."]).toBe("未提供 MiniMax API 金鑰。");
+    expect(zhTW["Command Code API key not configured."]).toBe("Command Code API 金鑰未設定。");
+    expect(zhTW["Command Code API key invalid or expired."]).toBe("Command Code API 金鑰無效或已過期。");
+    expect(zhTW["Qoder usage unavailable: no access token"]).toBe("Qoder 用量無法使用：無存取權杖");
+  });
+
+  it("ProviderLimitCard pipes quota.name through translateQuotaName and error/message through translate", () => {
+    const src = readFileSync(
+      resolve(rootDir, "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/ProviderLimitCard.js"),
+      "utf8",
+    );
+    expect(src).toContain("label={translateQuotaName(quota.name)}");
+    expect(src).toContain("{translate(message)}");
+    expect(src).toContain("{translate(error)}");
+    expect(src).toContain('title={translate("Refresh quota")}');
+    expect(src).toContain('{translate("No quota data available")}');
+  });
+
+  it("QuotaProgressBar pipes label through translateQuotaName", () => {
+    const src = readFileSync(
+      resolve(rootDir, "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaProgressBar.js"),
+      "utf8",
+    );
+    expect(src).toContain("{translateQuotaName(label)}");
+    expect(src).toContain("{translate(resetWord)}");
+  });
+
+  it("QuotaTable defines translateQuotaName with pattern support for Bonus Pack, weekly, and Balance", () => {
+    const src = readFileSync(
+      resolve(rootDir, "src/app/(dashboard)/dashboard/usage/components/ProviderLimits/QuotaTable.js"),
+      "utf8",
+    );
+    expect(src).toContain("export function translateQuotaName(name)");
+    expect(src).toContain("Bonus Pack");
+    expect(src).toContain("weekly");
+    expect(src).toContain("Balance");
+  });
+});

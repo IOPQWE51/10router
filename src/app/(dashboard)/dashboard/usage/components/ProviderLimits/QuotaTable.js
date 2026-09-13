@@ -10,9 +10,17 @@ const PAGE_SIZE = 10;
 // generated names embed numbers ("Bonus Pack 1") that exact-match translate()
 // can't hit. Translate the base word, keep the numeric suffix.
 export function translateQuotaName(name) {
-  const m = /^Bonus Pack (\d+)$/.exec(String(name || "").trim());
-  if (m) return `${translate("Bonus Pack")} ${m[1]}`;
-  return translate(name);
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return "";
+  const direct = translate(trimmed);
+  if (direct !== trimmed) return direct;
+  const mBonus = /^Bonus Pack (\d+)$/.exec(trimmed);
+  if (mBonus) return `${translate("Bonus Pack")} ${mBonus[1]}`;
+  const mWeekly = /^weekly\s+(.+)\s+\(7d\)$/i.exec(trimmed);
+  if (mWeekly) return `${translate("Weekly")} ${mWeekly[1]} (7d)`;
+  const mBalance = /^Balance(?:\s*\((.+)\))?$/i.exec(trimmed);
+  if (mBalance) return mBalance[1] ? `${translate("Balance")} (${mBalance[1]})` : translate("Balance");
+  return trimmed;
 }
 
 /**

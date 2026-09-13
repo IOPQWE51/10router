@@ -2,6 +2,8 @@
 
 import { cn } from "@/shared/utils/cn";
 import { formatResetTime } from "./utils";
+import { translateQuotaName } from "./QuotaTable";
+import { translate } from "@/i18n/runtime";
 
 // Calculate color based on remaining percentage
 const getColorClasses = (remainingPercentage) => {
@@ -90,7 +92,7 @@ export default function QuotaProgressBar({
       {/* Label and percentage */}
       <div className="flex items-center justify-between text-sm">
         <span className="font-semibold text-text-primary">
-          {label}
+          {translateQuotaName(label)}
         </span>
         <div className="flex items-center gap-1.5">
           <span className="text-xs">{colors.emoji}</span>
@@ -116,14 +118,14 @@ export default function QuotaProgressBar({
         <span>
           {/* Credit packs (CodeBuddy): remaining/total counting down — a fresh
               pack reads "100 / 100", not "0 / 100" under a 100% bar. */}
-          {!percentScale && !displayRemaining && `${used.toLocaleString()} / ${total.toLocaleString()} requests`}
+          {!percentScale && !displayRemaining && `${used.toLocaleString()} / ${total.toLocaleString()} ${translate("requests")}`}
           {!percentScale && displayRemaining &&
             `${Number((total - used).toFixed(2)).toLocaleString()} / ${Number(total.toFixed(2)).toLocaleString()}`}
         </span>
         {countdown !== "-" && (
           <div className="flex items-center gap-1">
             <span>•</span>
-            <span className="font-medium">{resetWord} in {countdown}</span>
+            <span className="font-medium">{translate(resetWord)} in {countdown}</span>
           </div>
         )}
       </div>
@@ -131,7 +133,7 @@ export default function QuotaProgressBar({
       {/* Reset time display */}
       {resetDisplay && (
         <div className="text-xs text-text-muted/70">
-          {resetWord} at {resetDisplay}
+          {translate(resetWord)} at {resetDisplay}
         </div>
       )}
     </div>
