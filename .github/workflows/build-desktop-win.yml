@@ -90,6 +90,7 @@ jobs:
       # 已存在时不动（notes 手工维护，绝不能覆盖）。
       - name: Ensure release exists with title
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
           gh release view "${{ github.ref_name }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create "${{ github.ref_name }}" --repo "$GITHUB_REPOSITORY" \
