@@ -2,6 +2,28 @@
 
 User-facing highlights per release. See [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md) for the full developer log.
 
+## v1.1.1 (2026-09-14)
+
+### ✨ New
+
+- **Earliest Expiry First multi-account routing strategy**: Solves the pain point of repeatedly exhausting a primary account while short-term promotional packages on other accounts expire unused. A dedicated toggle on the provider details page automatically prioritizes valid packages closest to expiration, with zero blocking and zero request latency.
+- **Command Code usage tracking & quota dashboard (#16)**: Full support for 5-hour session rolling windows, 7-day weekly limits, and monthly plan credit allowances/spend. Dynamically detects Go / GOAT / Pro subscription tiers, with countdown timers and balance countdowns.
+- **Bulk enable/disable for custom & passthrough models**: One-click bulk enable or disable for custom model catalogs on both OpenAI-compatible endpoints and built-in providers, plus a fix preventing single model updates from overwriting capability attributes.
+- **Universal OAuth credential transfer with AES-256-GCM encryption**: Export credentials across all OAuth providers into secure password-protected backups (`10router-oauth-secure-v1`), with smart multi-tier deduplication during import.
+- **Official brand SVG icons**: Integrated `@lobehub/icons` with official vector brand icons for 58 providers, supporting automatic light/dark theme adaptation.
+- **CodeBuddy check-in & international daily active session**: Check-in upgraded to continuous background scheduling with persistent daily memo deduplication; added daily active session toggle for CodeBuddy International.
+- **Desktop client improvements**: Full tri-lingual localization for menu bars, new "Go" navigation menu (open URL / return to 10Router / recent URLs manager), and long-term server log archiving by date.
+
+### 🐛 Fixed
+
+- **Quota panel 0 total & sentinel countdown bug**: Fixed logic where zero-credit accounts were rendered as infinite quota `0 / ∞`, and filtered out far-future sentinel timestamps (such as year 9999) that produced 2.9-million-day countdowns.
+- **Quota percentage calculation**: Fixed balance-denominated quotas (e.g. Command Code $9.98) being misread as raw percentages displaying `10% 🔴`.
+- **CodeBuddy quota display direction**: Inverted credit pack displays to "Remaining / Total" countdown, aligning numbers with progress bars.
+- **CodeBuddy International connection testing**: Added missing IDE transport headers and auth verification handling, resolving "Provider test not supported".
+- **Xiaomi MiMo Desktop Preview model errors**: Clarified errors when calling preview models without desktop login, eliminating misleading rate-limit cooldowns.
+- **Instant refresh for model disabled states**: Synchronized model availability state immediately upon connection changes, allowing disabled models to be tested directly.
+- **Extensive i18n cleanup**: Full English and Traditional Chinese localization across the Endpoint page, provider notices, and API key buttons.
+
 ## v1.1.0 (2026-09-11)
 
 > **Version note**: v1.0.9 was skipped and never released — its planned content (Xiaomi MiMo desktop support, etc.) was folded into this release, which grew to minor-level scope; the version number moved straight to v1.1.0. No v1.0.9 tag or artifacts exist.

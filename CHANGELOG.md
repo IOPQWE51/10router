@@ -2,7 +2,7 @@
 
 > 面向用户的精简更新见 [`public/i18n/changelog/`](https://github.com/techysy/10router/tree/main/public/i18n/changelog)（`en.md` / `zh-CN.md` / `zh-TW.md`，仪表盘「Change Log」按界面语言加载对应文件）。本文件为完整开发日志，按版本从上往下排列。
 
-## v1.1.1 — 未发布
+## v1.1.1 (2026-09-14)
 
 ### ✨ 新功能
 
@@ -47,6 +47,7 @@
 
 ### 🐛 修复
 
+- **修复：0 额度被误显为无限额度 (0/∞) 及哨兵时间戳导致 291 万天倒计时**：用量表格此前将 `total <= 0` 粗暴视为无限额度并渲染为 `0 / ∞`，导致 Qoder 免费版、DeepSeek 零余额等账号出现「0% 🔴」与「0 / ∞」自相矛盾的异常显示；同时 Qoder 官方接口对永久免费账号返回的哨兵时间戳 `253402214400000`（公元 9999 年）被直算为 `in 2912186d` 倒计时。现已全面收口：仅显式声明 `unlimited: true` 者才展示 `∞`，普通账号总额为 0 时真实展示 `0 / 0`（或 `0 / 0 credits`）；过滤公元 2099 年以上的哨兵时间戳，避免倒计时崩坏；新增 `tests/unit/qoder-usage-display.test.js` 3 例测试锁定。
 - **Command Code 提示语与「获取 API 密钥」按钮补齐 i18n**：供应商详情页（含媒体供应商页）notice 文本此前直接裸渲染未过 `translate()`，补齐 `translate()` 管道及 Command Code 提示语中英繁词条，并补充「Get API Key →」繁中词条；新增 `tests/unit/provider-notice-i18n.test.js` 6 例测试锁定。
 - **Endpoint 页的「密钥签名轮换 / 重签全部密钥」合并为一行紧凑布局**。原先两个独立区块（开关行 + 仅启用时出现的重签行）各带一段描述，在空间有限的 endpoint 页占了两大行；现合并为一行——标题 + Experimental 徽章 + 单行截断描述 + Tooltip（机制细节全在 tooltip 里，并补上「重签会把存量密钥一次性换到当前密文下」这半句），右侧 `Rotate all` 小按钮仅在轮换启用时出现，再右是开关。所有确认弹窗、防双击守卫（`rotateGuardRef`）与重签结果弹窗逻辑不变，纯布局收敛。`Rotate all` 随后进一步缩小防误触：Button 新增 `xs` 档（h-6 / px-2 / 11px 字号），去掉 autorenew 图标，触达面积约为原 sm 档的一半。
 
