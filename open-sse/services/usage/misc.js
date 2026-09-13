@@ -282,11 +282,14 @@ export async function getQoderUsage(accessToken, proxyOptions = null) {
     const orgQuota = body.orgResourcePackage || {};
     // Qoder publishes a single absolute reset timestamp (`expiresAt` in ms);
     // surface it on every quota record as ISO so the table can render
-    // "resets at" alongside used/total.
+    // "resets at" alongside used/total. Sentinel values (e.g. year 9999 /
+    // 253402214400000) mean "no expiration / permanent" — ignore them so
+    // we don't render a 2.9-million-day countdown.
     const expiresAtMs = Number.isFinite(Number(body.expiresAt)) && Number(body.expiresAt) > 0
       ? Number(body.expiresAt)
       : null;
-    const resetAt = expiresAtMs ? new Date(expiresAtMs).toISOString() : null;
+    const isSentinelExpiry = expiresAtMs && (expiresAtMs >= 253400000000000 || new Date(expiresAtMs).getFullYear() > 2099);
+    const resetAt = expiresAtMs && !isSentinelExpiry ? new Date(expiresAtMs).toISOString() : null;
     const quotas = {
       user: {
         total: Number(userQuota.total) || 0,
@@ -294,6 +297,7 @@ export async function getQoderUsage(accessToken, proxyOptions = null) {
         remaining: Number(userQuota.remaining) || 0,
         unit: userQuota.unit || "credits",
         resetAt,
+        unlimited: false,
       },
       organization: {
         total: Number(orgQuota.total) || 0,
@@ -301,6 +305,7 @@ export async function getQoderUsage(accessToken, proxyOptions = null) {
         remaining: Number(orgQuota.remaining) || 0,
         unit: orgQuota.unit || "credits",
         resetAt,
+        unlimited: false,
       },
     };
     return {

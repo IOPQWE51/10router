@@ -232,7 +232,7 @@ export function formatResetTime(date) {
     const now = new Date();
     const diffMs = resetDate - now;
 
-    if (diffMs <= 0) return "-";
+    if (diffMs <= 0 || resetDate.getFullYear() > 2099) return "-";
 
     const totalMinutes = Math.ceil(diffMs / (1000 * 60));
     
@@ -532,12 +532,17 @@ export function parseQuotaData(provider, data) {
             if (quotaType === "organization" && (!quota || (Number(quota.total) || 0) === 0)) {
               return;
             }
+            const resetAt =
+              quota.resetAt && new Date(quota.resetAt).getFullYear() <= 2099
+                ? quota.resetAt
+                : null;
             normalizedQuotas.push({
               name: quotaType === "user" ? "Personal" : quotaType === "organization" ? "Organization" : quotaType,
               used: quota.used || 0,
               total: quota.total || 0,
               unit: quota.unit,
-              resetAt: quota.resetAt || null,
+              resetAt,
+              unlimited: quota.unlimited === true,
             });
           });
         }

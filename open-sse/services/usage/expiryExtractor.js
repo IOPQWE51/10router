@@ -48,8 +48,8 @@ export function extractEarliestPackageExpiry(usage) {
     const resetTime = new Date(quota.resetAt).getTime();
     if (isNaN(resetTime)) continue;
 
-    // We only care about future expirations
-    if (resetTime > now && resetTime < earliestTime) {
+    // We only care about future expirations (ignoring sentinel dates like year 9999)
+    if (resetTime > now && resetTime < earliestTime && new Date(resetTime).getFullYear() <= 2099) {
       earliestTime = resetTime;
       earliestName = name;
       earliestIso = quota.resetAt instanceof Date ? quota.resetAt.toISOString() : String(quota.resetAt);

@@ -23,6 +23,7 @@ function formatResetTimeDisplay(resetTime) {
 
   try {
     const date = new Date(resetTime);
+    if (date.getFullYear() > 2099) return null;
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
@@ -199,13 +200,13 @@ export default function QuotaTable({
                       rows (CodeBuddy credit packs) count down like the card view. */}
                   <span
                     className="text-text-muted truncate"
-                    title={quota.percentScale || quota.displayRemaining === true ? undefined : `${quota.used.toLocaleString()} / ${quota.total > 0 ? quota.total.toLocaleString() : "∞"}`}
+                    title={quota.percentScale || quota.displayRemaining === true ? undefined : `${quota.used.toLocaleString()} / ${quota.unlimited ? "∞" : quota.total.toLocaleString()}`}
                   >
                     {quota.percentScale
                       ? ""
                       : quota.displayRemaining === true && quota.total > 0
                         ? `${Number((quota.total - quota.used).toFixed(2)).toLocaleString()} / ${Number(quota.total.toFixed(2)).toLocaleString()}`
-                        : `${quota.used.toLocaleString()} / ${quota.total > 0 ? quota.total.toLocaleString() : "∞"}`}
+                        : `${quota.used.toLocaleString()} / ${quota.unlimited ? "∞" : quota.total.toLocaleString()}`}
                   </span>
                   <span className={`font-medium ${colors.text} shrink-0`}>
                     {quota.remaining}%
