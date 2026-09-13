@@ -300,12 +300,12 @@ export function calculatePercentage(used, total) {
  * @returns {number} Remaining percentage (0-100)
  */
 export function getRemainingPercentage(quota) {
-  if (quota?.remaining !== undefined) {
-    return Math.max(0, Math.round(quota.remaining));
-  }
-
   if (quota?.remainingPercentage !== undefined) {
     return Math.round(quota.remainingPercentage);
+  }
+
+  if (quota?.remaining !== undefined && (quota?.total === 100 || quota?.total === undefined)) {
+    return Math.max(0, Math.round(quota.remaining));
   }
 
   return calculatePercentage(quota?.used, quota?.total);
@@ -685,6 +685,7 @@ export function parseQuotaData(provider, data) {
               remainingPercentage: quota.remainingPercentage !== undefined ? quota.remainingPercentage : calculatePercentage(quota.used, quota.total),
               resetAt: quota.resetAt || null,
               recurring: quota.recurring === true,
+              displayRemaining: true,
             });
           });
         }

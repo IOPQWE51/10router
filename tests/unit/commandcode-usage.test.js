@@ -11,7 +11,7 @@ import {
   USAGE_SUPPORTED_PROVIDERS,
   USAGE_APIKEY_PROVIDERS,
 } from "../../src/shared/constants/providers.js";
-import { parseQuotaData } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/utils.js";
+import { parseQuotaData, getRemainingPercentage } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/utils.js";
 
 const mockCreditsResponse = {
   credits: {
@@ -185,5 +185,20 @@ describe("Command Code Usage Handler", () => {
     ]);
     expect(normalized[0].remaining).toBe(2.5);
     expect(normalized[0].recurring).toBe(true);
+    expect(normalized[0].displayRemaining).toBe(true);
+  });
+
+  it("calculates remaining percentage correctly when remaining is a dollar amount", () => {
+    // When monthly credits remaining is $9.9855 out of $10, remainingPercentage is 100.
+    // getRemainingPercentage must NOT treat remaining ($9.9855) as 10%!
+    const quota = {
+      name: "Monthly Credits",
+      used: 0.0145,
+      total: 10,
+      remaining: 9.9855,
+      remainingPercentage: 100,
+    };
+
+    expect(getRemainingPercentage(quota)).toBe(100);
   });
 });
