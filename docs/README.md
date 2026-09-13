@@ -39,6 +39,9 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 - [v1.0.7 Release Review](/docs/zh-CN/release-review-v1.0.7.md) — per-commit review of the 23 commits in v1.0.7 (zh-only): security fixes verified, upstream v0.5.69 re-implementation audit, test regression gate, tag/SignPath checklist.
 - [Local test build & verify](/docs/zh-CN/local-build-and-verify.md) (zh-only) — one flow for Windows desktop and fnOS fpk: build → replace in place → verify, plus the uncommitted `X.Y.Z-test.N` scheme.
 - [v1.1.0 release-scope review](/docs/zh-CN/release-review-v1.1.0.md) (zh-only) — the scope/decision record for 1.1.0 (written while 1.0.9 was still planned; 1.0.9 was voided and folded into 1.1.0).
+- [v1.1.1 Release Review](/docs/zh-CN/release-review-v1.1.1.md) (zh-only) — full-scope audit of 81 commits in v1.1.1, regression gate, security P1 audit, and zero-blocker sign-off.
+- [fnOS / NAS hot-replace deploy](/docs/zh-CN/fnos-hot-replace-deploy.md) (zh-only) — update 10Router on fnOS without reinstalling fpk: unpack → atomic rename swap → appcenter-cli lifecycle restart.
+- [Test reports index](/docs/zh-CN/test-report-INDEX.md) (zh-only) — index of post-mortems and test run reports across local test cycles, NAS hot replacement, and CI releases.
 - [Upstream v0.5.69 → v0.5.75 triage](/docs/zh-CN/upstream-triage-v0.5.75.md) (zh-only) — item-by-item triage of seven upstream releases: what gets re-implemented here and why.
 - [Open issues status](/docs/zh-CN/open-issues-status.md) (zh-only) — every open issue checked against the current code: the 11-item security audit with `file:line` evidence (1 fixed / 4 partial / 6 open), the content-filter retry design, and the v1.0.8 packaging post-mortem.
 
@@ -79,6 +82,9 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 - [v1.0.7 发版审查](/docs/zh-CN/release-review-v1.0.7.md) — v1.0.7 全部 23 笔提交逐笔审查（安全修复验证/上游 v0.5.69 重实现审计/回归门禁/打 tag 与 SignPath 检查单）。
 - [本地测试构建与验证](/docs/zh-CN/local-build-and-verify.md) — Windows 桌面版 / fnOS fpk 共用一条流程：构建 → 就地替换 → 验证，及不入库的 `X.Y.Z-test.N` 测试版本号。
 - [v1.1.0 发版范围评审](/docs/zh-CN/release-review-v1.1.0.md) — 1.1.0 的范围与逐项决策记录（写于 1.0.9 尚在计划时；1.0.9 已作废并入 1.1.0）。
+- [v1.1.1 发版前审计报告](/docs/zh-CN/release-review-v1.1.1.md) — v1.1.1 全部 81 笔提交逐笔审读、全量回归门禁与发版最终检查单（0 阻塞项确认）。
+- [fnOS / NAS 热替换部署](/docs/zh-CN/fnos-hot-replace-deploy.md) — 无需重装 fpk 直接更新 fnOS 上的 10Router 服务端：预解包 → 原子重命名交换 → appcenter-cli 生命周期重启。
+- [测试报告索引](/docs/zh-CN/test-report-INDEX.md) — 本地测试轮次复盘、NAS 漏 pull 事故、ASAR 句柄锁与发版验证总索引。
 - [上游 v0.5.69 → v0.5.75 分诊](/docs/zh-CN/upstream-triage-v0.5.75.md) — 上游七个版本逐项分诊：哪些在本仓重实现、哪些不并，以及依据。
 - [未关闭 Issue 现状汇总](/docs/zh-CN/open-issues-status.md) — 全部 open issue 逐一对照当前代码核查：11 项安全审计的逐项状态（✅1 / 🟡4 / ❌6，附 `文件:行` 证据）、内容过滤重试的设计要点、v1.0.8 产物不一致的复盘。
 
