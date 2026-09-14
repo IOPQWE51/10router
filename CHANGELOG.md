@@ -9,7 +9,7 @@
 - **用量与配额国际化全量清扫（福利抢先修复）**：
   - **配额项名称国际化**：修复用量面板配额名称硬编码英文问题，Command Code 滚动限额（`session (5h)` / `Session (5h)` → 滚动 / 滾動）、每周限额（`weekly (7d)` / `Weekly (7d)` → 每周 / 每週）、Qoder 账号级别（`Personal` / `Organization` → 个人 / 组织）、DeepSeek 及其他渠道通用余额（`Balance`、`Balance (CNY)`、`Balance (USD)`、`Balance ($)` 及任意货币模式 `Balance (XXX)` 动态正则回落）全部接入国际化字典与展示层转换；
   - **卡片视图与进度条管道接入**：修复 `ProviderLimitCard` 视图中直接渲染原始英文 `quota.name`、`message`、`error` 导致界面未翻译的遗漏，全量接入 `translateQuotaName()` 与 `translate()` 管道；进度条 `QuotaProgressBar` 补齐重置词（`Reset` / `Expires` → 重置 / 过期）与请求次数（`requests` → 次请求）的多语言翻译；
-  - **供应商未连接与异常提示词翻译**：补齐 MiniMax（`MiniMax API key invalid or inactive...`、`MiniMax API key not available...`）、小米桌面版（`Xiaomi MiMo Desktop not connected. Add credentials to view usage.`）、Command Code、DeepSeek、OpenCode Go、Qoder 等用量状态提示文案的 zh-CN / zh-TW 字典；新增单元测试 `tests/unit/usage-quota-i18n.test.js`。
+  - **供应商未连接与异常提示词翻译**：补齐 MiniMax（`MiniMax API key invalid or inactive...`、`MiniMax API key not available...`）、小米桌面版（`Xiaomi MiMo Desktop not connected...`、`Weekly quota requires Xiaomi account session. API key alone is insufficient.`）、Command Code、DeepSeek、OpenCode Go、Qoder 等用量状态提示文案的 zh-CN / zh-TW 字典；新增单元测试 `tests/unit/usage-quota-i18n.test.js`。
 
 ## v1.1.1 (2026-09-14)
 
