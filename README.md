@@ -46,17 +46,14 @@
 
 ## 🧾 版本历程
 
-| 版本 | 要点 |
-|------|------|
-| **v1.1.1** | OAuth 导入/导出泛化到全部 OAuth 供应商（加密传输：scrypt + AES-256-GCM，导入以传输口令授权，五级查重）；安全加固（xiaomi-mimo auto-import 进守卫强保护、500 回显收敛）；自定义模型批量启用/禁用 + toggle 覆盖丢字段修复；CodeBuddy CN 签到全天调度（当日确认即停）与国际版每日活跃会话；CN Hy4-Preview 夜间免费(23:00–8:00)/白天 0.29x 动态徽章（intl 全天免费）；Endpoint 页 110 处 i18n；58 供应商官方品牌图标（@lobehub/icons）+ AMD→ATI 图标；移除 APInex；运行日志按日期归档；桌面壳多项体验（前往菜单/最近打开标题/右键复制粘贴/侧边栏翻转/复制加固）；测试报告体系文档化 |
-| **v1.1.0** | 小米 MiMo 桌面版供应商（Desktop 专属 Preview 模型，Cookie 会话）；opencode-go 供应商与目录重建；Codex GPT-Image-2.5 工具化路由；Kiro Amazon 面优先；disabledModels 键规范化；Windows 数据目录迁移修复（65 提交全量审查） |
-| **v1.0.8** | `/v1/models` jsonCatalog 500 修复；CodeBuddy 国际版模型目录清理（下线 7 个）；登录链路 500 加固；Endpoint 页 i18n（+77 词条）；CI 发版流程加固（release 预建防空标题） |
-| **v1.0.7** | ZCode 本地用量同步插件（10router-sync，离线导出/导入）；托盘图标单色化（mac template / win 主题黑白）+ 托盘菜单精简与桌面版更新引导；上游 v0.5.69 择优移植（多账号刷新防风控、Responses 并行工具调用修复、Claude Fable 周配额、codebuddy-cn 目录对齐等）；CodeBuddy CN「总积分」聚合行；安全加固（/responses 鉴权缺口、Claude 外来 server_tool_use 400、MCP 缓存锚点）；mac 语言检测修复 |
-| **v1.0.6** | CodeBuddy CN 每日自动签到（实验性）；Antigravity 配额对齐官网（5h + 每周双窗）与 Gemini 3.8 Flash 404 修复；OpenCode Free 免费目录对齐；Windows Web 安装器（211KB 在线拉取）；quota「只看有余额」实时重算；更新横幅 / Profile i18n 补齐；免费模型 429 友好中文提示 |
-| **v1.0.5** | **桌面托盘版（Windows / macOS）** + CLI/桌面多语言；Agent 自助添加自定义供应商；CodeBuddy CN 账号 JSON 批量导入导出；新增 Agnes AI 双站 / APInex 供应商；上游 v0.5.65 供应商同步 + 新搜索供应商（Ollama Search / Xquik）；SSRF 三层防护；用量表 成本/Token 切换错乱修复 |
-| **v1.0.0 – v1.0.4** | 品牌重塑 9Router → 10Router 与沉淀本地修复（配额轮询加速、按 connection 隔离、多币种显示、arm64 Docker）；安全加固（npm 包敏感文件门禁、登录限流、SSRF、用量去重）；新增 TokenBom / GoRouter / TaBiAI / LongCat / SenseNova / Dots / B.AI 等供应商与自定义模型目录；社区供应商开关；CodeBuddy 修复与账号 JSON 批量导入导出；fpk 更新直达 Releases；npm 包名变更为 `@techysy/10router`；测试 CI（Node 24） |
+| 版本 | 核心要点 |
+|------|----------|
+| **v1.1.1** | 跨账号「配额包到期优先」调度；Command Code 配额追踪；全供应商 OAuth 加密导出/导入；用量国际化与官方图标补齐 |
+| **v1.1.0** | 小米 MiMo 桌面版（Desktop 专属模型与会话）；opencode-go 供应商；Codex 图片工具化；Windows 数据目录迁移 |
+| **v1.0.6 – v1.0.8** | ZCode 用量同步；桌面单色托盘与 Web 安装器；CodeBuddy 每日自动签到；仪表盘与模型端点多语言 |
+| **v1.0.0 – v1.0.5** | 桌面托盘版（Win / macOS）；多币种配额追踪与连接隔离；三层 SSRF 防护与安全加固；85+ 供应商模型生态扩充 |
 
-👉 各版本完整明细（每项修复的根因与验证方式）见 **[CHANGELOG.md](CHANGELOG.md)**；本地打包发版流程见 [cli/PACKAGING.md](cli/PACKAGING.md)。
+👉 完整开发日志见 **[CHANGELOG.md](CHANGELOG.md)**；本地打包发版流程见 [cli/PACKAGING.md](cli/PACKAGING.md)。
 
 ## 🚀 快速开始
 
