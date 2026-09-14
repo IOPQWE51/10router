@@ -2,7 +2,7 @@
 
 > 适用范围：把**未发布的改动**装进一台真机上手动测试。两条通道共用同一套方法：
 > **Windows 桌面版**（Electron 托盘壳）与 **fnOS/NAS 的 fpk**。
-> 正式发布（打 tag → CI 构建 → Release 资产 → npm publish）见 `docs/zh-CN/release-review-v1.0.7.md` 与 `CLAUDE.md`。
+> 正式发布（打 tag → CI 构建 → Release 资产 → npm publish）见 `docs/zh-CN/archive/reviews/release-review-v1.0.7.md` 与 `CLAUDE.md`。
 
 ## 0. 为什么不是「重新构建一下现在版本号」
 

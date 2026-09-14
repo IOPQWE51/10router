@@ -44,7 +44,7 @@
 | [mirasim-dsh-toolcall-loss](mirasim-dsh-toolcall-loss.md) | 内嵌 dsh 工具调用 id/name 丢失导致 CodeBuddy 11133 |
 | [CodeBuddy-agent-amnesia-fix](CodeBuddy-agent-amnesia-fix.md) | CodeBuddy CN agent system prompt 失忆问题 |
 | [usage-usageKey-contract](usage-usageKey-contract.md) | 用量去重 usageKey 契约（请求聚合键）|
-| [contributors-cache-residue](contributors-cache-residue.md) | GitHub 贡献者页幽灵数据（fork 网络残留缓存）|
+| [contributors-cache-residue](archive/contributors-cache-residue.md) | GitHub 贡献者页幽灵数据（fork 网络残留缓存）|
 
 另有一条跨场景方法论教训（暂无独立报告，散见各处）：**外部 AI 的审查/交叉结论
 必须先对码核实再采纳**——已有编造函数、虚构测试数、错误归因的前科

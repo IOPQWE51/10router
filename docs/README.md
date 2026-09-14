@@ -24,7 +24,6 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 - [Xiaomi MiMo Desktop adaptation](/docs/zh-CN/xiaomi-mimo-desktop.md) (zh-only) — design A (dual auth on the existing `xiaomi-mimo`): credential paths per platform, the authorization-code flow, byte-exact protocol parity with the official client, and post-mortems of the 7 pitfalls.
 - [Xiaomi MiMo model list — four-source cross-check](/docs/zh-CN/xiaomi-mimo-model-sources.md) (zh-only) — official catalog vs models.dev vs desktop client vs live endpoint, settling the Preview ownership and `mimo-v2.5-pro-ultraspeed`.
 - [Adding a custom provider with an Agent](/docs/zh-CN/agent-add-custom-provider.md) (zh-only) — the walkthrough for driving 10Router through an agent to register a new provider.
-- [ZCode plan proxy feasibility](/docs/zh-CN/zcode-plan-proxy-feasibility.md) (zh-only) — feasibility analysis for wiring a ZCode subscription channel into 10Router.
 
 ### CodeBuddy CN compatibility layers
 
@@ -33,17 +32,24 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 - [reasoning_effort Compatibility Fix](/docs/en/CodeBuddy-reasoning-effort-fix.md) — DeepSeek models reject `auto`/`off`; mapped to `high`/dropped.
 - [CN account bulk import](/docs/zh-CN/codebuddy-cn-account-import.md) (zh-only) — importing several `codebuddy-cn` accounts at once.
 
-### Repo operations
+### Repo operations & Testing
 
-- [Contributors cache residue](/docs/en/contributors-cache-residue.md) — why the sidebar showed 248 upstream contributors after the fork detach; triage the three data sources and let the cache rebuild (no history rewrite).
-- [v1.0.7 Release Review](/docs/zh-CN/release-review-v1.0.7.md) — per-commit review of the 23 commits in v1.0.7 (zh-only): security fixes verified, upstream v0.5.69 re-implementation audit, test regression gate, tag/SignPath checklist.
 - [Local test build & verify](/docs/zh-CN/local-build-and-verify.md) (zh-only) — one flow for Windows desktop and fnOS fpk: build → replace in place → verify, plus the uncommitted `X.Y.Z-test.N` scheme.
-- [v1.1.0 release-scope review](/docs/zh-CN/release-review-v1.1.0.md) (zh-only) — the scope/decision record for 1.1.0 (written while 1.0.9 was still planned; 1.0.9 was voided and folded into 1.1.0).
-- [v1.1.1 Release Review](/docs/zh-CN/release-review-v1.1.1.md) (zh-only) — full-scope audit of 81 commits in v1.1.1, regression gate, security P1 audit, and zero-blocker sign-off.
 - [fnOS / NAS hot-replace deploy](/docs/zh-CN/fnos-hot-replace-deploy.md) (zh-only) — update 10Router on fnOS without reinstalling fpk: unpack → atomic rename swap → appcenter-cli lifecycle restart.
 - [Test reports index](/docs/zh-CN/test-report-INDEX.md) (zh-only) — index of post-mortems and test run reports across local test cycles, NAS hot replacement, and CI releases.
-- [Upstream v0.5.69 → v0.5.75 triage](/docs/zh-CN/upstream-triage-v0.5.75.md) (zh-only) — item-by-item triage of seven upstream releases: what gets re-implemented here and why.
-- [Open issues status](/docs/zh-CN/open-issues-status.md) (zh-only) — every open issue checked against the current code: the 11-item security audit with `file:line` evidence (1 fixed / 4 partial / 6 open), the content-filter retry design, and the v1.0.8 packaging post-mortem.
+
+### Archive (historical reviews & outdated notes)
+
+- [Archive Overview](/docs/zh-CN/archive/README.md) (zh-only) — index of past release audits, one-off research, and completed issue analyses.
+- [Release Reviews](/docs/zh-CN/archive/reviews/) (zh-only):
+  - [v1.0.7 Release Review](/docs/zh-CN/archive/reviews/release-review-v1.0.7.md)
+  - [v1.1.0 Release Review](/docs/zh-CN/archive/reviews/release-review-v1.1.0.md)
+  - [v1.1.1 Release Review](/docs/zh-CN/archive/reviews/release-review-v1.1.1.md)
+- Historical triages & reports (zh-only):
+  - [Upstream v0.5.69 → v0.5.75 triage](/docs/zh-CN/archive/upstream-triage-v0.5.75.md)
+  - [Open issues status snapshot (2026-09-11)](/docs/zh-CN/archive/open-issues-status.md)
+  - [ZCode plan proxy feasibility](/docs/zh-CN/archive/zcode-plan-proxy-feasibility.md)
+  - [Contributors cache residue](/docs/zh-CN/archive/contributors-cache-residue.md) ([English](/docs/zh-CN/archive/contributors-cache-residue.en.md))
 
 ---
 
@@ -67,7 +73,6 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 - [小米 MiMo 桌面版适配](/docs/zh-CN/xiaomi-mimo-desktop.md) — 设计 A（折进既有 `xiaomi-mimo` 做双认证）：各平台凭据路径、授权码流程、与官方客户端逐字节的协议对齐，以及 7 个坑的真因复盘。
 - [小米 MiMo 模型清单：四方交叉](/docs/zh-CN/xiaomi-mimo-model-sources.md) — 官方目录 / models.dev / 桌面客户端 / 端点实测四方对比，定 Preview 归属与 `mimo-v2.5-pro-ultraspeed`。
 - [用 Agent 添加自定义供应商](/docs/zh-CN/agent-add-custom-provider.md) — 通过 agent 驱动 10Router 注册新供应商的完整走法。
-- [ZCode 订阅渠道接入可行性](/docs/zh-CN/zcode-plan-proxy-feasibility.md) — 把 ZCode 订阅渠道接进 10Router 的可行性分析。
 
 ### CodeBuddy CN 兼容层
 
@@ -76,17 +81,24 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 - [reasoning_effort 兼容修复](/docs/zh-CN/CodeBuddy-reasoning-effort-fix.md) — DeepSeek 模型不支持 `auto`/`off`，映射为 `high`/删除。
 - [CN 账号批量导入](/docs/zh-CN/codebuddy-cn-account-import.md) — 一次性导入多个 `codebuddy-cn` 账号。
 
-### 仓库运维
+### 仓库运维与测试体系
 
-- [Contributors 残留上游贡献者](/docs/zh-CN/contributors-cache-residue.md) — fork detach 后侧边栏为何显示 248 个上游贡献者；三数据源定位 + 等缓存重建（勿重写历史）。
-- [v1.0.7 发版审查](/docs/zh-CN/release-review-v1.0.7.md) — v1.0.7 全部 23 笔提交逐笔审查（安全修复验证/上游 v0.5.69 重实现审计/回归门禁/打 tag 与 SignPath 检查单）。
 - [本地测试构建与验证](/docs/zh-CN/local-build-and-verify.md) — Windows 桌面版 / fnOS fpk 共用一条流程：构建 → 就地替换 → 验证，及不入库的 `X.Y.Z-test.N` 测试版本号。
-- [v1.1.0 发版范围评审](/docs/zh-CN/release-review-v1.1.0.md) — 1.1.0 的范围与逐项决策记录（写于 1.0.9 尚在计划时；1.0.9 已作废并入 1.1.0）。
-- [v1.1.1 发版前审计报告](/docs/zh-CN/release-review-v1.1.1.md) — v1.1.1 全部 81 笔提交逐笔审读、全量回归门禁与发版最终检查单（0 阻塞项确认）。
 - [fnOS / NAS 热替换部署](/docs/zh-CN/fnos-hot-replace-deploy.md) — 无需重装 fpk 直接更新 fnOS 上的 10Router 服务端：预解包 → 原子重命名交换 → appcenter-cli 生命周期重启。
 - [测试报告索引](/docs/zh-CN/test-report-INDEX.md) — 本地测试轮次复盘、NAS 漏 pull 事故、ASAR 句柄锁与发版验证总索引。
-- [上游 v0.5.69 → v0.5.75 分诊](/docs/zh-CN/upstream-triage-v0.5.75.md) — 上游七个版本逐项分诊：哪些在本仓重实现、哪些不并，以及依据。
-- [未关闭 Issue 现状汇总](/docs/zh-CN/open-issues-status.md) — 全部 open issue 逐一对照当前代码核查：11 项安全审计的逐项状态（✅1 / 🟡4 / ❌6，附 `文件:行` 证据）、内容过滤重试的设计要点、v1.0.8 产物不一致的复盘。
+
+### 历史归档（发版审查与过时记录）
+
+- [历史归档总索引](/docs/zh-CN/archive/README.md) — 集中收归历史发版审计报告、阶段性上游分诊、已结项调研与问题排查记录。
+- 历史发版审查（`archive/reviews/`）：
+  - [v1.0.7 发版审查](/docs/zh-CN/archive/reviews/release-review-v1.0.7.md) — 23 笔提交逐笔审查记录
+  - [v1.1.0 发版范围评审](/docs/zh-CN/archive/reviews/release-review-v1.1.0.md) — 1.1.0 发版范围与决策记录（原 1.0.9 决策原貌）
+  - [v1.1.1 发版前审计报告](/docs/zh-CN/archive/reviews/release-review-v1.1.1.md) — 全部 81 笔提交逐笔审读、全量回归门禁与发版最终检查单
+- 阶段性调研与历史排查：
+  - [上游 v0.5.69 → v0.5.75 分诊](/docs/zh-CN/archive/upstream-triage-v0.5.75.md) — 上游 7 个版本 26 笔提交内容分诊记录（已在 v1.1.0 落地）
+  - [未关闭 Issue 现状汇总（2026-09-11 快照）](/docs/zh-CN/archive/open-issues-status.md) — 历史 issue 核对快照（其中 #12、#13、#14 现已全部关闭）
+  - [ZCode 订阅渠道接入可行性](/docs/zh-CN/archive/zcode-plan-proxy-feasibility.md) — ZCode 订阅渠道接入调研（结论不可行已结项）
+  - [Contributors 残留上游贡献者](/docs/zh-CN/archive/contributors-cache-residue.md)（[英文版](/docs/zh-CN/archive/contributors-cache-residue.en.md)）— fork detach 贡献者幽灵数据排查（已自愈）
 
 ---
 
