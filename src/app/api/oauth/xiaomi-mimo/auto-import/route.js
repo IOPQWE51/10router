@@ -50,19 +50,34 @@ export async function GET() {
     // Whether Desktop's account session is readable — this is what unlocks the
     // Desktop-exclusive Preview models. The token itself stays on the server.
     let hasDesktopSession = false;
+    let desktopSessionInfo = null;
     // A running Desktop holds an exclusive lock on its cookie store. Import can
     // still succeed (the sk- key alone covers the cloud models) — but Preview
     // models need that session, so tell the user why it is missing.
     let desktopLocked = false;
     try {
       const { readDesktopPassToken } = await import("open-sse/shared/mimoAccount.js");
-      hasDesktopSession = Boolean(await readDesktopPassToken());
+      desktopSessionInfo = await readDesktopPassToken();
+      hasDesktopSession = Boolean(desktopSessionInfo?.passToken);
     } catch (e) {
       desktopLocked = e?.code === "DESKTOP_LOCKED";
       console.log("[xiaomi-mimo] passToken read failed (non-fatal):", e.message);
     }
 
     if (!authPath) {
+      if (hasDesktopSession) {
+        // User logged in via MiMo Desktop (e.g. QR scan) — holds account session
+        // which unlocks Desktop-exclusive Preview models even without auth.json.
+        return NextResponse.json({
+          found: true,
+          hasDesktopSession: true,
+          sessionOnly: true,
+          uid: desktopSessionInfo?.userId || null,
+          desktopLocked: false,
+          source: "Xiaomi MiMo Desktop Session",
+        });
+      }
+
       return NextResponse.json({
         found: false,
         hasDesktopSession,
@@ -111,6 +126,7 @@ export async function GET() {
 
     return NextResponse.json({
       found: true,
+      sessionOnly: false,
       apiKey: key,
       uid: metadata.uid || null,
       baseUrl: metadata.base_url || "https://api.xiaomimimo.com/v1",

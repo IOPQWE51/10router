@@ -15,15 +15,24 @@ import { createProviderConnection } from "@/models";
  */
 export async function POST(request) {
   try {
-    const { apiKey, uid, baseUrl, mimoPassToken, mimoUserId, mimoCUserId } = await request.json();
+    const { apiKey, uid, baseUrl, mimoPassToken, mimoUserId, mimoCUserId, sessionOnly } = await request.json();
 
-    if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
-      return NextResponse.json({ error: "API key is required" }, { status: 400 });
-    }
+    // Session-only mode: the user signed in through MiMo Desktop (QR scan) and
+    // holds an account session but no sk- API key. The session alone unlocks the
+    // Desktop-exclusive Preview models, so a connection is worth creating even
+    // without a key — cloud models will simply fail until a key is added.
+    const isSessionOnly = sessionOnly === true || (!apiKey && (mimoPassToken || mimoUserId));
 
-    const key = apiKey.trim();
-    if (!key.startsWith("sk-")) {
-      return NextResponse.json({ error: "Invalid key format — expected sk- prefix" }, { status: 400 });
+    let key = typeof apiKey === "string" ? apiKey.trim() : "";
+    if (!isSessionOnly) {
+      if (!key) {
+        return NextResponse.json({ error: "API key is required" }, { status: 400 });
+      }
+      if (!key.startsWith("sk-")) {
+        return NextResponse.json({ error: "Invalid key format — expected sk- prefix" }, { status: 400 });
+      }
+    } else if (key && !key.startsWith("sk-")) {
+      key = ""; // ignore a malformed key rather than storing it
     }
 
     const effectiveBaseUrl = (baseUrl || "https://api.xiaomimimo.com/v1").replace(/\/+$/, "");
@@ -32,26 +41,28 @@ export async function POST(request) {
     // must not prevent importing a key the user knows is good.
     let validated = false;
     let modelCount = 0;
-    try {
-      const resp = await fetch(`${effectiveBaseUrl}/models`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "X-Mimo-Source": "mimocode-cli",
-        },
-        signal: AbortSignal.timeout(10000),
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        modelCount = Array.isArray(data?.data) ? data.data.length : 0;
-        validated = true;
+    if (key) {
+      try {
+        const resp = await fetch(`${effectiveBaseUrl}/models`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "X-Mimo-Source": "mimocode-cli",
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          modelCount = Array.isArray(data?.data) ? data.data.length : 0;
+          validated = true;
+        }
+      } catch {
+        // Network error — still allow import (key may be valid but network blocked)
       }
-    } catch {
-      // Network error — still allow import (key may be valid but network blocked)
-    }
 
-    if (!validated) {
-      console.log("[xiaomi-mimo] key validation failed, storing as untested");
+      if (!validated) {
+        console.log("[xiaomi-mimo] key validation failed, storing as untested");
+      }
     }
 
     // Account-session credential, for the Desktop-exclusive models. Prefer a
@@ -72,10 +83,20 @@ export async function POST(request) {
       }
     }
 
+    // Session-only connections carry no real key: store a stable placeholder so
+    // downstream code paths that require a non-empty accessToken keep working
+    // (the executor uses the session cookie for Preview models, and cloud models
+    // will report a clear auth error until the user adds an sk- key).
+    const accessToken = key || `mimo-desktop-session${session.userId ? `-${session.userId}` : ""}`;
+
     // Dedup: if a connection with the same uid or the same key already exists, update it
     const { getProviderConnections, updateProviderConnection } = await import("@/models");
     const existing = (await getProviderConnections()).find(
-      (c) => c.provider === "xiaomi-mimo" && ((uid && c.email === `${uid}@xiaomi`) || c.accessToken === key),
+      (c) =>
+        c.provider === "xiaomi-mimo" &&
+        ((uid && c.email === `${uid}@xiaomi`) ||
+          (key && c.accessToken === key) ||
+          (isSessionOnly && session.userId && c.providerSpecificData?.mimoUserId === session.userId)),
     );
 
     const sessionData = {
@@ -86,16 +107,18 @@ export async function POST(request) {
 
     if (existing) {
       const updated = await updateProviderConnection(existing.id, {
-        accessToken: key,
+        // Never downgrade a real key to the session placeholder.
+        accessToken: key || existing.accessToken,
         providerSpecificData: {
           ...existing.providerSpecificData,
           uid: uid || existing.providerSpecificData?.uid || null,
           baseUrl: effectiveBaseUrl,
+          authMethod: key ? "api_key" : existing.providerSpecificData?.authMethod || "desktop-session",
           // Per-account session credential — enables multi-account rotation.
           mimoPassToken: session.passToken || existing.providerSpecificData?.mimoPassToken || null,
           mimoUserId: session.userId || existing.providerSpecificData?.mimoUserId || null,
           mimoCUserId: session.cUserId || existing.providerSpecificData?.mimoCUserId || null,
-          modelCount,
+          modelCount: modelCount || existing.providerSpecificData?.modelCount,
         },
         testStatus: validated ? "active" : existing.testStatus,
       });
@@ -117,7 +140,7 @@ export async function POST(request) {
     const connection = await createProviderConnection({
       provider: "xiaomi-mimo",
       authType: "api_key",
-      accessToken: key,
+      accessToken,
       refreshToken: null,
       // API keys don't expire on a fixed schedule; use a long horizon
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
@@ -126,8 +149,8 @@ export async function POST(request) {
       providerSpecificData: {
         uid: uid || null,
         baseUrl: effectiveBaseUrl,
-        authMethod: "api_key",
-        provider: "API Key",
+        authMethod: key ? "api_key" : "desktop-session",
+        provider: key ? "API Key" : "Xiaomi MiMo Desktop Session",
         modelCount,
         ...sessionData,
       },
@@ -138,6 +161,7 @@ export async function POST(request) {
       success: true,
       validated,
       modelCount,
+      sessionOnly: isSessionOnly,
       desktopLocked,
       connection: {
         id: connection.id,

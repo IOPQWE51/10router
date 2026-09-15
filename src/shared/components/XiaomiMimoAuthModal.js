@@ -87,10 +87,14 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
     return () => { cancelled = true; };
   }, [isOpen]);
 
-  // Import the auto-detected key. The Desktop session passToken is intentionally
-  // not sent from here — the import route reads it from Desktop's profile itself.
+  // Import the auto-detected credentials. Session-only (no auth.json sk- key but
+  // a readable Desktop account session) is a first-class path: the session alone
+  // unlocks the Desktop-exclusive Preview models. The Desktop session passToken is
+  // intentionally not sent from here — the import route reads it from Desktop's
+  // profile itself.
   const handleImport = async () => {
-    if (!detectResult?.apiKey) return;
+    const sessionOnly = Boolean(detectResult?.sessionOnly);
+    if (!detectResult?.apiKey && !sessionOnly) return;
     setPhase("importing");
     setError(null);
 
@@ -99,9 +103,10 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey: detectResult.apiKey,
+          apiKey: detectResult.apiKey || undefined,
           uid: detectResult.uid,
           baseUrl: detectResult.baseUrl,
+          sessionOnly,
         }),
       });
       const data = await res.json();
@@ -230,17 +235,23 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
               <div className="flex gap-2">
                 <span className="material-symbols-outlined text-green-600 dark:text-green-400">check_circle</span>
                 <div className="text-sm text-green-800 dark:text-green-200">
-                  <p className="font-medium">{translate("Xiaomi MiMo Desktop credentials found!")}</p>
+                  <p className="font-medium">
+                    {detectResult.sessionOnly
+                      ? translate("Xiaomi MiMo Desktop session detected!")
+                      : translate("Xiaomi MiMo Desktop credentials found!")}
+                  </p>
                   <p className="mt-1 opacity-80">
                     {translate("UID")}: {detectResult.uid || "—"} · {translate("Source")}:{" "}
                     {detectResult.source?.split(/[\\/]/).pop()}
                   </p>
                   <p className="mt-1 opacity-80">
-                    {detectResult.hasDesktopSession
-                      ? translate("Desktop account session detected — Preview models will be available.")
-                      : detectResult.desktopLocked
-                        ? translate("Desktop is running and is holding its credential store — quit it to unlock the Preview models (the API key alone covers the cloud models).")
-                        : translate("No Desktop account session found — the API key alone is enough for the cloud models.")}
+                    {detectResult.sessionOnly
+                      ? translate("Signed in via Desktop — Preview models (MiMo-X-Pro/Flash) will be available. Cloud models need an sk- API key.")
+                      : detectResult.hasDesktopSession
+                        ? translate("Desktop account session detected — Preview models will be available.")
+                        : detectResult.desktopLocked
+                          ? translate("Desktop is running and is holding its credential store — quit it to unlock the Preview models (the API key alone covers the cloud models).")
+                          : translate("No Desktop account session found — the API key alone is enough for the cloud models.")}
                   </p>
                 </div>
               </div>
@@ -254,7 +265,9 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
 
             <div className="flex gap-2">
               <Button onClick={handleImport} fullWidth>
-                {translate("Connect with Local Credentials")}
+                {detectResult.sessionOnly
+                  ? translate("Connect with Desktop Session")
+                  : translate("Connect with Local Credentials")}
               </Button>
               <Button onClick={onClose} variant="ghost" fullWidth>
                 {translate("Cancel")}
