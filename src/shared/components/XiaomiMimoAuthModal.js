@@ -39,7 +39,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
 
     const res = await fetch("/api/oauth/xiaomi-mimo/auto-import");
     const data = await res.json();
-    if (data.found && data.apiKey) {
+    // `found` includes session-only (Desktop QR login without auth.json).
+    if (data.found) {
       setDetectResult(data);
       setPhase("found");
     } else {
@@ -68,7 +69,10 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
         const data = await res.json();
         if (cancelled) return;
 
-        if (data.found && data.apiKey) {
+        // found covers BOTH full credentials (apiKey + session) and session-only
+        // (Desktop QR login, no auth.json) — only the apiKey check here would
+        // misroute the latter to the not-found branch.
+        if (data.found) {
           setDetectResult(data);
           setPhase("found");
         } else {

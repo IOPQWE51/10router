@@ -5,7 +5,7 @@
  * short passphrase. accountTransfer: real sqlite via temp DATA_DIR —
  * dedup priority (JWT sub → refreshToken → name), create/update split.
  */
-import fs from "node:fs";
+import fs, { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
@@ -164,5 +164,22 @@ describe("accountTransfer.importAccounts", () => {
       expect(a.provider).toBe("gemini");
       expect(Object.keys(a)).toEqual(expect.arrayContaining(["name", "accessToken", "refreshToken", "uid"]));
     }
+  });
+});
+
+describe("Xiaomi MiMo modal — session-only detection wiring", () => {
+  it("routes any `found` response to the found phase (not just apiKey ones)", () => {
+    const modal = readFileSync(
+      new URL("../../src/shared/components/XiaomiMimoAuthModal.js", import.meta.url),
+      "utf8",
+    );
+    // Both detect paths must branch on `data.found` alone — session-only
+    // responses carry no apiKey and used to fall into the not-found branch.
+    expect(modal).not.toMatch(/data\.found\s*&&\s*data\.apiKey/);
+    const foundChecks = modal.match(/if \(data\.found\)/g) || [];
+    expect(foundChecks.length).toBeGreaterThanOrEqual(2);
+    // Session-only rendering + import wiring must stay present.
+    expect(modal).toContain("detectResult.sessionOnly");
+    expect(modal).toContain("Connect with Desktop Session");
   });
 });
