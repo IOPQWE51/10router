@@ -3,13 +3,10 @@
 import PropTypes from "prop-types";
 import Card from "@/shared/components/Card";
 import { fmtCost } from "@/shared/utils/currency";
-import { fmtTokens } from "@/shared/utils/compactNumber";
-import { getCurrentLocale } from "@/i18n/runtime";
 
 const fmt = (n) => new Intl.NumberFormat().format(n || 0);
 
 export default function OverviewCards({ stats }) {
-  const locale = getCurrentLocale();
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-4">
       <Card className="flex min-w-0 flex-col gap-1 px-4 py-3">
@@ -18,15 +15,15 @@ export default function OverviewCards({ stats }) {
       </Card>
       <Card className="flex min-w-0 flex-col gap-1 px-4 py-3">
         <span className="text-text-muted text-sm uppercase font-semibold">Total Input Tokens</span>
-        <span className="truncate text-2xl font-bold text-primary" title={fmt(stats.totalPromptTokens)}>{fmtTokens(stats.totalPromptTokens, locale)}</span>
+        <span className="truncate text-2xl font-bold text-primary">{fmt(stats.totalPromptTokens)}</span>
       </Card>
       <Card className="flex min-w-0 flex-col gap-1 px-4 py-3">
         <span className="text-text-muted text-sm uppercase font-semibold">Cached Tokens</span>
-        <span className="truncate text-2xl font-bold text-info" title={fmt(stats.totalCachedTokens)}>{fmtTokens(stats.totalCachedTokens, locale)}</span>
+        <span className="truncate text-2xl font-bold text-info">{fmt(stats.totalCachedTokens)}</span>
       </Card>
       <Card className="flex min-w-0 flex-col gap-1 px-4 py-3">
         <span className="text-text-muted text-sm uppercase font-semibold">Output Tokens</span>
-        <span className="truncate text-2xl font-bold text-success" title={fmt(stats.totalCompletionTokens)}>{fmtTokens(stats.totalCompletionTokens, locale)}</span>
+        <span className="truncate text-2xl font-bold text-success">{fmt(stats.totalCompletionTokens)}</span>
       </Card>
       <Card className="flex min-w-0 flex-col gap-1 px-4 py-3">
         <span className="text-text-muted text-sm uppercase font-semibold">Est. Cost</span>

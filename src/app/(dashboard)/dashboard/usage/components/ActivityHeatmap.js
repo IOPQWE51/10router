@@ -32,9 +32,14 @@ function levelOf(requests, maxRequests) {
   return Math.min(4, Math.ceil((requests / maxRequests) * 4));
 }
 
-function TipCell({ dateLine, statsLine, style, className }) {
+function TipCell({ dateLine, statsLine, style, className, onEnter, onLeave }) {
   return (
-    <div className="relative inline-flex shrink-0 group/tt" style={style}>
+    <div
+      className="relative inline-flex shrink-0 group/tt"
+      style={style}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
       <div className={className} style={{ width: "100%", height: "100%" }} />
       <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[11px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/tt:opacity-100 dark:bg-gray-700">
         <div className="font-medium">{dateLine}</div>
@@ -49,6 +54,8 @@ TipCell.propTypes = {
   statsLine: PropTypes.string.isRequired,
   style: PropTypes.object,
   className: PropTypes.string,
+  onEnter: PropTypes.func,
+  onLeave: PropTypes.func,
 };
 
 function buildWeeks(daily, days) {
@@ -92,42 +99,39 @@ function buildWeeks(daily, days) {
   return weeks;
 }
 
-function buildWeekSummaries(weeks) {
-  const summaries = weeks.map((week) => {
-    const days = week.filter((d) => d.inRange);
-    const s = { start: days[0]?.key, end: days[days.length - 1]?.key, requests: 0, tokens: 0, cost: 0 };
-    for (const d of days) {
-      s.requests += d.requests;
-      s.tokens += d.tokens;
-      s.cost += d.cost;
-    }
-    return s;
-  }).filter((s) => s.start);
-  const maxRequests = summaries.reduce((m, s) => Math.max(m, s.requests), 0);
-  for (const s of summaries) s.level = levelOf(s.requests, maxRequests);
-  return summaries;
+function weekStat(week) {
+  let requests = 0;
+  let tokens = 0;
+  for (const d of week) {
+    if (!d.inRange) continue;
+    requests += d.requests;
+    tokens += d.tokens;
+  }
+  return { requests, tokens };
 }
 
 export default function ActivityHeatmap({ daily, days = 365 }) {
   const [view, setView] = useState("day");
+  const [hoverCol, setHoverCol] = useState(null);
   const locale = getCurrentLocale();
   const weeks = buildWeeks(daily, days);
-  const weekSummaries = buildWeekSummaries(weeks);
   const monthFmt = (date) => date.toLocaleDateString(locale === "en" ? "en-US" : locale, { month: "short" });
+  const fullDateFmt = (date) => date.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
 
   // Fixed-height grid: cell size derives from height (never stretches with
-  // width); wider containers simply show more trailing weeks.
+  // width); wider containers simply show more trailing weeks. The week view
+  // keeps the exact same grid — hovering a column shows that week's aggregate.
   const gridRef = useRef(null);
   const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
-    if (view !== "day" || !gridRef.current) return undefined;
+    if (!gridRef.current) return undefined;
     const ro = new ResizeObserver((entries) => {
       const r = entries[0].contentRect;
       setGridSize({ w: r.width, h: r.height });
     });
     ro.observe(gridRef.current);
     return () => ro.disconnect();
-  }, [view]);
+  }, []);
 
   const cell = gridSize.h > 0 ? Math.max(6, (gridSize.h - TOTAL_ROW_GAP) / 7) : 0;
   const visibleWeeks = cell > 0
@@ -135,12 +139,11 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
     : 0;
   const shownWeeks = visibleWeeks > 0 ? weeks.slice(-visibleWeeks) : [];
 
-  // Totals follow what is actually visible in the current view.
+  // Totals follow what is actually visible.
   let totalRequests = 0;
   let totalTokens = 0;
   let activeDays = 0;
-  const totalSource = view === "day" ? shownWeeks : weeks;
-  for (const week of totalSource) {
+  for (const week of shownWeeks) {
     for (const d of week) {
       if (!d.inRange) continue;
       totalRequests += d.requests;
@@ -170,70 +173,63 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
         />
       </div>
 
-      {view === "day" ? (
-        <div className="pb-1">
-          <div className="flex" style={{ gap: GAP, paddingLeft: LABEL_COL + GAP, height: MONTH_ROW_H }}>
-            {shownWeeks.map((week, wi) => (
-              <div
-                key={wi}
-                style={{ width: cell }}
-                className="shrink-0 overflow-visible whitespace-nowrap text-[9px] leading-none text-text-muted"
-              >
-                {wi > 0 && week[6].date.getMonth() !== shownWeeks[wi - 1][6].date.getMonth() ? monthFmt(week[6].date) : ""}
-              </div>
-            ))}
-          </div>
-          <div ref={gridRef} className="mt-1 h-[150px] sm:h-[170px]">
-            {cell > 0 && WEEKDAY_LABELS.map((label, dow) => (
-              <div
-                key={label}
-                className="flex"
-                style={{ gap: GAP, marginTop: dow === 0 ? 0 : dow === 5 ? GAP * 1.2 : GAP }}
-              >
-                <div
-                  style={{ width: LABEL_COL }}
-                  className="flex shrink-0 items-center text-[9px] leading-none text-text-muted"
-                >
-                  {dow % 2 === 0 ? translate(label) : ""}
-                </div>
-                {shownWeeks.map((week) => {
-                  const day = week[dow];
-                  if (!day.inRange) {
-                    return <div key={day.key} style={{ width: cell, height: cell }} className="shrink-0 bg-transparent" />;
-                  }
-                  return (
-                    <TipCell
-                      key={day.key}
-                      style={{ width: cell, height: cell }}
-                      dateLine={day.date.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })}
-                      statsLine={`${fmtTokens(day.tokens, locale, true)} tokens · ${day.requests} ${translate("requests")}`}
-                      className={cn(
-                        "rounded-sm transition-transform hover:scale-110 hover:ring-1 hover:ring-text-main/40",
-                        LEVEL_CLASSES[day.level]
-                      )}
-                    />
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-[6px] pb-1">
-          {weekSummaries.map((w) => (
-            <TipCell
-              key={w.start}
-              style={{ width: 24, height: 24 }}
-              dateLine={`${w.start} ~ ${w.end}`}
-              statsLine={`${fmtTokens(w.tokens, locale, true)} tokens · ${w.requests} ${translate("requests")}`}
-              className={cn(
-                "rounded-md transition-transform hover:scale-110 hover:ring-1 hover:ring-text-main/40",
-                LEVEL_CLASSES[w.level]
-              )}
-            />
+      <div className="pb-1">
+        <div className="flex" style={{ gap: GAP, paddingLeft: LABEL_COL + GAP, height: MONTH_ROW_H }}>
+          {shownWeeks.map((week, wi) => (
+            <div
+              key={wi}
+              style={{ width: cell }}
+              className="shrink-0 overflow-visible whitespace-nowrap text-[9px] leading-none text-text-muted"
+            >
+              {wi > 0 && week[6].date.getMonth() !== shownWeeks[wi - 1][6].date.getMonth() ? monthFmt(week[6].date) : ""}
+            </div>
           ))}
         </div>
-      )}
+        <div ref={gridRef} className="mt-1 h-[150px] sm:h-[170px]">
+          {cell > 0 && WEEKDAY_LABELS.map((label, dow) => (
+            <div
+              key={label}
+              className="flex"
+              style={{ gap: GAP, marginTop: dow === 0 ? 0 : dow === 5 ? GAP * 1.2 : GAP }}
+            >
+              <div
+                style={{ width: LABEL_COL }}
+                className="flex shrink-0 items-center text-[9px] leading-none text-text-muted"
+              >
+                {dow % 2 === 0 ? translate(label) : ""}
+              </div>
+              {shownWeeks.map((week, wi) => {
+                const day = week[dow];
+                if (!day.inRange) {
+                  return <div key={day.key} style={{ width: cell, height: cell }} className="shrink-0 bg-transparent" />;
+                }
+                const isWeek = view === "week";
+                const ws = isWeek ? weekStat(week) : null;
+                const colHighlight = isWeek && hoverCol === wi;
+                return (
+                  <TipCell
+                    key={day.key}
+                    style={{ width: cell, height: cell }}
+                    dateLine={isWeek ? `${fullDateFmt(day.date)} ${translate("This Week")}` : fullDateFmt(day.date)}
+                    statsLine={isWeek
+                      ? `${fmtTokens(ws.tokens, locale, true)} tokens · ${ws.requests} ${translate("requests")}`
+                      : `${fmtTokens(day.tokens, locale, true)} tokens · ${day.requests} ${translate("requests")}`}
+                    onEnter={() => isWeek && setHoverCol(wi)}
+                    onLeave={() => isWeek && setHoverCol(null)}
+                    className={cn(
+                      "rounded-sm transition-transform",
+                      LEVEL_CLASSES[day.level],
+                      isWeek
+                        ? colHighlight && "scale-110 ring-1 ring-text-main/50"
+                        : "hover:scale-110 hover:ring-1 hover:ring-text-main/40"
+                    )}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="text-[10px] text-text-muted">
         {`${totalRequests.toLocaleString()} ${translate("requests")} · ${fmtTokens(totalTokens, locale, true)} ${translate("tokens")} · ${activeDays} ${translate("active days")}`}
