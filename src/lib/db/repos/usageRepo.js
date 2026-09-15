@@ -956,9 +956,18 @@ export async function getUsageDashboard({ minRequests = 100 } = {}) {
       if (typeof total !== "number" || total <= 0) continue;
       const ttft = typeof d?.latency?.ttft === "number" && d.latency.ttft > 0 ? d.latency.ttft : null;
       const outTokens = d?.tokens?.completion_tokens || 0;
-      const speed = ttft != null && total > ttft && outTokens > 0
-        ? (outTokens / ((total - ttft) / 1000))
-        : null;
+      let speed = null;
+      if (outTokens > 0) {
+        let durationMs = null;
+        if (ttft != null && total > ttft && (total - ttft) >= 50) {
+          durationMs = total - ttft;
+        } else if (total >= 50) {
+          durationMs = total;
+        }
+        if (durationMs != null && durationMs > 0) {
+          speed = outTokens / (durationMs / 1000);
+        }
+      }
       const nodeKey = r.provider || "";
       const modelKey = `${r.provider || ""}|${r.model || ""}`;
       for (const [scope, key] of [["node", nodeKey], ["model", modelKey]]) {

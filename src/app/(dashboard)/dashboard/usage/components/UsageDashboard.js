@@ -29,12 +29,13 @@ const NODE_COLUMNS = [
   { key: "successRate", label: "Success", align: "right", kind: "rate" },
   { key: "avgTtftMs", label: "Avg TTFT", align: "right", kind: "latency" },
   { key: "avgLatencyMs", label: "Avg Latency", align: "right", kind: "latency" },
+  { key: "avgSpeed", label: "Avg Speed", align: "right", kind: "speed" },
   { key: "requests", label: "Requests", align: "right", kind: "int" },
   { key: "lastUsed", label: "Last Used", align: "right", kind: "date" },
 ];
 
 function fmtSpeed(tps) {
-  if (tps == null) return "—";
+  if (tps == null || Number.isNaN(tps)) return "—";
   return `${tps.toLocaleString()} tok/s`;
 }
 
@@ -133,7 +134,7 @@ function ScoreTable({ rows, columns, nameKey, subKey, emptyText }) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px]">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-black/5 dark:border-white/5">
               {columns.map((col) => (
@@ -208,7 +209,7 @@ function LifetimeCards({ lifetime }) {
     {
       label: "Cache Hit Rate",
       value: lifetime.cacheHitRate != null ? `${lifetime.cacheHitRate}%` : "—",
-      sub: lifetime.cacheTokens > 0 ? `${fmtTokens(lifetime.cacheTokens, locale, true)} ${translate("Cached")}` : "",
+      sub: translate("Only real valid data is counted"),
       valueClass: "text-success",
     },
     {
@@ -225,17 +226,23 @@ function LifetimeCards({ lifetime }) {
     <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:gap-4">
       {cards.map((c) => (
         <Card key={c.label} className="flex min-w-0 flex-col gap-1 px-4 py-3" style={{ containerType: "inline-size" }}>
-          <span className="text-text-muted text-sm uppercase font-semibold">{translate(c.label)}</span>
-          <span
-            className={cn(
-              "whitespace-nowrap font-bold",
-              c.shrink ? "text-[clamp(0.875rem,4.5cqw,1.5rem)]" : "truncate text-2xl",
-              c.valueClass
-            )}
-          >
-            {c.value}
-          </span>
-          {c.sub && <span className="truncate text-[10px] text-text-muted">{c.sub}</span>}
+          <span className="truncate text-text-muted text-sm uppercase font-semibold">{translate(c.label)}</span>
+          <div className="flex h-8 items-center min-w-0">
+            <span
+              className={cn(
+                "whitespace-nowrap font-bold",
+                c.shrink ? "text-[clamp(0.875rem,4.5cqw,1.5rem)] leading-none truncate" : "truncate text-2xl leading-none",
+                c.valueClass
+              )}
+            >
+              {c.value}
+            </span>
+          </div>
+          {c.sub ? (
+            <span className="truncate text-[10px] text-text-muted">{c.sub}</span>
+          ) : (
+            <span className="text-[10px] invisible select-none leading-normal">&nbsp;</span>
+          )}
         </Card>
       ))}
     </div>

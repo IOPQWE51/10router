@@ -161,4 +161,37 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(dash.lifetime.cacheTokens).toBe(750);
     expect(dash.lifetime.cacheRequests).toBe(1);
   });
+
+  it("avgSpeed computes correctly for streaming and non-streaming requests", async () => {
+    const { getAdapter } = await import("@/lib/db/driver.js");
+    const db = await getAdapter();
+
+    const insertDetail = (id, latency, tokens) => {
+      const record = { id, timestamp: todayIso(), provider: "speed-provider", model: "speed-model", latency, tokens };
+      db.run(
+        `INSERT INTO requestDetails(id, timestamp, provider, model, connectionId, status, data) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+        [id, record.timestamp, record.provider, record.model, null, "success", JSON.stringify(record)]
+      );
+    };
+
+    // 1. Streaming request: ttft=200ms, total=1200ms (duration=1000ms), completion_tokens=50 -> 50 tok/s
+    insertDetail("detail-stream", { ttft: 200, total: 1200 }, { prompt_tokens: 10, completion_tokens: 50 });
+    // 2. Non-streaming request (or instant stream): ttft=1000ms, total=1000ms (duration=1000ms), completion_tokens=30 -> 30 tok/s
+    insertDetail("detail-nonstream", { ttft: 1000, total: 1000 }, { prompt_tokens: 10, completion_tokens: 30 });
+
+    // Add 1 request row in usageHistory so it passes minRequests
+    await usageRepo.saveRequestUsage({
+      timestamp: todayIso(),
+      provider: "speed-provider",
+      model: "speed-model",
+      status: "ok",
+      tokens: { prompt_tokens: 20, completion_tokens: 80 },
+    });
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const node = dash.nodes.find((n) => n.provider === "speed-provider");
+    expect(node).toBeTruthy();
+    // (50 tok/s + 30 tok/s) / 2 = 40 tok/s
+    expect(node.avgSpeed).toBe(40);
+  });
 });

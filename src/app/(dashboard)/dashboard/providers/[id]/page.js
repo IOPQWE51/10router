@@ -38,6 +38,23 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function formatModelTestError(error) {
+  if (!error) return "";
+  const direct = translate(error);
+  if (direct && direct !== error) return direct;
+
+  const match = String(error).match(/^HTTP\s+\d+:\s*(?:\[(?:\d+|[A-Z0-9_]+)\]:\s*)?(.*)$/i);
+  if (match && match[1]) {
+    const inner = match[1].trim();
+    const translatedInner = translate(inner);
+    if (translatedInner && translatedInner !== inner) {
+      return translatedInner;
+    }
+  }
+
+  return translate(error);
+}
+
 export default function ProviderDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -2080,9 +2097,10 @@ export default function ProviderDetailPage() {
         </div>
         {!!modelsTestError && (() => {
           const verificationUrl = extractAccountsVerificationUrl(modelsTestError);
+          const displayError = formatModelTestError(modelsTestError);
           return (
             <p className="text-xs text-red-500 mb-3 break-words">
-              {modelsTestError}{" "}
+              {displayError}{" "}
               {verificationUrl && (
                 <>
                   <a

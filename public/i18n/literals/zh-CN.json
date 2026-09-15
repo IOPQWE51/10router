@@ -1516,6 +1516,7 @@
   "Export": "导出",
   "No CodeBuddy CN connections to export": "没有可导出的 CodeBuddy CN 连接",
   "accounts exported": "个账号已导出",
+  "HTTP 502: [502]: This model requires the Xiaomi MiMo desktop account. Sign in to MiMo Desktop once, then retry.": "该模型需要小米 MiMo 桌面版账号。请先登录一次 MiMo 桌面版，然后重试。",
   "This model requires the Xiaomi MiMo desktop account. Sign in to MiMo Desktop once, then retry.": "该模型需要小米 MiMo 桌面版账号。请先登录一次 MiMo 桌面版，然后重试。",
   "Requires MiMo Desktop sign-in — API key alone cannot reach this model": "需要 MiMo 桌面版登录——仅凭 API key 无法调用该模型",
   "Desktop sign-in": "需桌面版登录",
@@ -1701,6 +1702,7 @@
   "Quota package": "配额包",
   "Success": "成功率",
   "Avg Latency": "平均延迟",
+  "Avg Speed": "平均速度",
   "Less": "少",
   "More": "多",
   "tokens": "Token",
@@ -1727,6 +1729,7 @@
   "Lifetime Tokens": "累计 Token 数",
   "Peak Day Tokens": "峰值 Token 数",
   "Cache Hit Rate": "缓存命中率",
+  "Only real valid data is counted": "仅计算真实有效数据",
   "Current Streak": "当前连续天数",
   "Unit abbreviation": "单位缩写",
   "This Week": "当周"

@@ -9,7 +9,7 @@
 - **用量「详情」页新增仪表盘（热力图 / 节点健康度 / 生涯统计）**：
   - **生涯统计卡**（5 张，无需时间选择）：累计请求数、累计 Token 数、峰值 Token 数（附日期）、缓存命中率（精准过滤真实数据，排除无缓存与输入=缓存的虚假数据，附带缓存 Token 总量）、常用模型（按**最近 7 天 Token 消耗**判定）；配色与字体对齐概览卡片，模型名用 CSS 容器查询 `clamp()` 自适应缩小不截断。
   - **GitHub 风格活跃热力图**：固定 12 个月窗口（计入外部导入流量）、周一起始、周五→周六加宽 20% 间距、月份标签按周边界检测（首月不标）；网格**固定高度**、色块尺寸由高度推导，容器越宽显示的周数越多（ResizeObserver 自适应，取代拉伸变形）；日/周双视图，悬停为自定义深色气泡（本地化日期 + `2.5亿 tokens · 29 次请求` 格式）；底部汇总栏支持展示当前连续天数（如 `1,966 次请求 · 2.2亿 Token · 13 天活跃 · 连续 1 天`）。
-  - **节点健康度**（固定最近 7 天窗口）：按供应商聚合同供应商多账号；评分 = 成功率 60% + 延迟 20% + 速度 20%（TTFT / 输出 tok/s 取自 `requestDetails` 最近窗口，缺数据轴权重回退成功率）；**请求数 < 100 不参与评分**；表格六列全部可排序、复用共享分页组件。
+  - **节点健康度**（固定最近 7 天窗口）：按供应商聚合同供应商多账号；评分 = 成功率 60% + 延迟 20% + 速度 20%（TTFT / 输出 tok/s 取自 `requestDetails` 最近窗口，缺数据轴权重回退成功率）；**请求数 < 100 不参与评分**；表格补齐「平均速度」（Avg Speed / tok/s）列，后端针对流式（`total - ttft`）与非流式/单包聚合流式（`total`）自适应计算输出吞吐速度；表格全部列支持点击排序、复用共享分页组件。
   - **单位缩写开关**（设置页语言卡「本地货币」下方）：localStorage 持久化、默认开启——中文界面大数字按 `亿`/`万` 缩写，其他语言按 `B`/`M`/`K`；关闭后全部数字回退完整千分位。仪表盘所有数字（卡片 / 热力图气泡 / 汇总行）统一走新共享工具 `src/shared/utils/compactNumber.js`。
   - **数据口径**：外部导入行（`meta.imported`）**不参与健康度评分**但计入热力图与生涯统计。
   - 新 API `GET /api/usage/dashboard`（`src/lib/db/repos/usageRepo.js` 的 `getUsageDashboard`，`period/days/start/end` 参数保留兼容但已不使用）；i18n 词条接入 zh-CN；新增 `tests/unit/usage-dashboard-import-exclusion.test.js` 4 例（导入排除/热力包含/阈值/范围无关性 + lifetime 断言）。
@@ -19,7 +19,8 @@
 - **小米 MiMo 思考级别软映射与动态 Token 预算控制**：
   - **能力与窗口修正**：在 `capabilities.js` 中为 `*mimo*preview*` 声明 `reasoning: true`、`thinkingFormat: "openai"`，并将上下文窗口修正为 1M (`contextWindow: 1048576`)；
   - **思考档位接入**：在 `thinkingLevels.js` 为 `*mimo*preview*` 配置 `["none", "low", "medium", "high", "xhigh"]` 5 档支持，使仪表盘供应商详情页可正常唤出 Thinking 思考档位选择器；
-  - **动态 Token 预算与深度思考引导**：在执行器 `XiaomiMimoExecutor` 中实现对客户端 `reasoning_effort` 及 Claude Code `/effort` 档位的动态捕获，按档位阶梯分配 `max_tokens`（`none`: 4K, `low`: 8K, `medium`: 16K, `high`: 32K, `xhigh`: 64K），解决长思维链耗尽默认 4096 预算导致正文截断空白的痛点；对 `high` 与 `xhigh` 幂等注入兼顾工具调用规范的 UltraThinking 提示词；新增单元测试覆盖。
+  - **动态 Token 预算与深度思考引导**：在执行器 `XiaomiMimoExecutor` 中实现对客户端 `reasoning_effort` 及 Claude Code `/effort` 档位的动态捕获，按档位阶梯分配 `max_tokens`（`none`: 4K, `low`: 8K, `medium`: 16K, `high`: 32K, `xhigh`: 64K），解决长思维链耗尽默认 4096 预算导致正文截断空白的痛点；对 `high` 与 `xhigh` 幂等注入兼顾工具调用规范的 UltraThinking 提示词；新增单元测试覆盖；
+  - **测试错误多语言友好提醒**：供应商模型测试报错接入 `formatModelTestError` 智能多语言管道，补齐 `HTTP 502: [502]: This model requires the Xiaomi MiMo desktop account...` 全量词条与子消息模式匹配，将原始 HTTP 错误转换为友好提示「该模型需要小米 MiMo 桌面版账号。请先登录一次 MiMo 桌面版，然后重试。」。
 
 - **用量与配额国际化全量清扫（福利抢先修复）**：
   - **配额项名称国际化**：修复用量面板配额名称硬编码英文问题，Command Code 滚动限额（`session (5h)` / `Session (5h)` → 滚动 / 滾動）、每周限额（`weekly (7d)` / `Weekly (7d)` → 每周 / 每週）、Qoder 账号级别（`Personal` / `Organization` → 个人 / 组织）、DeepSeek 及其他渠道通用余额（`Balance`、`Balance (CNY)`、`Balance (USD)`、`Balance ($)` 及任意货币模式 `Balance (XXX)` 动态正则回落）全部接入国际化字典与展示层转换；
