@@ -87,18 +87,32 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   const rowAuthType = connection.authType || (isOAuth ? "oauth" : "apikey");
   const isOAuthConnection = rowAuthType === "oauth";
   const isCookieConnection = rowAuthType === "cookie";
-  // Desktop-session connections (e.g. Xiaomi MiMo QR login) are stored with
-  // authType "api_key" for downstream compatibility but are NOT API keys —
-  // label them by what the user actually did.
-  const isDesktopSession = connection.providerSpecificData?.authMethod === "desktop-session";
-  const authIcon = isDesktopSession ? "computer" : isCookieConnection ? "cookie" : isOAuthConnection ? "lock" : "key";
+  // Label by HOW the user signed in, not by the storage-compat authType field.
+  // Three shapes exist for OAuth-capable providers (e.g. Xiaomi MiMo):
+  //   desktop-session → Desktop QR login (session only, Preview models)
+  //   oauth           → browser sign-in (sk- key, may also carry a session)
+  //   api_key         → manually pasted key
+  const authMethod = connection.providerSpecificData?.authMethod;
+  const isDesktopSession = authMethod === "desktop-session";
+  const isBrowserOAuth = authMethod === "oauth";
+  const authIcon = isDesktopSession
+    ? "computer"
+    : isBrowserOAuth
+      ? "login"
+      : isCookieConnection
+        ? "cookie"
+        : isOAuthConnection
+          ? "lock"
+          : "key";
   const authLabel = isDesktopSession
     ? translate("Desktop Session")
-    : isOAuthConnection
-      ? "OAuth"
-      : isCookieConnection
-        ? "Cookie"
-        : "API Key";
+    : isBrowserOAuth
+      ? translate("Browser sign-in")
+      : isOAuthConnection
+        ? "OAuth"
+        : isCookieConnection
+          ? "Cookie"
+          : "API Key";
   const displayName = connection.name?.trim()
     || connection.email?.trim()
     || connection.displayName?.trim()

@@ -786,26 +786,69 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       }
       case "xiaomi-mimo":
       case "xiaomi-tokenplan": {
-        // Session-only connections (Desktop QR login, no sk- key) carry a
-        // placeholder accessToken — probing /models with it always 401s. Test
-        // the thing that actually authorizes them: the account session.
+        // Xiaomi has TWO credential families and the test must exercise the one
+        // this connection actually holds:
+        //   • Desktop session (QR login, no sk-) → real request to a Preview
+        //     model over the account-service route. That is the ONLY way to
+        //     prove the session works end-to-end (a quota read can succeed
+        //     while the chat route still rejects).
+        //   • sk- key (manual / browser sign-in) → GET /models, as before.
+        // A connection that has BOTH prefers the key (cheaper, and its failure
+        // mode is clearer); the session path is the fallback.
         const authMethod = connection.providerSpecificData?.authMethod;
-        const hasPlaceholderKey = typeof connection.apiKey === "string" && connection.apiKey.startsWith("mimo-desktop-session");
-        if (connection.provider === "xiaomi-mimo" && (authMethod === "desktop-session" || hasPlaceholderKey)) {
+        const hasPlaceholderKey =
+          typeof connection.apiKey === "string" && connection.apiKey.startsWith("mimo-desktop-session");
+        const hasRealKey =
+          typeof connection.apiKey === "string" && connection.apiKey.startsWith("sk-") && !hasPlaceholderKey;
+        const isSessionConnection =
+          connection.provider === "xiaomi-mimo" &&
+          !hasRealKey &&
+          (authMethod === "desktop-session" || hasPlaceholderKey || Boolean(connection.providerSpecificData?.mimoPassToken));
+
+        if (isSessionConnection) {
           try {
-            const { getMimoAccountUsage } = await import("open-sse/shared/mimoAccount.js");
-            const usage = await getMimoAccountUsage(connection.providerSpecificData, effectiveProxy);
-            // Any parsed answer (percent present) proves the session works;
-            // "no-session"/"session-failed" means it is dead.
-            if (usage && typeof usage.percent === "number") {
-              return { valid: true, error: null };
+            const { getMimoAccountCookie } = await import("open-sse/shared/mimoAccount.js");
+            const cookie = await getMimoAccountCookie(connection.providerSpecificData, effectiveProxy);
+            if (!cookie) {
+              return { valid: false, error: "Desktop session unavailable — sign in to MiMo Desktop once, then re-import" };
             }
-            return {
-              valid: false,
-              error: usage?.error === "no-session" ? "Desktop session expired — sign in to MiMo Desktop again" : "Session check failed",
-            };
+            // Minimal real call against the Desktop-exclusive Preview model.
+            const probe = await fetchWithConnectionProxy(
+              "https://mimo-server-cn.xiaomimimo.com/api/route/chat/completions",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Cookie: cookie,
+                  Accept: "text/event-stream",
+                },
+                body: JSON.stringify({
+                  model: "mimo-x-flash-preview",
+                  stream: true,
+                  max_tokens: 8,
+                  messages: [
+                    { role: "system", content: "You are CodeBuddy Code." },
+                    { role: "user", content: [{ type: "text", text: "hi" }] },
+                  ],
+                }),
+              },
+              effectiveProxy,
+            );
+            if (probe.status === 401 || probe.status === 403) {
+              return { valid: false, error: "Desktop session expired — sign in to MiMo Desktop again" };
+            }
+            if (!probe.ok) {
+              return { valid: false, error: `Preview probe failed (HTTP ${probe.status})` };
+            }
+            // Drain a little so the connection is not left half-open, then report.
+            try {
+              await probe.body?.cancel?.();
+            } catch {
+              /* best effort */
+            }
+            return { valid: true, error: null, warning: "Desktop session OK (Preview models reachable)" };
           } catch (e) {
-            return { valid: false, error: e?.message || "Session check failed" };
+            return { valid: false, error: e?.message || "Preview probe failed" };
           }
         }
         const baseUrls = { "xiaomi-mimo": "https://api.xiaomimimo.com/v1", "xiaomi-tokenplan": "https://token-plan-sgp.xiaomimimo.com/v1" };
@@ -994,7 +1037,10 @@ export async function testSingleConnection(id) {
   const start = Date.now();
   let result;
 
-  if (connection.authType === "apikey" || connection.authType === "cookie") {
+  // NOTE: both spellings exist in the wild — legacy rows and some routes write
+  // "api_key", the dashboard/test paths use "apikey". Treat them as one.
+  const isKeyLike = connection.authType === "apikey" || connection.authType === "api_key" || connection.authType === "cookie";
+  if (isKeyLike) {
     result = await testApiKeyConnection(connection, effectiveProxy);
   } else {
     result = await testOAuthConnection(connection, effectiveProxy);
