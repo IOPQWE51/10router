@@ -124,6 +124,24 @@ node scripts/clean-usage-db.mjs /path/to/data.sqlite --provider zcode-xxxx --app
 **操作前必须先停 10Router 服务**（或改在副本上操作）——应用持有该数据库，并发写入会损坏文件。
 Node 22 需加 `--experimental-sqlite`；Node 24+ 直接跑。
 
+## 脚本一览
+
+| 脚本 | 用途 |
+|---|---|
+| `scripts/export-usage.mjs` | 主程序：四源导出 → 在线导入 / 离线导出导入 |
+| `scripts/verify-usage-db.mjs` | 10Router 用量库只读体检（见上节） |
+| `scripts/clean-usage-db.mjs` | 10Router 用量库删行 + 日聚合重建（见上节） |
+| `scripts/usage-daily.mjs` | 聚合契约共享实现，被上面两个工具引用 |
+
+## 文档
+
+| 文档 | 内容 |
+|---|---|
+| [CHANGELOG.md](./CHANGELOG.md) | 本插件各版本变更记录 |
+| [AGENTS.md](./AGENTS.md) | 面向非 ZCode agent 的复用说明（脚本契约、退出码、关键行为、排查） |
+| [commands/sync-usage.md](./commands/sync-usage.md) | 斜杠命令定义 |
+| [skills/zcode-usage-sync/SKILL.md](./skills/zcode-usage-sync/SKILL.md) | ZCode 技能说明 |
+
 ## 创建虚拟 key
 
 10Router 仪表盘 → API Keys → 新建（如命名 `zcode-usage-sync`），把生成的 `sk-…` 传给脚本。key 可随时在仪表盘单独吊销，无需暴露仪表盘密码。

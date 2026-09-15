@@ -184,6 +184,7 @@ node scripts/verify-usage-db.mjs /path/to/data.sqlite
 **本插件**
 
 - [README.md](./README.md) — 安装方式（插件市场 / 目录安装）、各数据源示例、虚拟 key 创建
+- [CHANGELOG.md](./CHANGELOG.md) — 本插件各版本变更记录（版本号与 `.zcode-plugin/plugin.json` 同步）
 - [commands/sync-usage.md](./commands/sync-usage.md) — ZCode 斜杠命令定义
 - [skills/zcode-usage-sync/SKILL.md](./skills/zcode-usage-sync/SKILL.md) — ZCode 技能说明
 
