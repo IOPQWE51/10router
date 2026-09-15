@@ -1726,6 +1726,7 @@
   "Last 7 days": "最近 7 天",
   "Lifetime Tokens": "累计 Token 数",
   "Peak Day Tokens": "峰值 Token 数",
+  "Cache Hit Rate": "缓存命中率",
   "Current Streak": "当前连续天数",
   "Unit abbreviation": "单位缩写",
   "This Week": "当周"

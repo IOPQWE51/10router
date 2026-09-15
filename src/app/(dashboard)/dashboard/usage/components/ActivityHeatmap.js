@@ -113,7 +113,7 @@ function weekStat(week) {
   return { requests, tokens };
 }
 
-export default function ActivityHeatmap({ daily, days = 365 }) {
+export default function ActivityHeatmap({ daily, days = 365, currentStreak }) {
   const [view, setView] = useState("day");
   const [hoverCol, setHoverCol] = useState(null);
   const locale = getCurrentLocale();
@@ -158,6 +158,14 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
       if (d.requests > 0) activeDays += 1;
     }
   }
+
+  const streakText = currentStreak != null
+    ? (locale.startsWith("zh-tw") || locale === "zh-HK"
+        ? ` · 連續 ${currentStreak} 天`
+        : locale.startsWith("zh")
+        ? ` · 连续 ${currentStreak} 天`
+        : ` · ${currentStreak}d streak`)
+    : "";
 
   return (
     <div className="flex flex-col gap-2">
@@ -267,7 +275,7 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
       </div>
 
       <div className="text-[10px] text-text-muted">
-        {`${totalRequests.toLocaleString()} ${translate("requests")} · ${fmtTokens(totalTokens, locale, true)} ${translate("tokens")} · ${activeDays} ${translate("active days")}`}
+        {`${totalRequests.toLocaleString()} ${translate("requests")} · ${fmtTokens(totalTokens, locale, true)} ${translate("tokens")} · ${activeDays} ${translate("active days")}${streakText}`}
       </div>
     </div>
   );
@@ -283,4 +291,5 @@ ActivityHeatmap.propTypes = {
     })
   ),
   days: PropTypes.number,
+  currentStreak: PropTypes.number,
 };

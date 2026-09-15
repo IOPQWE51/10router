@@ -201,13 +201,16 @@ ScoreTable.propTypes = {
 function LifetimeCards({ lifetime }) {
   const locale = getCurrentLocale();
   if (!lifetime) return null;
-  const zh = locale.startsWith("zh");
-  const days = (n) => (zh ? `${n} 天` : `${n}d`);
   const cards = [
     { label: "Total Requests", value: (lifetime.totalRequests || 0).toLocaleString() },
     { label: "Lifetime Tokens", value: fmtTokens(lifetime.totalTokens, locale), valueClass: "text-primary" },
     { label: "Peak Day Tokens", value: fmtTokens(lifetime.peakTokens, locale), sub: lifetime.peakDate || "", valueClass: "text-info" },
-    { label: "Current Streak", value: days(lifetime.currentStreak), valueClass: "text-success" },
+    {
+      label: "Cache Hit Rate",
+      value: lifetime.cacheHitRate != null ? `${lifetime.cacheHitRate}%` : "—",
+      sub: lifetime.cacheTokens > 0 ? `${fmtTokens(lifetime.cacheTokens, locale, true)} ${translate("Cached")}` : "",
+      valueClass: "text-success",
+    },
     {
       label: "Most Used Model",
       value: lifetime.topModel?.model || "—",
@@ -296,7 +299,7 @@ export default function UsageDashboard() {
         {daily.length === 0 ? (
           <p className="py-6 text-center text-sm text-text-muted">{translate("No activity in the selected period")}</p>
         ) : (
-          <ActivityHeatmap daily={daily} days={365} />
+          <ActivityHeatmap daily={daily} days={365} currentStreak={data.lifetime?.currentStreak} />
         )}
       </Card>
       <Card title={translate("Node Health")} icon="dns" padding="md">

@@ -536,5 +536,18 @@
   "Earliest Expiry First": "配額包到期優先",
   "Prioritize accounts with quota packages that expire soonest": "跨帳號優先消耗最快到期的配額包/贈送包",
   "Earliest package": "最早到期配額包",
-  "Quota package": "配額包"
+  "Quota package": "配額包",
+  "Activity Heatmap": "活躍熱力圖",
+  "No nodes with 100+ requests in this period": "本時間段內沒有請求數達到 100 的節點",
+  "Most Used Model": "常用模型",
+  "Node Health": "節點健康度",
+  "Health": "健康度",
+  "Avg TTFT": "平均首字延遲",
+  "Last 7 days": "最近 7 天",
+  "Lifetime Tokens": "累計 Token 數",
+  "Peak Day Tokens": "峰值 Token 數",
+  "Cache Hit Rate": "快取命中率",
+  "Current Streak": "目前連續天數",
+  "Unit abbreviation": "單位縮寫",
+  "This Week": "當週"
 }

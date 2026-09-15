@@ -138,4 +138,27 @@ describe("getUsageDashboard imported-row handling", () => {
     // The daily series has no request threshold.
     expect(dash.daily.length).toBeGreaterThan(0);
   });
+
+  it("cacheHitRate strictly excludes requests with no cache or prompt == cached", async () => {
+    // 1. Request with no cache (cached = 0) -> should be excluded
+    await usageRepo.saveRequestUsage({
+      ...LIVE_ROW,
+      tokens: { prompt_tokens: 500, completion_tokens: 50, cached_tokens: 0 },
+    });
+    // 2. Request with input = cache (prompt == cached) -> should be excluded
+    await usageRepo.saveRequestUsage({
+      ...LIVE_ROW,
+      tokens: { prompt_tokens: 300, completion_tokens: 20, cached_tokens: 300 },
+    });
+    // 3. Request with valid real cache (prompt = 1000, cached = 750) -> should be counted (75.0%)
+    await usageRepo.saveRequestUsage({
+      ...LIVE_ROW,
+      tokens: { prompt_tokens: 1000, completion_tokens: 100, cached_tokens: 750 },
+    });
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    expect(dash.lifetime.cacheHitRate).toBe(75);
+    expect(dash.lifetime.cacheTokens).toBe(750);
+    expect(dash.lifetime.cacheRequests).toBe(1);
+  });
 });

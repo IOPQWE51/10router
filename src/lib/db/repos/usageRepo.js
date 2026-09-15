@@ -822,6 +822,9 @@ export async function getUsageDashboard({ minRequests = 100 } = {}) {
     currentStreak: 0,
     longestStreak: 0,
     topModel: null,
+    cacheHitRate: null,
+    cacheTokens: 0,
+    cacheRequests: 0,
   };
   {
     const allDays = db.all(`SELECT dateKey, data FROM usageDaily ORDER BY dateKey`);
@@ -893,6 +896,30 @@ export async function getUsageDashboard({ minRequests = 100 } = {}) {
         tokens: top[1],
       };
     }
+
+    // Cache hit rate over real cached requests: strictly excludes requests
+    // with no cache (cached <= 0) and mock/distorted data where input == cached
+    // (cached >= prompt or prompt <= 0).
+    let cacheTokensSum = 0;
+    let cachePromptSum = 0;
+    let cacheRequestsCount = 0;
+    try {
+      const cacheRows = db.all(
+        `SELECT promptTokens, tokens FROM usageHistory WHERE tokens LIKE '%cache%'`
+      );
+      for (const r of cacheRows) {
+        const t = parseJson(r.tokens, {});
+        const cached = t.cached_tokens || t.cache_read_input_tokens || 0;
+        const prompt = r.promptTokens || t.prompt_tokens || 0;
+        if (cached <= 0 || prompt <= 0 || cached >= prompt) continue;
+        cacheTokensSum += cached;
+        cachePromptSum += prompt;
+        cacheRequestsCount += 1;
+      }
+      lifetime.cacheHitRate = cachePromptSum > 0 ? round1((cacheTokensSum / cachePromptSum) * 100) : null;
+      lifetime.cacheTokens = cacheTokensSum;
+      lifetime.cacheRequests = cacheRequestsCount;
+    } catch {}
   }
 
   const groupStats = `
