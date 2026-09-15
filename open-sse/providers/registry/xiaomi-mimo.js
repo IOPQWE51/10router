@@ -8,7 +8,12 @@ import { CLAUDE_API_HEADERS } from "../shared.js";
 // Endpoint is picked per model in the executor, same as opencode-go's /responses split.
 export default {
   id: "xiaomi-mimo",
-  priority: 290,
+  // Ordering inside the providers page (lower = earlier within a tier; the
+  // connection-state rank is the primary axis). Was 290 — inherited from the
+  // upstream PR where the provider was brand new — which sank it below every
+  // configured provider. 20 sits with the other subscription-backed providers
+  // (antigravity / gemini-cli / nvidia).
+  priority: 20,
   alias: "xiaomi-mimo",
   aliases: [
     "mimo",
