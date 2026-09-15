@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import Card from "@/shared/components/Card";
 import Badge from "@/shared/components/Badge";
@@ -34,6 +34,15 @@ const NODE_COLUMNS = [
   { key: "lastUsed", label: "Last Used", align: "right", kind: "date" },
 ];
 
+// Expanded per-model drill-down under a node row: same metrics, model name
+// in the first column with the provider as its subline.
+const MODEL_COLUMNS = [
+  { key: "model", label: "Model", align: "left", kind: "name" },
+  ...NODE_COLUMNS.slice(1),
+];
+
+const ALIGN_CLASS = { left: "text-left", center: "text-center", right: "text-right" };
+
 function fmtSpeed(tps) {
   if (tps == null || Number.isNaN(tps)) return "—";
   return `${tps.toLocaleString()} tok/s`;
@@ -46,19 +55,36 @@ function fmtLastUsed(iso) {
   return d.toLocaleString(getCurrentLocale(), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-function CellContent({ col, row, nameKey, subKey }) {
+function CellContent({ col, row, nameKey, subKey, expandable, isOpen }) {
   switch (col.kind) {
     case "name":
       return (
-        <>
-          <div className="truncate text-sm font-medium text-text-main">{row[nameKey]}</div>
-          {subKey && row[subKey] && (
-            <div className="truncate text-xs text-text-muted">{row[subKey]}</div>
+        <div className="flex min-w-0 items-start gap-1">
+          {expandable && (
+            <span className="material-symbols-outlined mt-0.5 shrink-0 text-base leading-5 text-text-muted">
+              {isOpen ? "expand_more" : "chevron_right"}
+            </span>
           )}
-        </>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium text-text-main">{row[nameKey]}</div>
+            {subKey && row[subKey] && (
+              <div className="truncate text-xs text-text-muted">{row[subKey]}</div>
+            )}
+          </div>
+        </div>
       );
     case "badge":
-      return <Badge variant={scoreVariant(row.score)} size="sm">{row.score}</Badge>;
+      // A score computed without a single latency sample (hasPerfData false)
+      // only reflects success rate + neutral placeholders — dim it and
+      // explain on hover instead of letting it pose as fully measured.
+      return (
+        <span
+          className={cn(row.hasPerfData === false && "opacity-60")}
+          title={row.hasPerfData === false ? translate("No latency samples — score reflects success rate only") : undefined}
+        >
+          <Badge variant={scoreVariant(row.score)} size="sm">{row.score}</Badge>
+        </span>
+      );
     case "rate":
       return (
         <span className={cn(
@@ -88,13 +114,56 @@ CellContent.propTypes = {
   row: PropTypes.object.isRequired,
   nameKey: PropTypes.string.isRequired,
   subKey: PropTypes.string,
+  expandable: PropTypes.bool,
+  isOpen: PropTypes.bool,
 };
 
-function ScoreTable({ rows, columns, nameKey, subKey, emptyText }) {
+// Static (unsorted, unpaginated) per-model table shown inside an expanded
+// node row. Rows arrive pre-sorted by the caller.
+function ExpandedModelTable({ rows, emptyText }) {
+  if (rows.length === 0) {
+    return <p className="px-8 py-3 text-xs text-text-muted">{emptyText}</p>;
+  }
+  return (
+    <table className="w-full">
+      <thead>
+        <tr className="border-b border-black/5 dark:border-white/5">
+          {MODEL_COLUMNS.map((col) => (
+            <th key={col.key} className={cn("p-2 pl-8 text-xs font-semibold text-text-muted", ALIGN_CLASS[col.align])}>
+              {translate(col.label)}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr
+            key={row.model}
+            className="border-b border-black/5 dark:border-white/5 last:border-b-0"
+          >
+            {MODEL_COLUMNS.map((col) => (
+              <td key={col.key} className={cn("p-2 pl-8 text-sm text-text-main", ALIGN_CLASS[col.align])}>
+                <CellContent col={col} row={row} nameKey="model" subKey="provider" />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+ExpandedModelTable.propTypes = {
+  rows: PropTypes.arrayOf(PropTypes.object).isRequired,
+  emptyText: PropTypes.string.isRequired,
+};
+
+function ScoreTable({ rows, columns, nameKey, subKey, emptyText, renderExpanded, expandedEmptyText }) {
   const [sortKey, setSortKey] = useState("score");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [openKeys, setOpenKeys] = useState(() => new Set());
 
   const sorted = useMemo(() => {
     const valueOf = (row) => {
@@ -129,7 +198,14 @@ function ScoreTable({ rows, columns, nameKey, subKey, emptyText }) {
     }
   };
 
-  const alignClass = { left: "text-left", center: "text-center", right: "text-right" };
+  const toggleOpen = (key) => {
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div>
@@ -138,7 +214,7 @@ function ScoreTable({ rows, columns, nameKey, subKey, emptyText }) {
           <thead>
             <tr className="border-b border-black/5 dark:border-white/5">
               {columns.map((col) => (
-                <th key={col.key} className={cn("p-2 text-xs font-semibold text-text-muted", alignClass[col.align])}>
+                <th key={col.key} className={cn("p-2 text-xs font-semibold text-text-muted", ALIGN_CLASS[col.align])}>
                   <button
                     onClick={() => toggleSort(col.key)}
                     className={cn(
@@ -156,25 +232,52 @@ function ScoreTable({ rows, columns, nameKey, subKey, emptyText }) {
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((row, i) => (
-              <tr
-                key={`${row[nameKey]}-${i}`}
-                className="border-b border-black/5 dark:border-white/5 last:border-b-0 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
+            {pageRows.map((row, i) => {
+              const rowKey = `${row[nameKey]}-${i}`;
+              const isOpen = Boolean(renderExpanded) && openKeys.has(rowKey);
+              const subRows = isOpen ? renderExpanded(row) : null;
+              return (
+                <Fragment key={rowKey}>
+                  <tr
+                    onClick={renderExpanded ? () => toggleOpen(rowKey) : undefined}
                     className={cn(
-                      "p-2 text-sm text-text-main",
-                      alignClass[col.align],
-                      col.kind === "name" && "max-w-[240px]"
+                      "border-b border-black/5 dark:border-white/5 last:border-b-0 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors",
+                      renderExpanded && "cursor-pointer select-none"
                     )}
                   >
-                    <CellContent col={col} row={row} nameKey={nameKey} subKey={subKey} />
-                  </td>
-                ))}
-              </tr>
-            ))}
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        className={cn(
+                          "p-2 text-sm text-text-main",
+                          ALIGN_CLASS[col.align],
+                          col.kind === "name" && "max-w-[240px]"
+                        )}
+                      >
+                        <CellContent
+                          col={col}
+                          row={row}
+                          nameKey={nameKey}
+                          subKey={subKey}
+                          expandable={Boolean(renderExpanded)}
+                          isOpen={isOpen}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                  {isOpen && (
+                    <tr className="border-b border-black/5 dark:border-white/5 last:border-b-0">
+                      <td
+                        colSpan={columns.length}
+                        className="p-0 bg-black/[0.02] dark:bg-white/[0.02]"
+                      >
+                        <ExpandedModelTable rows={subRows} emptyText={expandedEmptyText || emptyText} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -197,6 +300,8 @@ ScoreTable.propTypes = {
   nameKey: PropTypes.string.isRequired,
   subKey: PropTypes.string,
   emptyText: PropTypes.string.isRequired,
+  renderExpanded: PropTypes.func,
+  expandedEmptyText: PropTypes.string,
 };
 
 function LifetimeCards({ lifetime }) {
@@ -316,6 +421,12 @@ export default function UsageDashboard() {
           columns={NODE_COLUMNS}
           nameKey="name"
           emptyText={translate("No nodes with 50+ requests in this period")}
+          renderExpanded={(node) =>
+            (data.models || [])
+              .filter((m) => m.provider === node.provider)
+              .sort((a, b) => (b.requests || 0) - (a.requests || 0))
+          }
+          expandedEmptyText={translate("No models with 10+ requests under this node")}
         />
       </Card>
     </>

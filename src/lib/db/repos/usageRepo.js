@@ -758,11 +758,16 @@ function speedScoreFromTps(tps) {
   return 20;
 }
 
-// success 60% + latency 20% + speed 20%; a missing perf axis redistributes
-// its weight to success (never rewarded for missing data).
+// success 60% + latency 20% + speed 20%. A missing perf axis contributes a
+// neutral 50 — NOT the success rate. Redistribution-to-success used to let
+// nodes with zero latency/speed samples (gateway-synced rows whose
+// requestDetails never existed locally, rotated-out ring buffer on NAS)
+// reach a perfect 100 on success alone; unproven perf must not read as
+// best-in-class. Neutral 50 still surfaces their real success rate while
+// keeping fully-measured nodes on top.
 function computeScore(successRate, latencyScore, speedScore) {
-  const ls = latencyScore == null ? successRate : latencyScore;
-  const ss = speedScore == null ? successRate : speedScore;
+  const ls = latencyScore == null ? 50 : latencyScore;
+  const ss = speedScore == null ? 50 : speedScore;
   return Math.round(successRate * 0.6 + ls * 0.2 + ss * 0.2);
 }
 
@@ -963,10 +968,11 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
         } else if (total >= 50) {
           durationMs = total;
         }
-        // If instantaneous speed > 250 tok/s and total >= 50, this indicates
+        // If instantaneous speed > 300 tok/s and total >= 50, this indicates
         // a buffered burst / chunk flush where ttft was held until nearly full
-        // output was ready. Fall back to end-to-end total latency.
-        if (durationMs != null && durationMs > 0 && (outTokens / (durationMs / 1000)) > 250 && total >= 50) {
+        // output was ready. Fall back to end-to-end total latency. (250 was
+        // too strict — fast-but-honest streams got damped into false alerts.)
+        if (durationMs != null && durationMs > 0 && (outTokens / (durationMs / 1000)) > 300 && total >= 50) {
           durationMs = total;
         }
       }
@@ -1009,6 +1015,9 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
       avgLatencyMs,
       avgTtftMs,
       avgSpeed,
+      // Frontend dims the score badge when no latency sample exists — the
+      // number then only reflects success rate + neutral perf placeholders.
+      hasPerfData: avgLatencyMs != null,
       score: computeScore(successRate, latencyScoreFromMs(avgLatencyMs), speedScoreFromTps(avgSpeed)),
       promptTokens: row.promptTokens || 0,
       completionTokens: row.completionTokens || 0,
@@ -1025,8 +1034,13 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
     }))
     .sort((a, b) => b.score - a.score);
 
+  // Models feed the node-row drill-down (expand a node → per-model health),
+  // so they keep a much lower bar than the top-level node list: a 40-request
+  // model under an 800-request node is exactly what you want to see when
+  // diagnosing which model drags the node down.
+  const modelMinRequests = Math.min(minRequests, 10);
   const models = modelRows
-    .filter((r) => (r.requests || 0) >= minRequests)
+    .filter((r) => (r.requests || 0) >= modelMinRequests)
     .map((r) => toEntry(r, "model", `${r.provider || ""}|${r.model || ""}`, {
       model: r.model || "unknown",
       provider: r.provider || "unknown",

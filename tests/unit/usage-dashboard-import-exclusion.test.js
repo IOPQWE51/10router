@@ -195,7 +195,7 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(node.avgSpeed).toBe(40);
   });
 
-  it("dampens burst-buffered requests (speed > 250 tok/s) by falling back to total latency and supports output_tokens", async () => {
+  it("dampens burst-buffered requests (speed > 300 tok/s) by falling back to total latency and supports output_tokens", async () => {
     const { getAdapter } = await import("@/lib/db/driver.js");
     const db = await getAdapter();
     const insertDetail = (id, latency, tokens) => {
@@ -207,7 +207,7 @@ describe("getUsageDashboard imported-row handling", () => {
     };
 
     // Burst stream: upstream buffered output so ttft=4900, total=5000 (total-ttft = 100ms), 500 output_tokens.
-    // Instantaneous speed = 500 / 0.1 = 5000 tok/s (> 250).
+    // Instantaneous speed = 500 / 0.1 = 5000 tok/s (> 300).
     // Damped fallback uses total duration = 5000ms -> 500 / 5s = 100 tok/s.
     insertDetail("detail-burst", { ttft: 4900, total: 5000 }, { input_tokens: 10, output_tokens: 500 });
 
@@ -223,6 +223,30 @@ describe("getUsageDashboard imported-row handling", () => {
     const node = dash.nodes.find((n) => n.provider === "burst-provider");
     expect(node).toBeTruthy();
     expect(node.avgSpeed).toBe(100);
+  });
+
+  it("nodes with zero latency samples never score a perfect 100 (neutral perf axes)", async () => {
+    // Regression: NAS-style nodes whose traffic exists only in usageHistory
+    // (gateway-synced rows / rotated-out requestDetails ring) used to
+    // redistribute the missing perf weight to successRate — 100% success
+    // with NO measured latency/speed displayed as a full 100 health score.
+    for (let i = 0; i < 6; i++) {
+      await usageRepo.saveRequestUsage({
+        ...LIVE_ROW,
+        provider: "noperf",
+        model: "noperf-1",
+        connectionId: `np-${i}`,
+      });
+    }
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const node = dash.nodes.find((n) => n.provider === "noperf");
+    expect(node).toBeTruthy();
+    expect(node.successRate).toBe(100);
+    expect(node.hasPerfData).toBe(false);
+    expect(node.avgLatencyMs).toBeNull();
+    // 100*0.6 (success) + 50*0.2 (neutral latency) + 50*0.2 (neutral speed) = 80
+    expect(node.score).toBe(80);
   });
 
   it("defaults minRequests to 50 in getUsageDashboard", async () => {
