@@ -740,6 +740,261 @@ export async function getChartData(period = "7d") {
   });
 }
 
+function latencyScoreFromMs(avgMs) {
+  if (avgMs == null) return null;
+  if (avgMs < 2000) return 100;
+  if (avgMs < 5000) return 80;
+  if (avgMs < 10000) return 60;
+  if (avgMs < 20000) return 40;
+  return 20;
+}
+
+function speedScoreFromTps(tps) {
+  if (tps == null) return null;
+  if (tps >= 80) return 100;
+  if (tps >= 50) return 80;
+  if (tps >= 25) return 60;
+  if (tps >= 10) return 40;
+  return 20;
+}
+
+// success 60% + latency 20% + speed 20%; a missing perf axis redistributes
+// its weight to success (never rewarded for missing data).
+function computeScore(successRate, latencyScore, speedScore) {
+  const ls = latencyScore == null ? successRate : latencyScore;
+  const ss = speedScore == null ? successRate : speedScore;
+  return Math.round(successRate * 0.6 + ls * 0.2 + ss * 0.2);
+}
+
+function round1(n) {
+  return Math.round(n * 10) / 10;
+}
+
+function localDayKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export async function getUsageDashboard({ minRequests = 100 } = {}) {
+  const db = await getAdapter();
+
+  // Everything on this dashboard is range-independent by design: the heatmap
+  // is a fixed trailing-12-month window, node health a fixed trailing-7d
+  // window, and the cards are lifetime stats. period/days/start/end query
+  // params are accepted (and ignored) for backwards compatibility.
+  const now = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Imported rows (meta.imported = true, e.g. 9r backups / ZCode sync) are
+  // excluded from scores: nodes/models compare this instance's own traffic.
+  // The daily heatmap intentionally keeps them (usageDaily day aggregates).
+  const notImported = `(meta IS NULL OR meta NOT LIKE '%"imported":true%')`;
+
+  // The heatmap is GitHub-style: trailing 12 months anchored on today,
+  // independent of the score range selected in the UI. The component shows
+  // as many trailing weeks as fit the container width.
+  const dayRows = db.all(
+    `SELECT dateKey, data FROM usageDaily WHERE dateKey >= ? AND dateKey <= ?`,
+    [localDayKey(new Date(today.getTime() - 364 * 86400000)), localDayKey(today)]
+  );
+  const daily = dayRows
+    .map((r) => {
+      const d = parseJson(r.data, {});
+      return {
+        date: r.dateKey,
+        requests: d.requests || 0,
+        tokens: (d.promptTokens || 0) + (d.completionTokens || 0),
+        cost: d.cost || 0,
+      };
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Lifetime stats (ZCode-style), independent of any range selector:
+  // totals/streaks from usageDaily; longest "session" estimated by clustering
+  // requests with gaps <= 30 minutes (we have no session concept); top model
+  // judged by tokens consumed over the trailing 7 days.
+  const lifetime = {
+    totalRequests: 0,
+    totalTokens: 0,
+    peakTokens: 0,
+    peakDate: null,
+    longestSessionMin: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    topModel: null,
+  };
+  {
+    const allDays = db.all(`SELECT dateKey, data FROM usageDaily ORDER BY dateKey`);
+    let streak = 0;
+    let prevKey = null;
+    const activeSet = new Set();
+    for (const r of allDays) {
+      const d = parseJson(r.data, {});
+      const tokens = (d.promptTokens || 0) + (d.completionTokens || 0);
+      const active = (d.requests || 0) > 0;
+      lifetime.totalRequests += d.requests || 0;
+      lifetime.totalTokens += tokens;
+      if (tokens > lifetime.peakTokens) {
+        lifetime.peakTokens = tokens;
+        lifetime.peakDate = r.dateKey;
+      }
+      if (active) {
+        activeSet.add(r.dateKey);
+        const prev = prevKey ? new Date(`${prevKey}T00:00:00`) : null;
+        const cur = new Date(`${r.dateKey}T00:00:00`);
+        streak = prev && (cur - prev) === 86400000 ? streak + 1 : 1;
+        lifetime.longestStreak = Math.max(lifetime.longestStreak, streak);
+      } else {
+        streak = 0;
+      }
+      prevKey = r.dateKey;
+    }
+    // Current streak counts back from today (or yesterday if today is still
+    // empty — the day isn't over yet).
+    const cursorDay = new Date(today);
+    if (!activeSet.has(localDayKey(cursorDay))) cursorDay.setDate(cursorDay.getDate() - 1);
+    while (activeSet.has(localDayKey(cursorDay))) {
+      lifetime.currentStreak += 1;
+      cursorDay.setDate(cursorDay.getDate() - 1);
+    }
+
+    const SESSION_GAP_MS = 30 * 60000;
+    const tsRows = db.all(`SELECT timestamp FROM usageHistory ORDER BY timestamp`);
+    let sessionStart = null;
+    let prevTs = null;
+    for (const r of tsRows) {
+      const t = new Date(r.timestamp).getTime();
+      if (Number.isNaN(t)) continue;
+      if (prevTs != null && t - prevTs <= SESSION_GAP_MS) {
+        lifetime.longestSessionMin = Math.max(lifetime.longestSessionMin, Math.round((t - sessionStart) / 60000));
+      } else {
+        sessionStart = t;
+      }
+      prevTs = t;
+    }
+
+    // Top model by tokens consumed over the trailing 7 days (imports included).
+    const topRows = db.all(
+      `SELECT provider, model, promptTokens, completionTokens FROM usageHistory
+       WHERE timestamp >= ? AND timestamp < ?`,
+      [new Date(today.getTime() - 6 * 86400000).toISOString(), new Date(today.getTime() + 86400000).toISOString()]
+    );
+    const modelTokens = {};
+    for (const r of topRows) {
+      const mk = `${r.model || "unknown"}|${r.provider || ""}`;
+      modelTokens[mk] = (modelTokens[mk] || 0) + (r.promptTokens || 0) + (r.completionTokens || 0);
+    }
+    const top = Object.entries(modelTokens).sort((a, b) => b[1] - a[1])[0];
+    if (top) {
+      const sep = top[0].lastIndexOf("|");
+      lifetime.topModel = {
+        model: top[0].slice(0, sep),
+        provider: top[0].slice(sep + 1) || null,
+        tokens: top[1],
+      };
+    }
+  }
+
+  const groupStats = `
+    COUNT(*) as requests,
+    SUM(CASE WHEN status != 'ok' THEN 1 ELSE 0 END) as errors,
+    SUM(promptTokens) as promptTokens,
+    SUM(completionTokens) as completionTokens,
+    SUM(cost) as cost,
+    MAX(timestamp) as lastUsed
+  `;
+  const rangeFilter = `AND timestamp >= ? AND timestamp < ?`;
+
+  // Node health always uses a fixed trailing-7d window, independent of the
+  // page period selector — recent health is the actionable signal.
+  const nodeTsGte = new Date(today.getTime() - 6 * 86400000).toISOString();
+  const nodeTsLt = new Date(today.getTime() + 86400000).toISOString();
+  const nodeRows = db.all(
+    `SELECT provider, ${groupStats} FROM usageHistory WHERE ${notImported} ${rangeFilter} GROUP BY COALESCE(provider, '')`,
+    [nodeTsGte, nodeTsLt]
+  );
+  const modelRows = db.all(
+    `SELECT provider, model, ${groupStats} FROM usageHistory WHERE ${notImported} ${rangeFilter} GROUP BY COALESCE(provider, ''), COALESCE(model, '')`,
+    [nodeTsGte, nodeTsLt]
+  );
+
+  // Perf stats (avg total latency / TTFT / output speed) come from
+  // requestDetails — recent window only (~200 records, observability-capped).
+  const perfAgg = { node: {}, model: {} };
+  try {
+    const rdRows = db.all(`SELECT provider, model, connectionId, data FROM requestDetails`);
+    for (const r of rdRows) {
+      const d = parseJson(r.data, {}) || {};
+      const total = d?.latency?.total;
+      if (typeof total !== "number" || total <= 0) continue;
+      const ttft = typeof d?.latency?.ttft === "number" && d.latency.ttft > 0 ? d.latency.ttft : null;
+      const outTokens = d?.tokens?.completion_tokens || 0;
+      const speed = ttft != null && total > ttft && outTokens > 0
+        ? (outTokens / ((total - ttft) / 1000))
+        : null;
+      const nodeKey = r.provider || "";
+      const modelKey = `${r.provider || ""}|${r.model || ""}`;
+      for (const [scope, key] of [["node", nodeKey], ["model", modelKey]]) {
+        if (!perfAgg[scope][key]) perfAgg[scope][key] = { sum: 0, count: 0, ttftSum: 0, ttftCount: 0, speedSum: 0, speedCount: 0 };
+        const agg = perfAgg[scope][key];
+        agg.sum += total;
+        agg.count += 1;
+        if (ttft != null) { agg.ttftSum += ttft; agg.ttftCount += 1; }
+        if (speed != null) { agg.speedSum += speed; agg.speedCount += 1; }
+      }
+    }
+  } catch {}
+
+  const perfOf = (scope, key) => {
+    const agg = perfAgg[scope][key];
+    if (!agg) return { avgLatencyMs: null, avgTtftMs: null, avgSpeed: null };
+    return {
+      avgLatencyMs: Math.round(agg.sum / agg.count),
+      avgTtftMs: agg.ttftCount > 0 ? Math.round(agg.ttftSum / agg.ttftCount) : null,
+      avgSpeed: agg.speedCount > 0 ? round1(agg.speedSum / agg.speedCount) : null,
+    };
+  };
+
+  const toEntry = (row, scope, key, extra) => {
+    const requests = row.requests || 0;
+    const errors = row.errors || 0;
+    const successRate = requests > 0 ? round1(((requests - errors) / requests) * 100) : 0;
+    const { avgLatencyMs, avgTtftMs, avgSpeed } = perfOf(scope, key);
+    return {
+      ...extra,
+      requests,
+      errors,
+      successRate,
+      avgLatencyMs,
+      avgTtftMs,
+      avgSpeed,
+      score: computeScore(successRate, latencyScoreFromMs(avgLatencyMs), speedScoreFromTps(avgSpeed)),
+      promptTokens: row.promptTokens || 0,
+      completionTokens: row.completionTokens || 0,
+      cost: row.cost || 0,
+      lastUsed: row.lastUsed || null,
+    };
+  };
+
+  const nodes = nodeRows
+    .filter((r) => (r.requests || 0) >= minRequests)
+    .map((r) => toEntry(r, "node", r.provider || "", {
+      provider: r.provider || "unknown",
+      name: r.provider || "unknown",
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const models = modelRows
+    .filter((r) => (r.requests || 0) >= minRequests)
+    .map((r) => toEntry(r, "model", `${r.provider || ""}|${r.model || ""}`, {
+      model: r.model || "unknown",
+      provider: r.provider || "unknown",
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  return { daily, nodes, models, lifetime };
+}
+
 function formatLogDate(date = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
