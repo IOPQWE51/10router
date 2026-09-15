@@ -8,9 +8,9 @@ export function isCompactUnitsEnabled() {
   return v === null ? true : v !== "0";
 }
 
-export function fmtTokens(n, locale = "en") {
+export function fmtTokens(n, locale = "en", force = false) {
   const v = n || 0;
-  if (!isCompactUnitsEnabled()) return v.toLocaleString();
+  if (!force && !isCompactUnitsEnabled()) return v.toLocaleString();
   const zh = String(locale).startsWith("zh");
   if (zh) {
     if (v >= 1e8) return `${(v / 1e8).toFixed(1)}亿`;

@@ -212,7 +212,7 @@ function LifetimeCards({ lifetime }) {
       label: "Most Used Model",
       value: lifetime.topModel?.model || "—",
       sub: lifetime.topModel
-        ? `${lifetime.topModel.provider ? `${lifetime.topModel.provider} · ` : ""}${translate("Last 7 days")} ${fmtTokens(lifetime.topModel.tokens, locale)}`
+        ? `${lifetime.topModel.provider ? `${lifetime.topModel.provider} · ` : ""}${translate("Last 7 days")} ${fmtTokens(lifetime.topModel.tokens, locale, true)}`
         : "",
       valueClass: "text-warning",
       shrink: true,
@@ -237,9 +237,7 @@ function LifetimeCards({ lifetime }) {
       ))}
     </div>
   );
-}
-
-LifetimeCards.propTypes = {
+}LifetimeCards.propTypes = {
   lifetime: PropTypes.object,
 };
 

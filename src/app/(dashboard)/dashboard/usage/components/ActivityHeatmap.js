@@ -206,7 +206,7 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
                       key={day.key}
                       style={{ width: cell, height: cell }}
                       dateLine={day.date.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })}
-                      statsLine={`${fmtTokens(day.tokens, locale)} tokens · ${day.requests} ${translate("requests")}`}
+                      statsLine={`${fmtTokens(day.tokens, locale, true)} tokens · ${day.requests} ${translate("requests")}`}
                       className={cn(
                         "rounded-sm transition-transform hover:scale-110 hover:ring-1 hover:ring-text-main/40",
                         LEVEL_CLASSES[day.level]
@@ -225,7 +225,7 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
               key={w.start}
               style={{ width: 24, height: 24 }}
               dateLine={`${w.start} ~ ${w.end}`}
-              statsLine={`${fmtTokens(w.tokens, locale)} tokens · ${w.requests} ${translate("requests")}`}
+              statsLine={`${fmtTokens(w.tokens, locale, true)} tokens · ${w.requests} ${translate("requests")}`}
               className={cn(
                 "rounded-md transition-transform hover:scale-110 hover:ring-1 hover:ring-text-main/40",
                 LEVEL_CLASSES[w.level]
@@ -236,7 +236,7 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
       )}
 
       <div className="text-[10px] text-text-muted">
-        {`${totalRequests.toLocaleString()} ${translate("requests")} · ${fmtTokens(totalTokens, locale)} ${translate("tokens")} · ${activeDays} ${translate("active days")}`}
+        {`${totalRequests.toLocaleString()} ${translate("requests")} · ${fmtTokens(totalTokens, locale, true)} ${translate("tokens")} · ${activeDays} ${translate("active days")}`}
       </div>
     </div>
   );
