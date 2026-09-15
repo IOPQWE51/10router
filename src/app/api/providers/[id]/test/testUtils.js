@@ -846,7 +846,11 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
             } catch {
               /* best effort */
             }
-            return { valid: true, error: null, warning: "Desktop session OK (Preview models reachable)" };
+            // Plain success: the session works. Do NOT report a `warning` —
+            // that field lands in connection.lastError and renders as a red
+            // error line in the dashboard, which reads as a problem when the
+            // test actually passed.
+            return { valid: true, error: null };
           } catch (e) {
             return { valid: false, error: e?.message || "Preview probe failed" };
           }
