@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import SegmentedControl from "@/shared/components/SegmentedControl";
 import { cn } from "@/shared/utils/cn";
+import { fmtTokens } from "@/shared/utils/compactNumber";
 import { translate, getCurrentLocale } from "@/i18n/runtime";
 
 const LEVEL_CLASSES = [
@@ -24,13 +25,6 @@ const TOTAL_ROW_GAP = 5 * GAP + GAP * 1.2;
 
 function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-export function fmtTokens(n, locale) {
-  const zh = locale.startsWith("zh");
-  if (n >= 1e8) return zh ? `${(n / 1e8).toFixed(1)}亿` : `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return zh ? `${(n / 1e6).toFixed(1)}百万` : `${(n / 1e6).toFixed(1)}M`;
-  return n.toLocaleString();
 }
 
 function levelOf(requests, maxRequests) {

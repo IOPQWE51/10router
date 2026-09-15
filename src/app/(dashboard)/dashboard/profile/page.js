@@ -10,6 +10,7 @@ import { APP_CONFIG } from "@/shared/constants/config";
 import { LOCALE_COOKIE, normalizeLocale } from "@/i18n/config";
 import { LOCALE_FLAGS } from "@/shared/constants/locales";
 import { isRegionalCurrencyEnabled } from "@/shared/utils/currency";
+import { isCompactUnitsEnabled } from "@/shared/utils/compactNumber";
 import { copyTextToClipboard } from "@/shared/utils/clipboard";
 import { translate } from "@/i18n/runtime";
 
@@ -26,6 +27,7 @@ export default function ProfilePage() {
   const { theme, setTheme, isDark } = useTheme();
   const [locale, setLocale] = useState(() => getLocaleFromCookie());
   const [regional, setRegional] = useState(true);
+  const [compactUnits, setCompactUnits] = useState(true);
   const [langOpen, setLangOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
@@ -98,6 +100,7 @@ export default function ProfilePage() {
   useEffect(() => {
     setLocale(getLocaleFromCookie());
     setRegional(isRegionalCurrencyEnabled());
+    setCompactUnits(isCompactUnitsEnabled());
   }, [langOpen]);
 
   const toggleCurrency = () => {
@@ -106,6 +109,14 @@ export default function ProfilePage() {
       localStorage.setItem("useRegionalCurrency", next ? "1" : "0");
     }
     setRegional(next);
+  };
+
+  const toggleCompactUnits = () => {
+    const next = !isCompactUnitsEnabled();
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("compactUnits", next ? "1" : "0");
+    }
+    setCompactUnits(next);
   };
 
   const toggleProviderDisabledLastSort = async () => {
@@ -1072,6 +1083,13 @@ export default function ProfilePage() {
               <p className="text-xs text-text-muted">Show costs in local currency (¥/NT$/₩/₫); off → $</p>
             </div>
             <Toggle checked={regional} onChange={toggleCurrency} />
+          </div>
+          <div className="flex items-center justify-between gap-4 mt-3 p-3 rounded-lg bg-bg border border-border">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">{translate("Unit abbreviation")}</p>
+              <p className="text-xs text-text-muted">Large numbers as 亿/万 (zh) or M/B (en); off → full numbers</p>
+            </div>
+            <Toggle checked={compactUnits} onChange={toggleCompactUnits} />
           </div>
         </Card>
 

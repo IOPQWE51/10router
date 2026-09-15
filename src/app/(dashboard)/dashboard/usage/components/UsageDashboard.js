@@ -8,7 +8,8 @@ import Pagination from "@/shared/components/Pagination";
 import { cn } from "@/shared/utils/cn";
 import { fmtCost } from "@/shared/utils/currency";
 import { translate, getCurrentLocale } from "@/i18n/runtime";
-import ActivityHeatmap, { fmtTokens } from "./ActivityHeatmap";
+import { fmtTokens } from "@/shared/utils/compactNumber";
+import ActivityHeatmap from "./ActivityHeatmap";
 
 function scoreVariant(score) {
   if (score >= 90) return "success";
@@ -204,8 +205,8 @@ function LifetimeCards({ lifetime }) {
   const days = (n) => (zh ? `${n} 天` : `${n}d`);
   const cards = [
     { label: "Total Requests", value: (lifetime.totalRequests || 0).toLocaleString() },
-    { label: "Lifetime Tokens", value: (lifetime.totalTokens || 0).toLocaleString(), valueClass: "text-primary" },
-    { label: "Peak Day Tokens", value: (lifetime.peakTokens || 0).toLocaleString(), sub: lifetime.peakDate || "", valueClass: "text-info" },
+    { label: "Lifetime Tokens", value: fmtTokens(lifetime.totalTokens, locale), valueClass: "text-primary" },
+    { label: "Peak Day Tokens", value: fmtTokens(lifetime.peakTokens, locale), sub: lifetime.peakDate || "", valueClass: "text-info" },
     { label: "Current Streak", value: days(lifetime.currentStreak), valueClass: "text-success" },
     {
       label: "Most Used Model",
