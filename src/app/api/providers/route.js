@@ -60,12 +60,17 @@ export async function GET() {
       }
     } catch { }
 
-    // Hide sensitive fields, enrich name for compatible providers
+    // Hide sensitive fields, enrich name for compatible providers.
+    // Tokens are stripped, but the UI still needs to know WHICH credentials a
+    // row holds (e.g. Xiaomi rows can carry a desktop session, an sk- key, or
+    // both) — expose booleans so the badges can reflect real capabilities
+    // without leaking the secrets.
     const safeConnections = connections.map(c => {
       const isCompatible = isOpenAICompatibleProvider(c.provider) || isAnthropicCompatibleProvider(c.provider);
       const name = isCompatible
         ? (c.name || nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
         : c.name;
+      const rawToken = typeof c.accessToken === "string" ? c.accessToken : "";
       return {
         ...c,
         name,
@@ -73,6 +78,9 @@ export async function GET() {
         accessToken: undefined,
         refreshToken: undefined,
         idToken: undefined,
+        // True only for a REAL key — the session placeholder is not a key.
+        hasAccessToken: rawToken.length > 0 && !rawToken.startsWith("mimo-desktop-session"),
+        hasDesktopSession: Boolean(c.providerSpecificData?.mimoPassToken),
       };
     });
 
