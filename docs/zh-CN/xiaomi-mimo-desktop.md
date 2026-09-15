@@ -269,6 +269,38 @@ COOKIE_KEY     = "__mimoAccountCookie"
 `XIAOMI_MIMO_CONFIG.callbackPath` 曾写着 `"/"`，与"随机路径"的现实矛盾且已无引用。
 → 已删除，避免下一个读代码的人被带偏。
 
+### 5.8 扫码登录的用户「检测不到」——强依赖 auth.json 的假阴性（2026-09-15 修复，`d1bde6eb`）
+
+**症状**：用户在 MiMo 桌面版里**扫码登录**（官方登录页），dashboard 点「连接」却提示
+「Xiaomi MiMo Desktop auth file not found … Make sure you are signed in」，或（桌面版开着时）
+「Desktop is running and is holding its credential store — quit it and retry」。
+
+**真因（两层叠加）**：
+
+1. **扫码登录不产生 `auth.json`**。`auth.json` 只在「通过客户端拿/写 `sk-` API Key」时才落盘；
+   纯扫码登录只把账号会话（`passToken`）写进 Chromium Cookie 库
+   `%APPDATA%\Xiaomi MiMo\Partitions\xiaomi-account\Network\Cookies`（**明文 `value` 列**，
+   不是 `encrypted_value` —— 已在本机实测确认）。而 `auto-import` 原先**硬性要求 `auth.json`
+   存在且含 `sk-`**，否则一律 `found:false` —— 于是 `hasDesktopSession:true` 明明已经读到，
+   却被前端当「未检测到」丢弃。
+2. **桌面版运行时的文件独占锁是真实存在的**：其 Network 子进程以 `dwShareMode=0` 打开 Cookies，
+   任何 `CreateFileW`（含 `FILE_SHARE_READ|WRITE|DELETE`、`FILE_FLAG_BACKUP_SEMANTICS`）都返回
+   `ERROR_SHARING_VIOLATION(32)`。**没有**用户态办法在运行时读取（DuplicateHandle 需先枚举目标
+   进程句柄，成本高且脆弱，不做）。所以「退出桌面版」这一步在**首次读取**时确实必要。
+
+**修复**：把「桌面会话」升为一等凭据，不再强绑 `auth.json`：
+
+- `auto-import`：无 `auth.json` 但读到 `passToken` → 返回 `{found:true, sessionOnly:true, uid}`；
+- `api-key` 路由：接受 `sessionOnly`（无 `sk-`），`accessToken` 存稳定占位
+  `mimo-desktop-session-<uid>`（下游要求非空 token 的路径不受影响），连接标
+  `authMethod:"desktop-session"`；dedup 增加「同 `mimoUserId`」一档，**绝不把真 key 降级成占位**；
+- 弹窗：会话模式显示绿色卡片「已检测到桌面版登录会话」+ 按钮「使用桌面版会话连接」；
+- **实测**：导入后 `mimo/mimo-x-flash-preview` 经 `/v1/chat/completions` 返回 200 正文。
+
+**给未来的教训**：`passToken`（账号会话）与 `sk-`（云端 key）是**两条独立凭据链**——Preview 只认前者、
+云端只认后者。任何「必须有 X 才算登录」的判定都会在另一种登录姿势下假阴性。导入完成后连接里已存
+`mimoPassToken`（`getServiceCookie` 优先用它），之后**桌面版开着也能正常调用**，无需退出。
+
 ## 6. 测试与验证
 
 - 单测：`tests/unit/xiaomi-mimo-{oauth,routes,submit-code,account,executor,paths,icon,tts}.test.js`
