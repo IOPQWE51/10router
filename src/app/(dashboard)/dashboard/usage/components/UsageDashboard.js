@@ -111,23 +111,17 @@ CellContent.propTypes = {
   isOpen: PropTypes.bool,
 };
 
-// Static (unsorted, unpaginated) per-model table shown inside an expanded
-// node row. Rows arrive pre-sorted by the caller.
+// Static per-model table shown inside an expanded node row. No header row —
+// the columns mirror the parent table the user just read, and no provider
+// subline either: the model name alone identifies the row, the parent node
+// is already stated one line up. Rows arrive pre-sorted by the caller with
+// the SAME order as the parent list.
 function ExpandedModelTable({ rows, emptyText }) {
   if (rows.length === 0) {
     return <p className="px-8 py-3 text-xs text-text-muted">{emptyText}</p>;
   }
   return (
     <table className="w-full">
-      <thead>
-        <tr className="border-b border-black/5 dark:border-white/5">
-          {MODEL_COLUMNS.map((col) => (
-            <th key={col.key} className={cn("p-2 pl-8 text-xs font-semibold text-text-muted", ALIGN_CLASS[col.align])}>
-              {translate(col.label)}
-            </th>
-          ))}
-        </tr>
-      </thead>
       <tbody>
         {rows.map((row) => (
           <tr
@@ -136,7 +130,7 @@ function ExpandedModelTable({ rows, emptyText }) {
           >
             {MODEL_COLUMNS.map((col) => (
               <td key={col.key} className={cn("p-2 pl-8 text-sm text-text-main", ALIGN_CLASS[col.align])}>
-                <CellContent col={col} row={row} nameKey="model" subKey="provider" />
+                <CellContent col={col} row={row} nameKey="model" />
               </td>
             ))}
           </tr>
@@ -151,27 +145,34 @@ ExpandedModelTable.propTypes = {
   emptyText: PropTypes.string.isRequired,
 };
 
-function ScoreTable({ rows, columns, nameKey, subKey, emptyText, renderExpanded, expandedEmptyText }) {
+// Shared comparator so expanded child rows follow the exact same order as
+// the parent list — sortKey "name" maps to each level's own name field.
+function sortRowsBy(list, sortKey, sortDir, nameKey) {
+  const valueOf = (row) => {
+    if (sortKey === "name") return String(row[nameKey] || "");
+    const v = row[sortKey];
+    if (typeof v === "string") return v;
+    return v == null ? (sortDir === "desc" ? -Infinity : Infinity) : v;
+  };
+  return [...list].sort((a, b) => {
+    const va = valueOf(a);
+    const vb = valueOf(b);
+    const cmp = typeof va === "string" && typeof vb === "string" ? va.localeCompare(vb) : va - vb;
+    return sortDir === "desc" ? -cmp : cmp;
+  });
+}
+
+function ScoreTable({ rows, columns, nameKey, subKey, emptyText, renderExpanded, expandedEmptyText, expandedNameKey = "model" }) {
   const [sortKey, setSortKey] = useState("score");
   const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openKeys, setOpenKeys] = useState(() => new Set());
 
-  const sorted = useMemo(() => {
-    const valueOf = (row) => {
-      if (sortKey === "name") return String(row[nameKey] || "");
-      const v = row[sortKey];
-      if (typeof v === "string") return v;
-      return v == null ? (sortDir === "desc" ? -Infinity : Infinity) : v;
-    };
-    return [...rows].sort((a, b) => {
-      const va = valueOf(a);
-      const vb = valueOf(b);
-      const cmp = typeof va === "string" ? va.localeCompare(vb) : va - vb;
-      return sortDir === "desc" ? -cmp : cmp;
-    });
-  }, [rows, sortKey, sortDir, nameKey]);
+  const sorted = useMemo(
+    () => sortRowsBy(rows, sortKey, sortDir, nameKey),
+    [rows, sortKey, sortDir, nameKey]
+  );
 
   if (rows.length === 0) {
     return <p className="py-6 text-center text-sm text-text-muted">{emptyText}</p>;
@@ -228,7 +229,11 @@ function ScoreTable({ rows, columns, nameKey, subKey, emptyText, renderExpanded,
             {pageRows.map((row, i) => {
               const rowKey = `${row[nameKey]}-${i}`;
               const isOpen = Boolean(renderExpanded) && openKeys.has(rowKey);
-              const subRows = isOpen ? renderExpanded(row) : null;
+              // Children re-sort with the parent's current sortKey/sortDir so
+              // both levels always read in the same order.
+              const subRows = isOpen
+                ? sortRowsBy(renderExpanded(row), sortKey, sortDir, expandedNameKey)
+                : null;
               return (
                 <Fragment key={rowKey}>
                   <tr
@@ -295,6 +300,7 @@ ScoreTable.propTypes = {
   emptyText: PropTypes.string.isRequired,
   renderExpanded: PropTypes.func,
   expandedEmptyText: PropTypes.string,
+  expandedNameKey: PropTypes.string,
 };
 
 function LifetimeCards({ lifetime }) {
@@ -415,9 +421,7 @@ export default function UsageDashboard() {
           nameKey="name"
           emptyText={translate("No nodes with 50+ requests in this period")}
           renderExpanded={(node) =>
-            (data.models || [])
-              .filter((m) => m.provider === node.provider)
-              .sort((a, b) => (b.requests || 0) - (a.requests || 0))
+            (data.models || []).filter((m) => m.provider === node.provider)
           }
           expandedEmptyText={translate("No models with 10+ requests under this node")}
         />
