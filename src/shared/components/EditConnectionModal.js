@@ -59,7 +59,16 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
     }
   }, [connection]);
 
-  const isOAuth = connection?.authType === "oauth";
+  // OAuth-capable providers may store authType "api_key" for downstream
+  // compatibility even though the user signed in via OAuth / Desktop session
+  // (see providerSpecificData.authMethod). Treat those as OAuth here so the
+  // edit form shows the account fields instead of an "API Key" input.
+  const authMethod = connection?.providerSpecificData?.authMethod;
+  const isOAuth =
+    connection?.authType === "oauth" ||
+    authMethod === "oauth" ||
+    authMethod === "desktop-session" ||
+    (typeof connection?.accessToken === "string" && connection.accessToken.startsWith("mimo-desktop-session"));
   const isAzure = connection?.provider === "azure";
   const isCloudflareAi = connection?.provider === "cloudflare-ai";
   const isCompatible = connection
@@ -189,12 +198,25 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder={isOAuth ? "Account name" : "Production Key"}
         />
-        {isOAuth && connection.email && (
-          <div className="bg-sidebar/50 p-3 rounded-lg">
-            <p className="text-sm text-text-muted mb-1">Email</p>
-            <p className="font-medium">{connection.email}</p>
-          </div>
-        )}
+        {isOAuth && connection.email && (() => {
+          // Xiaomi rows store a SYNTHETIC `${uid}@xiaomi` address (there is no
+          // real mailbox) — labeling it "Email" is misleading. Show it as the
+          // account id it actually is.
+          const xiaomiUid =
+            connection.providerSpecificData?.mimoUserId ||
+            connection.providerSpecificData?.uid ||
+            null;
+          const isXiaomi = connection.provider === "xiaomi-mimo" || connection.provider === "xiaomi-tokenplan";
+          const showAsUid = isXiaomi || /^\d+@xiaomi$/.test(connection.email);
+          const label = showAsUid ? "UID" : "Email";
+          const value = showAsUid && xiaomiUid ? xiaomiUid : connection.email;
+          return (
+            <div className="bg-sidebar/50 p-3 rounded-lg">
+              <p className="text-sm text-text-muted mb-1">{label}</p>
+              <p className="font-medium">{value}</p>
+            </div>
+          );
+        })()}
         <Input
           label="Priority"
           type="number"
