@@ -560,7 +560,7 @@ flowchart LR
 3. 启用后请求日志会写完整 headers/body；请将日志目录视为敏感。
 4. 云端行为依赖正确的 `NEXT_PUBLIC_BASE_URL` 与云端端点可达性。
 5. `API_KEY_ROTATION`（实验，默认 off）会更换 key CRC 的 HMAC 密钥——开启后**所有已签发 API key 失效**，须在仪表盘重新签发并更新各客户端；关闭时行为与历史版本一致。
-6. 导入的用量行（ZCode 插件）写 `usageHistory` 并打 `meta.imported` 标记；详情 tab 只读 `requestDetails`，两者按时间戳归并展示。
+6. 导入的用量行（ZCode 插件）写 `usageHistory` 并打 `meta.imported` 标记；详情 tab 只读 `requestDetails`，两者按时间戳归并展示。完整契约（打标/回填/合成三件套、归并分页证明、撞签边界）见 [usage-import-rows.md](./usage-import-rows.md)。
 
 ## 运维验证清单
 

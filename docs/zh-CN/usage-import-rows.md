@@ -40,6 +40,26 @@ top-K，`slice(offset, K)` 对**任意** imported 行数都正确。既有单测
   `--source 10r` 的 exit 2 拒绝）是同一现象的两种后果——撞签打标本身就是证据。
 - 回滚 = revert；标记字段对旧代码惰性，无需数据迁移。
 
+## 健康度评分的例外：meta.gatewaySync（9r/10r 网关同步行）
+
+数据口径原文：「外部导入行**不参与**健康度评分但计入热力图与生涯统计」。2026-09-16 起补一个
+例外——**`meta.gatewaySync = true` 的导入行参与健康度评分**：
+
+- **为什么**：10r/9r 来源的行在源实例上是**真实网关观测**（真实状态码），被一刀切排除
+  不合理——兄弟实例的失败率应当计入节点/模型评分。
+- **谁来打标**（判据都是「源实例上的**原生**行」）：
+  - 10router-sync `--source 10r`（插件转换器）：源行 meta 无 `imported` 标记 → 打
+    `gatewaySync`；源行若本身是 B 实例从 zcode/mirasim/mimo 导入的（`imported:true`）→
+    **不打**，链式同步多远都保持排除（防客户端账本网关观测洗白）。
+  - 服务端 9r 备份 sqlite 导入路径（`importUsageFromSqlite`）：同规则逐行自动打标。
+  - 泛用 JSON 导入（`readUsageFromJson` / 仪表盘手传文件）**不打标**——来源混杂，从保守。
+- **谓词**（`getUsageDashboard` 的 `notImported`）：
+  `meta IS NULL OR meta NOT LIKE '%"imported":true%' OR meta LIKE '%"gatewaySync":true%'`。
+- 延迟/速度轴仍不参与（usageHistory 无 TTFT/时长字段），只贡献请求数与成功率轴——与
+  「缺数据轴权重回退成功率」的既有设计天然兼容。
+- 锁定测试：`tests/unit/usage-dashboard-import-exclusion.test.js`（gatewaySync 参与 /
+  链式导入继续排除 / sqlite 路径只给原生行打标，共 11 例）。
+
 ## 排查指引（How to apply）
 
 「导入的数据在某视图看不到」时先分清两张表的分工：

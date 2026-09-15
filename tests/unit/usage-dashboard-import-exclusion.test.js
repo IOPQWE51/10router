@@ -1,7 +1,10 @@
 // getUsageDashboard compares this instance's own traffic only: rows stamped
 // meta.imported = true (9r backups / ZCode sync via importUsageRows) must not
-// leak into node/model scores. The daily activity series intentionally keeps
-// them — the heatmap reflects all traffic including imports.
+// leak into node/model scores. Exception: meta.gatewaySync = true marks rows
+// that were NATIVE observations on a sibling 10Router/9Router instance —
+// their status is a real gateway outcome, so they DO participate. The daily
+// activity series intentionally keeps everything — the heatmap reflects all
+// traffic including imports.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -102,6 +105,85 @@ describe("getUsageDashboard imported-row handling", () => {
     const day = dash.daily.find((d) => d.date === "2026-09-01");
     expect(day).toBeTruthy();
     expect(day.requests).toBe(1);
+  });
+
+  it("gateway-synced import (meta.gatewaySync) participates in scores and daily", async () => {
+    const { imported } = await usageRepo.importUsageRows([{
+      ...IMPORTED_ROW,
+      provider: "gwpeer",
+      model: "gwpeer-1",
+      connectionId: null,
+      endpoint: "https://peer.example.com/v1",
+      timestamp: todayIso(), // node health uses a fixed trailing-7d window
+      status: "error", // a real gateway outcome must survive into the score
+      meta: { gatewaySync: true, syncedFrom: "peer-nas" },
+    }]);
+    expect(imported).toBe(1);
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const node = dash.nodes.find((n) => n.provider === "gwpeer");
+    expect(node).toBeTruthy();
+    expect(node.requests).toBe(1);
+    // status "error" was passed through by importUsageRows → success rate reflects it.
+    expect(node.successRate).toBeLessThan(100);
+
+    const model = dash.models.find((m) => m.provider === "gwpeer" && m.model === "gwpeer-1");
+    expect(model).toBeTruthy();
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const localDayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const day = dash.daily.find((d) => d.date === localDayKey);
+    expect(day).toBeTruthy();
+  });
+
+  it("chained client-ledger import (imported, no gatewaySync) stays excluded", async () => {
+    // A row the SOURCE instance had itself imported from a client ledger
+    // (zcode/mirasim/mimo) travels through --source 10r without the marker —
+    // it must remain excluded from scores.
+    const { imported } = await usageRepo.importUsageRows([{
+      ...IMPORTED_ROW,
+      provider: "chained",
+      model: "chained-1",
+      connectionId: null,
+      timestamp: todayIso(),
+      meta: { imported: true, source: "zcode", syncedFrom: "peer-nas" },
+    }]);
+    expect(imported).toBe(1);
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    expect(dash.nodes.find((n) => n.provider === "chained")).toBeUndefined();
+    expect(dash.models.find((m) => m.provider === "chained")).toBeUndefined();
+    // Still counted in the heatmap.
+    expect(dash.lifetime.totalRequests).toBeGreaterThan(0);
+  });
+
+  it("sqlite backup import stamps gatewaySync on native rows only", async () => {
+    const { DatabaseSync } = await import("node:sqlite");
+    const srcPath = path.join(tempDir, "peer.sqlite");
+    const src = new DatabaseSync(srcPath);
+    src.exec(`CREATE TABLE usageHistory (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, provider TEXT, model TEXT, connectionId TEXT, apiKey TEXT, endpoint TEXT, promptTokens INTEGER, completionTokens INTEGER, cost REAL, status TEXT, tokens TEXT, meta TEXT)`);
+    const ins = src.prepare(`INSERT INTO usageHistory (timestamp, provider, model, promptTokens, completionTokens, cost, status, tokens, meta) VALUES (?,?,?,?,?,?,?,?,?)`);
+    const nativeTokens = JSON.stringify({ prompt_tokens: 10, completion_tokens: 5 });
+    ins.run(todayIso(), "sqlnative", "sqlnative-1", 10, 5, 0, "error", nativeTokens, null);
+    ins.run(todayIso(), "sqlimported", "sqlimported-1", 20, 6, 0, "ok", nativeTokens, JSON.stringify({ imported: true, source: "zcode" }));
+    src.close();
+
+    const { importUsageFromSqlite } = await import("@/app/api/settings/database/import-usage/importUsage.js");
+    const buffer = fs.readFileSync(srcPath);
+    const result = await importUsageFromSqlite(buffer, "peer.sqlite");
+    expect(result.imported).toBe(2);
+
+    const { getAdapter } = await import("@/lib/db/driver.js");
+    const db = await getAdapter();
+    const nativeRow = db.get(`SELECT meta FROM usageHistory WHERE provider = 'sqlnative'`);
+    expect(JSON.parse(nativeRow.meta).gatewaySync).toBe(true);
+    const importedRow = db.get(`SELECT meta FROM usageHistory WHERE provider = 'sqlimported'`);
+    expect(JSON.parse(importedRow.meta).gatewaySync).toBeUndefined();
+
+    const dash = await usageRepo.getUsageDashboard({ days: 3650, minRequests: 1 });
+    expect(dash.nodes.find((n) => n.provider === "sqlnative")).toBeTruthy();
+    expect(dash.nodes.find((n) => n.provider === "sqlimported")).toBeUndefined();
   });
 
   it("range params are ignored: nodes use a fixed 7d window, daily is unaffected", async () => {

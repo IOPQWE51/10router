@@ -11,8 +11,14 @@
   - **GitHub 风格活跃热力图**：固定 12 个月窗口（计入外部导入流量）、周一起始、周五→周六加宽 20% 间距、月份标签按周边界检测（首月不标）；网格**固定高度**、色块尺寸由高度推导，容器越宽显示的周数越多（ResizeObserver 自适应，取代拉伸变形）；日/周双视图，悬停为自定义深色气泡（本地化日期 + `2.5亿 tokens · 29 次请求` 格式）；底部汇总栏支持展示当前连续天数（如 `1,966 次请求 · 2.2亿 Token · 13 天活跃 · 连续 1 天`）。
   - **节点健康度**（固定最近 7 天窗口）：按供应商聚合同供应商多账号；评分 = 成功率 60% + 延迟 20% + 速度 20%（TTFT / 输出 tok/s 取自 `requestDetails` 最近窗口，缺数据轴权重回退成功率）；**请求数 < 100 不参与评分**；表格补齐「平均速度」（Avg Speed / tok/s）列，后端针对流式（`total - ttft`）与非流式/单包聚合流式（`total`）自适应计算输出吞吐速度；表格全部列支持点击排序、复用共享分页组件。
   - **单位缩写开关**（设置页语言卡「本地货币」下方）：localStorage 持久化、默认开启——中文界面大数字按 `亿`/`万` 缩写，其他语言按 `B`/`M`/`K`；关闭后全部数字回退完整千分位。仪表盘所有数字（卡片 / 热力图气泡 / 汇总行）统一走新共享工具 `src/shared/utils/compactNumber.js`。
-  - **数据口径**：外部导入行（`meta.imported`）**不参与健康度评分**但计入热力图与生涯统计。
+  - **数据口径**：外部导入行（`meta.imported`）**不参与健康度评分**但计入热力图与生涯统计。**9r/10r 网关同步行除外**（2026-09-16 补）：`meta.gatewaySync=true` 标记「源实例原生观测」的导入行（10router-sync `--source 10r` 仅对源库原生行打标；服务端 9r 备份 sqlite 导入路径同规则自动打标）——其状态码是真实网关结果，计入健康度评分；B 实例自己从客户端账本（zcode/mirasim/mimo）导入过的行经链式同步**不带**标记，继续排除。
   - 新 API `GET /api/usage/dashboard`（`src/lib/db/repos/usageRepo.js` 的 `getUsageDashboard`，`period/days/start/end` 参数保留兼容但已不使用）；i18n 词条接入 zh-CN；新增 `tests/unit/usage-dashboard-import-exclusion.test.js` 4 例（导入排除/热力包含/阈值/范围无关性 + lifetime 断言）。
+
+- **10router-sync 插件 v1.3.0：新增 10Router/9Router 实例用量同步（`--source 10r`）**。
+  - 读另一个 10Router（或遗留 9Router）实例的 `data.sqlite`（`usageHistory` 表），原样透传导入目标实例——provider/cost/status/tokens/meta 全保留，同名 provider 在目标侧自然合并；适用于把 NAS 实例、兄弟中继、9Router 老安装的用量汇总进一处仪表盘。别名 `10router` / `9r` / `9router`。
+  - 源库发现：`--db <path>` 显式指定（NAS 拷贝/挂载盘），否则自动发现 `%APPDATA%\10router|9router\db\data.sqlite` / `~/.10router|~/.9router/db/data.sqlite`（env `TENROUTER_DB` 优先，多库共存时提示）；`--tag` 自定义 `meta.syncedFrom` 标签；源实例 `connectionId` 挪进 `meta.sourceConnectionId` 并置空，避免污染目标按账户聚合。
+  - **同实例防护**：源库路径命中本机默认实例库且 `--endpoint` 为 loopback 时以退出码 2 拒绝——把实例导回自己时所有行撞签名，而服务端 `importUsageRows` 撞签会给旧行补写 `meta.imported=true`，把实时行标成「导入行」；确实是另一实例时 `--force` 越过。反向链式双计（源实例上游是目标实例）签名两边不同、服务端拦不住，文档明示不可用。
+  - 列集与服务端 `readUsageFromSqlite()`（9router 备份导入路径）一致，旧库缺列自动降级最小列集；读活库为快照复制（含 `-wal`/`-shm`），不必停源实例。合成库 + 本机真实库（2234 行）实测：导出转换/守卫 exit 2 / `--force` dry-run / 参数校验全通过。同日审查加固两处：无 scheme endpoint（`127.0.0.1:20127`）也能触发同实例防护（否则守卫失效开）；NULL 时间戳行导出侧跳过（服务端回填 `new Date()` 会破幂等）。根 `marketplace.json`（Discover 市场索引）同步 1.3.0 与新描述。09-16 补 `meta.gatewaySync` 标记：源库原生行凭此在目标侧参与健康度评分（数据口径例外，见上方「数据口径」条），链式客户端账本行不打标继续排除。
 
 - **10router-sync 插件 v1.2.0：新增小米 MiMo 桌面版（mimocode）用量导出 + ZCode 源改为「仅官方渠道」**。
   - **小米 MiMo 桌面版**（`--source mimo`，别名 `--source mimocode`）：MiMo 把每轮 assistant 消息的完整 token 计量记在 `~/.local/share/mimocode/mimocode.db` 的 `message` 表（JSON `data` 列：`input`/`output`/`reasoning`/`cache.read`/`cache.write`，附 `modelID`/`providerID`/`agent`/`mode`/`time`），比 OpenCode 的 session 级汇总粒度更细（逐轮消息级）。实现要点：WAL 活库先快照再读（复用 `snapshotDb()`）、按 `message.id` 去重、0-token 空转/中断轮次跳过、provider 落 `mimo-<providerID>`、cost 记 0、`meta` 带 messageId/sessionId/agent/mode；Windows 回退路径 `%APPDATA%\Xiaomi MiMo\mimocode.db`。本机实测导入 101 行（`mimo-mimo` 42 / `mimo-xiaomi` 59），重跑幂等。

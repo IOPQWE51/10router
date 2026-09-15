@@ -792,8 +792,15 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
 
   // Imported rows (meta.imported = true, e.g. 9r backups / ZCode sync) are
   // excluded from scores: nodes/models compare this instance's own traffic.
-  // The daily heatmap intentionally keeps them (usageDaily day aggregates).
-  const notImported = `(meta IS NULL OR meta NOT LIKE '%"imported":true%')`;
+  // Exception — gateway-synced rows (meta.gatewaySync = true): those were
+  // NATIVE observations on a sibling 10Router/9Router instance (stamped by
+  // the sqlite-backup import path and by 10router-sync --source 10r only when
+  // the source row was itself not an import), so their status is a real
+  // gateway outcome and they do participate. Client-ledger imports — and
+  // rows the source instance had itself imported, however far they travel —
+  // stay excluded. The daily heatmap intentionally keeps all of them
+  // (usageDaily day aggregates).
+  const notImported = `(meta IS NULL OR meta NOT LIKE '%"imported":true%' OR meta LIKE '%"gatewaySync":true%')`;
 
   // The heatmap is GitHub-style: trailing 12 months anchored on today,
   // independent of the score range selected in the UI. The component shows
