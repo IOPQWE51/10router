@@ -142,6 +142,10 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
     : 0;
   const shownWeeks = visibleWeeks > 0 ? weeks.slice(-visibleWeeks) : [];
 
+  // Week mode: one color per column, from the week's 7-day average.
+  const shownWeekStats = shownWeeks.map(weekStat);
+  const maxWeekAvg = shownWeekStats.reduce((m, s) => Math.max(m, s.requests / 7), 0);
+
   // Totals follow what is actually visible.
   let totalRequests = 0;
   let totalTokens = 0;
@@ -203,30 +207,56 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
               </div>
               {shownWeeks.map((week, wi) => {
                 const day = week[dow];
+                const isWeek = view === "week";
+                const colHighlight = isWeek && hoverCol === wi;
+
+                if (isWeek) {
+                  // Week mode: hovering any cell highlights the column; the
+                  // aggregate tooltip is always anchored at the column top
+                  // (Monday position), no matter which cell is hovered.
+                  const inRangeDays = week.filter((d) => d.inRange);
+                  const ws = weekStat(week);
+                  return (
+                    <div
+                      key={day.key}
+                      className="relative inline-flex shrink-0"
+                      style={{ width: cell, height: cell }}
+                      onMouseEnter={() => day.inRange && setHoverCol(wi)}
+                      onMouseLeave={() => day.inRange && setHoverCol(null)}
+                    >
+                      <div
+                        style={{ width: "100%", height: "100%" }}
+                        className={cn(
+                          "rounded-sm transition-transform",
+                          day.inRange ? LEVEL_CLASSES[levelOf(ws.requests / 7, maxWeekAvg)] : "bg-transparent",
+                          colHighlight && day.inRange && "scale-110 ring-1 ring-text-main/50"
+                        )}
+                      />
+                      {dow === 0 && inRangeDays.length > 0 && (
+                        <div className={cn(
+                          "pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[11px] leading-snug text-white shadow-lg transition-opacity duration-150 dark:bg-gray-700",
+                          colHighlight ? "opacity-100" : "opacity-0"
+                        )}>
+                          <div className="font-medium">{`${fullDateFmt(inRangeDays[inRangeDays.length - 1].date)} ${translate("This Week")}`}</div>
+                          <div className="text-white/80">{`${fmtTokens(ws.tokens, locale, true)} tokens · ${ws.requests} ${translate("requests")}`}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 if (!day.inRange) {
                   return <div key={day.key} style={{ width: cell, height: cell }} className="shrink-0 bg-transparent" />;
                 }
-                const isWeek = view === "week";
-                const ws = isWeek ? weekStat(week) : null;
-                const colHighlight = isWeek && hoverCol === wi;
-                const firstDow = isWeek ? week.findIndex((d) => d.inRange) : -1;
                 return (
                   <TipCell
                     key={day.key}
                     style={{ width: cell, height: cell }}
-                    dateLine={isWeek ? `${fullDateFmt(day.date)} ${translate("This Week")}` : fullDateFmt(day.date)}
-                    statsLine={isWeek
-                      ? `${fmtTokens(ws.tokens, locale, true)} tokens · ${ws.requests} ${translate("requests")}`
-                      : `${fmtTokens(day.tokens, locale, true)} tokens · ${day.requests} ${translate("requests")}`}
-                    onEnter={() => isWeek && setHoverCol(wi)}
-                    onLeave={() => isWeek && setHoverCol(null)}
-                    showTip={!isWeek || dow === firstDow}
+                    dateLine={fullDateFmt(day.date)}
+                    statsLine={`${fmtTokens(day.tokens, locale, true)} tokens · ${day.requests} ${translate("requests")}`}
                     className={cn(
-                      "rounded-sm transition-transform",
-                      LEVEL_CLASSES[day.level],
-                      isWeek
-                        ? colHighlight && "scale-110 ring-1 ring-text-main/50"
-                        : "hover:scale-110 hover:ring-1 hover:ring-text-main/40"
+                      "rounded-sm transition-transform hover:scale-110 hover:ring-1 hover:ring-text-main/40",
+                      LEVEL_CLASSES[day.level]
                     )}
                   />
                 );
