@@ -94,7 +94,7 @@ export function formatDoneLine({ usage, latency }) {
   return `DONE ${latency?.total ?? 0}ms${ttftStr} · ${inStr} · OUT ${outTok}`;
 }
 
-export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, label = "USAGE", silent = false }) {
+export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, latency = null, label = "USAGE", silent = false }) {
   if (!tokens || typeof tokens !== "object") return;
 
   const inTokens = tokens.input_tokens ?? tokens.prompt_tokens ?? 0;
@@ -115,6 +115,19 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
     completion_tokens: tokens.completion_tokens ?? tokens.output_tokens ?? 0
   };
 
+  // Latency observation rides on the usage row itself (meta.latencyMs/ttftMs):
+  // usageHistory rows outlive the requestDetails 200-record ring and travel
+  // with gateway-synced imports, so dashboards on BOTH instances show real
+  // speed instead of a dash. Same numbers the requestDetails record gets —
+  // no second measurement, just a second home.
+  const meta = {};
+  if (latency && typeof latency.total === "number" && latency.total > 0) {
+    meta.latencyMs = Math.round(latency.total);
+    if (typeof latency.ttft === "number" && latency.ttft > 0) {
+      meta.ttftMs = Math.round(latency.ttft);
+    }
+  }
+
   saveRequestUsage({
     provider: provider || "unknown",
     model: model || "unknown",
@@ -122,6 +135,7 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
     timestamp: new Date().toISOString(),
     connectionId: connectionId || undefined,
     apiKey: apiKey || undefined,
-    endpoint: endpoint || null
+    endpoint: endpoint || null,
+    meta: Object.keys(meta).length > 0 ? meta : undefined
   }).catch(() => {});
 }

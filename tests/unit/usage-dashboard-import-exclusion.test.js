@@ -332,6 +332,50 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(node.score).toBeNull();
   });
 
+  it("computes speed from usageHistory meta latency (survives sync + ring rotation)", async () => {
+    // The meta-carried latency path: rows written by executors since 1.1.2
+    // carry meta.latencyMs/ttftMs, and gateway-synced rows keep them — so a
+    // sibling instance sees real speed instead of a dash. No requestDetails
+    // rows exist for this provider at all.
+    await usageRepo.saveRequestUsage({
+      timestamp: todayIso(),
+      provider: "metaperf",
+      model: "metaperf-1",
+      status: "ok",
+      tokens: { prompt_tokens: 100, completion_tokens: 200 },
+      meta: { latencyMs: 2000, ttftMs: 500, gatewaySync: true, syncedFrom: "win-desktop" },
+    });
+    await usageRepo.saveRequestUsage({
+      timestamp: todayIso(),
+      provider: "metaperf",
+      model: "metaperf-1",
+      status: "ok",
+      tokens: { prompt_tokens: 100, completion_tokens: 100 },
+      meta: { latencyMs: 1000, ttftMs: 1000 },
+    });
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const model = dash.models.find((m) => m.provider === "metaperf");
+    expect(model).toBeTruthy();
+    expect(model.hasPerfData).toBe(true);
+    expect(model.avgLatencyMs).toBe(1500);
+    expect(model.avgTtftMs).toBe(750);
+    // row1: 200tok / (2000-500)ms; row2: 100tok / 1000ms (ttft==total → total)
+    // → 300 tokens / 2.5s = 120 tok/s
+    expect(model.avgSpeed).toBe(120);
+    expect(model.score).toBeGreaterThan(0);
+    expect(model.score).not.toBeNull();
+  });
+
+  it("falls back to requestDetails for keys with no meta latency samples", async () => {
+    // Pre-1.1.2 history: speed-provider has requestDetails rows only (set by
+    // an earlier test) and no meta latency — the fallback must keep serving.
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const node = dash.nodes.find((n) => n.provider === "speed-provider");
+    expect(node).toBeTruthy();
+    expect(node.avgSpeed).toBe(40);
+  });
+
   it("defaults minRequests to 50 in getUsageDashboard", async () => {
     const dash = await usageRepo.getUsageDashboard();
     // Default call without arguments succeeds with minRequests = 50

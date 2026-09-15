@@ -293,7 +293,13 @@ export async function saveRequestUsage(entry) {
           entry.timestamp, entry.provider || null, entry.model || null,
           entry.connectionId || null, entry.apiKey || null, entry.endpoint || null,
           promptTokens, completionTokens, entry.cost || 0, entry.status || "ok",
-          stringifyJson(tokens), stringifyJson(entry.usageKey ? { usageKey: entry.usageKey } : {}),
+          // meta carries caller extras (executor latency observation, etc.)
+          // plus the dedup usageKey. The usageKey previously DISCARDED any
+          // entry.meta — the latency observation would never reach the row.
+          stringifyJson(tokens), stringifyJson({
+            ...(entry.meta && typeof entry.meta === "object" ? entry.meta : {}),
+            ...(entry.usageKey ? { usageKey: entry.usageKey } : {}),
+          }),
         ]
       );
 
@@ -999,8 +1005,60 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
     }
   } catch {}
 
+  // Primary perf source: latency observations carried on usageHistory rows
+  // themselves (meta.latencyMs/ttftMs — stamped by executors since 1.1.2 and
+  // travelling with gateway-synced imports). Unlike requestDetails' 200-record
+  // ring these rows survive indefinitely, so once the deployment is a week
+  // old the trailing-7d health window is fully covered — including synced
+  // models on a sibling instance. requestDetails stays as the fallback for
+  // (provider, model) keys with no meta samples yet (pre-1.1.2 history).
+  const metaPerf = { node: {}, model: {} };
+  try {
+    const metaRows = db.all(
+      `SELECT provider, model, meta, completionTokens FROM usageHistory
+       WHERE ${notImported} ${rangeFilter} AND meta LIKE '%latencyMs%'`,
+      [nodeTsGte, nodeTsLt]
+    );
+    for (const r of metaRows) {
+      const m = parseJson(r.meta, {}) || {};
+      const total = typeof m.latencyMs === "number" && m.latencyMs > 0 ? m.latencyMs : null;
+      if (total == null) continue;
+      const ttft = typeof m.ttftMs === "number" && m.ttftMs > 0 ? m.ttftMs : null;
+      const outTokens = r.completionTokens || 0;
+      // Same duration derivation as the requestDetails path (incl. the
+      // buffered-burst dampening at >300 tok/s) so both sources agree.
+      let durationMs = null;
+      if (outTokens > 0) {
+        if (ttft != null && total > ttft && (total - ttft) >= 50) {
+          durationMs = total - ttft;
+        } else if (total >= 50) {
+          durationMs = total;
+        }
+        if (durationMs != null && durationMs > 0 && (outTokens / (durationMs / 1000)) > 300 && total >= 50) {
+          durationMs = total;
+        }
+      }
+      const nodeKey = r.provider || "";
+      const modelKey = `${r.provider || ""}|${r.model || ""}`;
+      for (const [scope, key] of [["node", nodeKey], ["model", modelKey]]) {
+        if (!metaPerf[scope][key]) metaPerf[scope][key] = { sum: 0, count: 0, ttftSum: 0, ttftCount: 0, tokensSum: 0, durMsSum: 0 };
+        const agg = metaPerf[scope][key];
+        agg.sum += total;
+        agg.count += 1;
+        if (ttft != null) { agg.ttftSum += ttft; agg.ttftCount += 1; }
+        if (durationMs != null && durationMs > 0 && outTokens > 0) {
+          agg.tokensSum += outTokens;
+          agg.durMsSum += durationMs;
+        }
+      }
+    }
+  } catch {}
+
   const perfOf = (scope, key) => {
-    const agg = perfAgg[scope][key];
+    // meta first, requestDetails only when the key has no meta samples —
+    // never both, so a request recorded in the two stores is never counted
+    // twice (and both stores hold identical latency values anyway).
+    const agg = metaPerf[scope][key] || perfAgg[scope][key];
     if (!agg) return { avgLatencyMs: null, avgTtftMs: null, avgSpeed: null };
     return {
       avgLatencyMs: Math.round(agg.sum / agg.count),
