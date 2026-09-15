@@ -216,7 +216,7 @@ function LifetimeCards({ lifetime }) {
       label: "Most Used Model",
       value: lifetime.topModel?.model || "—",
       sub: lifetime.topModel
-        ? `${lifetime.topModel.provider ? `${lifetime.topModel.provider} · ` : ""}${translate("Last 7 days")} ${fmtTokens(lifetime.topModel.tokens, locale, true)}`
+        ? `${translate("Last 7 days")} ${fmtTokens(lifetime.topModel.tokens, locale, true)}${lifetime.topModel.provider ? ` · ${lifetime.topModel.provider}` : ""}`
         : "",
       valueClass: "text-warning",
       shrink: true,
