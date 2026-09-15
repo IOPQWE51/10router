@@ -32,7 +32,7 @@ function levelOf(requests, maxRequests) {
   return Math.min(4, Math.ceil((requests / maxRequests) * 4));
 }
 
-function TipCell({ dateLine, statsLine, style, className, onEnter, onLeave }) {
+function TipCell({ dateLine, statsLine, style, className, onEnter, onLeave, showTip = true }) {
   return (
     <div
       className="relative inline-flex shrink-0 group/tt"
@@ -41,10 +41,12 @@ function TipCell({ dateLine, statsLine, style, className, onEnter, onLeave }) {
       onMouseLeave={onLeave}
     >
       <div className={className} style={{ width: "100%", height: "100%" }} />
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[11px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/tt:opacity-100 dark:bg-gray-700">
-        <div className="font-medium">{dateLine}</div>
-        <div className="text-white/80">{statsLine}</div>
-      </div>
+      {showTip && (
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[11px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/tt:opacity-100 dark:bg-gray-700">
+          <div className="font-medium">{dateLine}</div>
+          <div className="text-white/80">{statsLine}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -56,6 +58,7 @@ TipCell.propTypes = {
   className: PropTypes.string,
   onEnter: PropTypes.func,
   onLeave: PropTypes.func,
+  showTip: PropTypes.bool,
 };
 
 function buildWeeks(daily, days) {
@@ -206,6 +209,7 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
                 const isWeek = view === "week";
                 const ws = isWeek ? weekStat(week) : null;
                 const colHighlight = isWeek && hoverCol === wi;
+                const firstDow = isWeek ? week.findIndex((d) => d.inRange) : -1;
                 return (
                   <TipCell
                     key={day.key}
@@ -216,6 +220,7 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
                       : `${fmtTokens(day.tokens, locale, true)} tokens · ${day.requests} ${translate("requests")}`}
                     onEnter={() => isWeek && setHoverCol(wi)}
                     onLeave={() => isWeek && setHoverCol(null)}
+                    showTip={!isWeek || dow === firstDow}
                     className={cn(
                       "rounded-sm transition-transform",
                       LEVEL_CLASSES[day.level],
