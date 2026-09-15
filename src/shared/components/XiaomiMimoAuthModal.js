@@ -22,6 +22,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
   const [detectResult, setDetectResult] = useState(null);
   const [desktopLocked, setDesktopLocked] = useState(false);
   const [error, setError] = useState(null);
+  const [errorCode, setErrorCode] = useState(null);
+  const [errorDetails, setErrorDetails] = useState("");
   const [oauthUrl, setOauthUrl] = useState(null);
   const [manualUrl, setManualUrl] = useState(null);
   const [oauthState, setOauthState] = useState(null);
@@ -31,6 +33,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
   const detect = async () => {
     setPhase("detecting");
     setError(null);
+    setErrorCode(null);
+    setErrorDetails("");
     setDetectResult(null);
     setOauthUrl(null);
     setManualUrl(null);
@@ -46,6 +50,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
     } else {
       setPhase("not-found");
       setDesktopLocked(Boolean(data.desktopLocked));
+      setErrorCode(data.code || null);
+      setErrorDetails(data.details || "");
       setError(translate(data.error || "Xiaomi MiMo Desktop credentials not found on this machine."));
     }
   };
@@ -58,6 +64,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
     (async () => {
       setPhase("detecting");
       setError(null);
+      setErrorCode(null);
+      setErrorDetails("");
       setDetectResult(null);
       setOauthUrl(null);
       setManualUrl(null);
@@ -78,6 +86,8 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
         } else {
           setPhase("not-found");
           setDesktopLocked(Boolean(data.desktopLocked));
+          setErrorCode(data.code || null);
+          setErrorDetails(data.details || "");
           setError(translate(data.error || "Xiaomi MiMo Desktop credentials not found on this machine."));
         }
       } catch {
@@ -267,15 +277,38 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
               </div>
             )}
 
+            {/* Session-only rows unlock Preview models but NOT the metered /
+                subscription-plan models — guide the user to add the same
+                account's browser authorization so one row covers both. */}
+            {detectResult.sessionOnly && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex gap-2 items-start">
+                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400">lightbulb</span>
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    <p className="font-medium">{translate("Want the metered models too?")}</p>
+                    <p className="mt-1 opacity-80">
+                      {translate("The desktop session covers the Preview models only. Authorize the same account in the browser once to add an API key for the metered and subscription-plan models.")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Button onClick={handleImport} fullWidth>
                 {detectResult.sessionOnly
                   ? translate("Connect with Desktop Session")
                   : translate("Connect with Local Credentials")}
               </Button>
-              <Button onClick={onClose} variant="ghost" fullWidth>
-                {translate("Cancel")}
-              </Button>
+              {detectResult.sessionOnly ? (
+                <Button onClick={handleStartOAuth} variant="secondary" fullWidth>
+                  {translate("Add Browser Authorization")}
+                </Button>
+              ) : (
+                <Button onClick={onClose} variant="ghost" fullWidth>
+                  {translate("Cancel")}
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -302,13 +335,23 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
                   <p className="font-medium">
                     {desktopLocked ? translate("Quit Xiaomi MiMo Desktop and retry") : translate("Local credentials not found")}
                   </p>
-                  <p className="mt-1 opacity-80">{error}</p>
-                  <p className="mt-2 opacity-80">
-                    {desktopLocked
+                  {/* Localized sentence built from the backend code — the raw
+                      English `error` string is only a last-resort fallback for
+                      codes this build does not know yet. */}
+                  <p className="mt-1 opacity-80">
+                    {errorCode === "DESKTOP_LOCKED"
                       ? translate("The desktop app keeps an exclusive lock on its credential store while it runs.")
-                      : translate("Make sure Xiaomi MiMo Desktop is installed and you are signed in, then retry.")}{" "}
-                    {translate("Or sign in via browser below.")}
+                      : errorCode === "AUTH_FILE_MISSING"
+                        ? translate("Make sure Xiaomi MiMo Desktop is installed and you are signed in, then retry.")
+                        : error}
                   </p>
+                  {errorDetails && (
+                    <details className="mt-1 opacity-70">
+                      <summary className="cursor-pointer">{translate("Checked paths")}</summary>
+                      <pre className="mt-1 whitespace-pre-wrap break-all text-[10px]">{errorDetails}</pre>
+                    </details>
+                  )}
+                  <p className="mt-2 opacity-80">{translate("Or sign in via browser below.")}</p>
                 </div>
               </div>
             </div>

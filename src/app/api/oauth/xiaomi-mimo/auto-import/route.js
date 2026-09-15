@@ -78,10 +78,15 @@ export async function GET() {
         });
       }
 
+      // Machine-readable code + the raw details the UI may append. The UI maps
+      // `code` to a localized sentence (the dashboard is trilingual; returning a
+      // full English sentence here produced mixed-language dialogs).
       return NextResponse.json({
         found: false,
         hasDesktopSession,
         desktopLocked,
+        code: desktopLocked ? "DESKTOP_LOCKED" : "AUTH_FILE_MISSING",
+        details: desktopLocked ? undefined : candidates.join("\n"),
         error: desktopLocked
           ? "Xiaomi MiMo Desktop is running and is holding its credential store, so no local credentials could be read. Quit the desktop app completely (including the tray icon) and retry."
           : `Xiaomi MiMo Desktop auth file not found. Checked:\n${candidates.join("\n")}\n\nMake sure Xiaomi MiMo Desktop is installed and you are signed in.`,
