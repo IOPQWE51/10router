@@ -310,7 +310,11 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
   }
   if (!shouldFallback) return { shouldFallback: false, cooldownMs: 0 };
 
-  const reason = typeof errorText === "string" ? errorText.slice(0, 100) : "Provider error";
+  // Keep enough of the upstream text for the UI to extract reset info
+  // (quotaResetDelay / quotaResetTimeStamp live deep in the JSON body — a
+  // 100-char cut dropped them and the friendly message rendered empty
+  // placeholders). 500 is still short enough for the dashboard row.
+  const reason = typeof errorText === "string" ? errorText.slice(0, 500) : "Provider error";
   const lockUpdate = buildModelLockUpdate(githubResetAtMs ? null : model, cooldownMs);
 
   await updateProviderConnection(connectionId, {

@@ -91,7 +91,13 @@ export function translateQuotaError(errorText) {
     const { delay, timestamp } = extractQuotaResetInfo(errorText);
     const durationStr = formatQuotaDuration(parseQuotaDurationParts(delay));
     const timeStr = timestamp ? formatResetTime(timestamp) : "";
-    return translate(RESET_TEMPLATE_KEY).replace("{time}", timeStr).replace("{duration}", durationStr);
+    let msg = translate(RESET_TEMPLATE_KEY);
+    // Legacy rows were stored truncated to 100 chars, which cut the reset
+    // fields off the JSON tail — substitute neutral values so the sentence
+    // never renders with empty placeholders ("将于  重置（约  后）").
+    msg = msg.replace("{time}", timeStr || translate("shortly"));
+    msg = msg.replace("{duration}", durationStr || translate("a short while"));
+    return msg;
   }
 
   return direct;

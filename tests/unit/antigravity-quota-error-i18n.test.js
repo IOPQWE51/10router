@@ -76,3 +76,31 @@ describe("Antigravity quota exhausted error i18n", () => {
     expect(rowSrc).toContain("translateQuotaError(connection.lastError)");
   });
 });
+
+describe("quota error - truncated legacy payload fallback", () => {
+  // NOTE: in the vitest environment translate() has no dictionary loaded, so the
+  // template comes back in English. Assert on STRUCTURE (placeholders filled /
+  // not left empty), which holds in every locale.
+  it("never renders empty placeholders when reset fields were cut off", async () => {
+    const { translateQuotaError } = await import("@/shared/utils/quotaError.js");
+    const truncated =
+      '{"error":{"code":429,"message":"Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 1h27m';
+    const msg = translateQuotaError(truncated);
+    // No "Resets at  (in  )" shell: both slots must carry a value.
+    expect(msg).not.toMatch(/Resets at\s+\(in/);
+    expect(msg).not.toMatch(/\(in\s*\)/);
+    // The neutral fallbacks fill the slots.
+    expect(msg).toMatch(/shortly/);
+    // Partial duration still parses from the truncated tail ("Resets in 1h27m").
+    expect(msg).toMatch(/1h 27m/);
+  });
+
+  it("still extracts real values when the payload is complete", async () => {
+    const { translateQuotaError } = await import("@/shared/utils/quotaError.js");
+    const full =
+      '{"error":{"code":429,"message":"Individual quota reached.","details":[{"quotaResetDelay":"1h27m36.139434956s","quotaResetTimeStamp":"2026-09-15T12:52:06Z"}]}}';
+    const msg = translateQuotaError(full);
+    expect(msg).toMatch(/1h 27m 36s/);
+    expect(msg).not.toMatch(/shortly/);
+  });
+});

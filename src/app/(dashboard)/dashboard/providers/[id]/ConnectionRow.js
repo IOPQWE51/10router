@@ -207,9 +207,10 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
                 {formatExpiry(connection.earliestPackageExpiry)}
               </Badge>
             )}
-            {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
+            {isCooldown && connection.isActive !== false && !connection.lastError && <CooldownTimer until={modelLockUntil} />}
             {connection.lastError && connection.isActive !== false && (
-              <span className="max-w-full truncate text-xs text-red-500 sm:max-w-[300px]" title={translateQuotaError(connection.lastError)}>
+              <span className="inline-flex items-center gap-1 max-w-full truncate text-xs text-red-500 sm:max-w-[380px]" title={translateQuotaError(connection.lastError)}>
+                {isCooldown && <CooldownTimer until={modelLockUntil} inline />}
                 {translateQuotaError(connection.lastError)}
               </span>
             )}

@@ -786,6 +786,28 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
       }
       case "xiaomi-mimo":
       case "xiaomi-tokenplan": {
+        // Session-only connections (Desktop QR login, no sk- key) carry a
+        // placeholder accessToken — probing /models with it always 401s. Test
+        // the thing that actually authorizes them: the account session.
+        const authMethod = connection.providerSpecificData?.authMethod;
+        const hasPlaceholderKey = typeof connection.apiKey === "string" && connection.apiKey.startsWith("mimo-desktop-session");
+        if (connection.provider === "xiaomi-mimo" && (authMethod === "desktop-session" || hasPlaceholderKey)) {
+          try {
+            const { getMimoAccountUsage } = await import("open-sse/shared/mimoAccount.js");
+            const usage = await getMimoAccountUsage(connection.providerSpecificData, effectiveProxy);
+            // Any parsed answer (percent present) proves the session works;
+            // "no-session"/"session-failed" means it is dead.
+            if (usage && typeof usage.percent === "number") {
+              return { valid: true, error: null };
+            }
+            return {
+              valid: false,
+              error: usage?.error === "no-session" ? "Desktop session expired — sign in to MiMo Desktop again" : "Session check failed",
+            };
+          } catch (e) {
+            return { valid: false, error: e?.message || "Session check failed" };
+          }
+        }
         const baseUrls = { "xiaomi-mimo": "https://api.xiaomimimo.com/v1", "xiaomi-tokenplan": "https://token-plan-sgp.xiaomimimo.com/v1" };
         const res = await fetchWithConnectionProxy(`${baseUrls[connection.provider]}/models`, {
           headers: { Authorization: `Bearer ${connection.apiKey}` },
