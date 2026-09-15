@@ -71,8 +71,16 @@ export async function GET() {
         ? (c.name || nodeNameMap[c.provider] || c.providerSpecificData?.nodeName || c.provider)
         : c.name;
       const rawToken = typeof c.accessToken === "string" ? c.accessToken : "";
+      // providerSpecificData rides along wholesale — the Xiaomi desktop
+      // session cookie (mimoPassToken) would otherwise be echoed to any
+      // dashboard consumer in plaintext. The UI only needs the boolean
+      // below; the PUT route merges into existing data, so dropping the
+      // key here cannot wipe the stored value on an edit roundtrip.
+      const psd = { ...(c.providerSpecificData || {}) };
+      delete psd.mimoPassToken;
       return {
         ...c,
+        providerSpecificData: psd,
         name,
         apiKey: undefined,
         accessToken: undefined,
