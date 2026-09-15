@@ -365,22 +365,69 @@ export async function POST(request, { params }) {
           return NextResponse.json({ error: "OAuth session not completed" }, { status: 400 });
         }
         try {
-          const connection = await createProviderConnection({
-            provider: "xiaomi-mimo",
-            authType: "api_key",
-            accessToken: session.result.accessToken,
-            refreshToken: null,
-            expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-            email: session.result.uid ? `${session.result.uid}@xiaomi` : null,
-            displayName: session.result.uid ? `Xiaomi ${session.result.uid}` : "Xiaomi MiMo",
-            providerSpecificData: {
-              uid: session.result.uid || null,
-              baseUrl: session.result.baseUrl || "https://api.xiaomimimo.com/v1",
-              authMethod: "oauth",
-              provider: "Xiaomi MiMo Desktop",
-            },
-            testStatus: "active",
-          });
+          // Browser sign-in yields the sk- key. If MiMo Desktop is also signed
+          // in on this machine, fold its account session (passToken) into the
+          // SAME connection — one row then serves both model families:
+          //   Preview models  → providerSpecificData.mimoPassToken
+          //   cloud models    → accessToken (sk-)
+          // Without this, routing would have to pick between a session-only row
+          // and a key-only row and would fail whichever half the model needs.
+          let desktopSession = null;
+          try {
+            const { readDesktopPassToken } = await import("open-sse/shared/mimoAccount.js");
+            desktopSession = await readDesktopPassToken();
+          } catch {
+            // Desktop locked / not installed — the key alone still works for
+            // cloud models; Preview will prompt for the desktop sign-in.
+          }
+
+          const uid = session.result.uid || null;
+          const sessionExtras = desktopSession?.passToken
+            ? {
+                mimoPassToken: desktopSession.passToken,
+                mimoUserId: desktopSession.userId || null,
+                mimoCUserId: desktopSession.cUserId || null,
+              }
+            : {};
+
+          // Merge into an existing row for the same account (e.g. the
+          // session-only connection created by the Desktop QR import) instead
+          // of stacking a second connection for one Xiaomi account.
+          const { getProviderConnections, updateProviderConnection } = await import("@/models");
+          const existing = (await getProviderConnections({ provider: "xiaomi-mimo" })).find(
+            (c) => (uid && c.providerSpecificData?.mimoUserId === uid) || (uid && c.email === `${uid}@xiaomi`),
+          );
+
+          const connection = existing
+            ? await updateProviderConnection(existing.id, {
+                accessToken: session.result.accessToken,
+                providerSpecificData: {
+                  ...(existing.providerSpecificData || {}),
+                  uid,
+                  baseUrl: session.result.baseUrl || "https://api.xiaomimimo.com/v1",
+                  authMethod: "oauth",
+                  provider: "Xiaomi MiMo Desktop",
+                  ...sessionExtras,
+                },
+                testStatus: "active",
+              })
+            : await createProviderConnection({
+                provider: "xiaomi-mimo",
+                authType: "api_key",
+                accessToken: session.result.accessToken,
+                refreshToken: null,
+                expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+                email: uid ? `${uid}@xiaomi` : null,
+                displayName: uid ? `Xiaomi ${uid}` : "Xiaomi MiMo",
+                providerSpecificData: {
+                  uid,
+                  baseUrl: session.result.baseUrl || "https://api.xiaomimimo.com/v1",
+                  authMethod: "oauth",
+                  provider: "Xiaomi MiMo Desktop",
+                  ...sessionExtras,
+                },
+                testStatus: "active",
+              });
           clearXiaomiMimoSession(state);
           stopXiaomiMimoProxy();
           return NextResponse.json({

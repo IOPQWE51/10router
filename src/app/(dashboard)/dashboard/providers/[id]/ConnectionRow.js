@@ -87,8 +87,18 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   const rowAuthType = connection.authType || (isOAuth ? "oauth" : "apikey");
   const isOAuthConnection = rowAuthType === "oauth";
   const isCookieConnection = rowAuthType === "cookie";
-  const authIcon = isCookieConnection ? "cookie" : isOAuthConnection ? "lock" : "key";
-  const authLabel = isOAuthConnection ? "OAuth" : isCookieConnection ? "Cookie" : "API Key";
+  // Desktop-session connections (e.g. Xiaomi MiMo QR login) are stored with
+  // authType "api_key" for downstream compatibility but are NOT API keys —
+  // label them by what the user actually did.
+  const isDesktopSession = connection.providerSpecificData?.authMethod === "desktop-session";
+  const authIcon = isDesktopSession ? "computer" : isCookieConnection ? "cookie" : isOAuthConnection ? "lock" : "key";
+  const authLabel = isDesktopSession
+    ? translate("Desktop Session")
+    : isOAuthConnection
+      ? "OAuth"
+      : isCookieConnection
+        ? "Cookie"
+        : "API Key";
   const displayName = connection.name?.trim()
     || connection.email?.trim()
     || connection.displayName?.trim()
