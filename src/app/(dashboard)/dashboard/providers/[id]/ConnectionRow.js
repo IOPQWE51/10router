@@ -93,7 +93,7 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   // it last. A Xiaomi row can end up with both halves (desktop session from the
   // QR import + sk- key from the browser authorization) — showing only
   // "Browser sign-in" hides the fact that Preview models work too.
-  //   session + key → "Session + Key"
+  //   session + key → two badges: "Desktop Session" + "Browser sign-in"
   //   session only  → "Desktop Session"
   //   key only      → "Browser sign-in" (oauth) / "API Key" (manual paste)
   const authMethod = connection.providerSpecificData?.authMethod;
@@ -105,17 +105,19 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   const isDesktopSession = authMethod === "desktop-session" || (hasSession && !hasRealKey);
   const isSessionPlusKey = hasSession && hasRealKey;
   const isBrowserOAuth = !isSessionPlusKey && !isDesktopSession && authMethod === "oauth";
-  const authIcon = isSessionPlusKey
-    ? "key"
-    : isDesktopSession
-      ? "computer"
-      : isBrowserOAuth
-        ? "login"
-        : isCookieConnection
-          ? "cookie"
-          : isOAuthConnection
-            ? "lock"
-            : "key";
+  // Icon precedence mirrors the credential hierarchy the user sees:
+  //   has a desktop session (with or without a key) → computer (desktop first)
+  //   browser sign-in only                          → login
+  //   manually pasted key                           → key
+  const authIcon = hasSession
+    ? "computer"
+    : isBrowserOAuth
+      ? "login"
+      : isCookieConnection
+        ? "cookie"
+        : isOAuthConnection
+          ? "lock"
+          : "key";
   // A row holding BOTH credentials gets TWO badges (desktop session + browser
   // key) instead of one merged label — each credential is an independent
   // capability (Preview vs metered models) and users think of them separately.
@@ -245,10 +247,16 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
               {connection.isActive === false ? translate("disabled") : (effectiveStatus || translate("Unknown"))}
             </Badge>
             <Badge variant="default" size="sm">
+              <span className="material-symbols-outlined mr-0.5 text-[12px] leading-none align-middle">
+                {authIcon}
+              </span>
               {authLabel}
             </Badge>
             {secondaryAuthLabel && (
               <Badge variant="default" size="sm">
+                <span className="material-symbols-outlined mr-0.5 text-[12px] leading-none align-middle">
+                  login
+                </span>
                 {secondaryAuthLabel}
               </Badge>
             )}
