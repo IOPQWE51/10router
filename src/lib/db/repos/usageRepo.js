@@ -774,7 +774,7 @@ function localDayKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export async function getUsageDashboard({ minRequests = 100 } = {}) {
+export async function getUsageDashboard({ minRequests = 50 } = {}) {
   const db = await getAdapter();
 
   // Everything on this dashboard is range-independent by design: the heatmap
@@ -955,28 +955,33 @@ export async function getUsageDashboard({ minRequests = 100 } = {}) {
       const total = d?.latency?.total;
       if (typeof total !== "number" || total <= 0) continue;
       const ttft = typeof d?.latency?.ttft === "number" && d.latency.ttft > 0 ? d.latency.ttft : null;
-      const outTokens = d?.tokens?.completion_tokens || 0;
-      let speed = null;
+      const outTokens = d?.tokens?.completion_tokens || d?.tokens?.output_tokens || 0;
+      let durationMs = null;
       if (outTokens > 0) {
-        let durationMs = null;
         if (ttft != null && total > ttft && (total - ttft) >= 50) {
           durationMs = total - ttft;
         } else if (total >= 50) {
           durationMs = total;
         }
-        if (durationMs != null && durationMs > 0) {
-          speed = outTokens / (durationMs / 1000);
+        // If instantaneous speed > 250 tok/s and total >= 50, this indicates
+        // a buffered burst / chunk flush where ttft was held until nearly full
+        // output was ready. Fall back to end-to-end total latency.
+        if (durationMs != null && durationMs > 0 && (outTokens / (durationMs / 1000)) > 250 && total >= 50) {
+          durationMs = total;
         }
       }
       const nodeKey = r.provider || "";
       const modelKey = `${r.provider || ""}|${r.model || ""}`;
       for (const [scope, key] of [["node", nodeKey], ["model", modelKey]]) {
-        if (!perfAgg[scope][key]) perfAgg[scope][key] = { sum: 0, count: 0, ttftSum: 0, ttftCount: 0, speedSum: 0, speedCount: 0 };
+        if (!perfAgg[scope][key]) perfAgg[scope][key] = { sum: 0, count: 0, ttftSum: 0, ttftCount: 0, tokensSum: 0, durMsSum: 0 };
         const agg = perfAgg[scope][key];
         agg.sum += total;
         agg.count += 1;
         if (ttft != null) { agg.ttftSum += ttft; agg.ttftCount += 1; }
-        if (speed != null) { agg.speedSum += speed; agg.speedCount += 1; }
+        if (durationMs != null && durationMs > 0 && outTokens > 0) {
+          agg.tokensSum += outTokens;
+          agg.durMsSum += durationMs;
+        }
       }
     }
   } catch {}
@@ -987,7 +992,7 @@ export async function getUsageDashboard({ minRequests = 100 } = {}) {
     return {
       avgLatencyMs: Math.round(agg.sum / agg.count),
       avgTtftMs: agg.ttftCount > 0 ? Math.round(agg.ttftSum / agg.ttftCount) : null,
-      avgSpeed: agg.speedCount > 0 ? round1(agg.speedSum / agg.speedCount) : null,
+      avgSpeed: (agg.durMsSum > 0 && agg.tokensSum > 0) ? round1(agg.tokensSum / (agg.durMsSum / 1000)) : null,
     };
   };
 

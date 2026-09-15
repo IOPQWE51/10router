@@ -16,6 +16,11 @@
 
 ### 🛠️ 优化与修复
 
+- **用量仪表盘生成速度算法优化与门槛调整**：
+  - **加权吞吐与上游缓冲突发抑制**：重构 `UsageDashboard` 节点与模型平均生成速度（`avgSpeed` / tok/s）计算逻辑。针对 Antigravity / Gemini 等因上游代理缓冲整包下发导致 `ttft` 滞后、瞬时突发传输（如 100ms 接收 1700 tokens 导致算术平均被拉高至 1,189 tok/s）的失真问题，引入物理合理性探测——当瞬时生成速度 > 250 tok/s 时，自动判定为上游缓冲突发并回退至端到端总延迟（`total`）进行计算；同时将单纯的离散速率算术平均升级为真实的加权输出吞吐（`totalTokens / totalGenerationDuration`），兼容 `completion_tokens` 与 `output_tokens` 两种键名；
+  - **健康度统计门槛降低至 50 次请求**：将节点健康度评分与展示的最小请求门槛由默认 100 次调整为 `minRequests = 50`，覆盖更多有一定请求规模的可用节点；
+  - **提示文案与多语言规划**：节点健康度卡片提示文案更新为「最近 7 天（>50 次请求）」（`"Last 7 days (>50 requests)"`），空状态提示更新为「本时间段内没有请求数达到 50 的节点」（`"No nodes with 50+ requests in this period"`），并在 `zh-CN.json` 和 `zh-TW.json` 中补齐规范词条；补齐相关单元测试。
+
 - **小米 MiMo 思考级别软映射与动态 Token 预算控制**：
   - **能力与窗口修正**：在 `capabilities.js` 中为 `*mimo*preview*` 声明 `reasoning: true`、`thinkingFormat: "openai"`，并将上下文窗口修正为 1M (`contextWindow: 1048576`)；
   - **思考档位接入**：在 `thinkingLevels.js` 为 `*mimo*preview*` 配置 `["none", "low", "medium", "high", "xhigh"]` 5 档支持，使仪表盘供应商详情页可正常唤出 Thinking 思考档位选择器；

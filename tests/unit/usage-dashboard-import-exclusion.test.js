@@ -191,7 +191,44 @@ describe("getUsageDashboard imported-row handling", () => {
     const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
     const node = dash.nodes.find((n) => n.provider === "speed-provider");
     expect(node).toBeTruthy();
-    // (50 tok/s + 30 tok/s) / 2 = 40 tok/s
+    // (50 tokens / 1s + 30 tokens / 1s) -> total 80 tokens / 2s = 40 tok/s
     expect(node.avgSpeed).toBe(40);
+  });
+
+  it("dampens burst-buffered requests (speed > 250 tok/s) by falling back to total latency and supports output_tokens", async () => {
+    const { getAdapter } = await import("@/lib/db/driver.js");
+    const db = await getAdapter();
+    const insertDetail = (id, latency, tokens) => {
+      const record = { id, timestamp: todayIso(), provider: "burst-provider", model: "burst-model", latency, tokens };
+      db.run(
+        `INSERT INTO requestDetails(id, timestamp, provider, model, connectionId, status, data) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+        [id, record.timestamp, record.provider, record.model, null, "success", JSON.stringify(record)]
+      );
+    };
+
+    // Burst stream: upstream buffered output so ttft=4900, total=5000 (total-ttft = 100ms), 500 output_tokens.
+    // Instantaneous speed = 500 / 0.1 = 5000 tok/s (> 250).
+    // Damped fallback uses total duration = 5000ms -> 500 / 5s = 100 tok/s.
+    insertDetail("detail-burst", { ttft: 4900, total: 5000 }, { input_tokens: 10, output_tokens: 500 });
+
+    await usageRepo.saveRequestUsage({
+      timestamp: todayIso(),
+      provider: "burst-provider",
+      model: "burst-model",
+      status: "ok",
+      tokens: { prompt_tokens: 10, completion_tokens: 500 },
+    });
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const node = dash.nodes.find((n) => n.provider === "burst-provider");
+    expect(node).toBeTruthy();
+    expect(node.avgSpeed).toBe(100);
+  });
+
+  it("defaults minRequests to 50 in getUsageDashboard", async () => {
+    const dash = await usageRepo.getUsageDashboard();
+    // Default call without arguments succeeds with minRequests = 50
+    expect(dash).toHaveProperty("nodes");
+    expect(dash).toHaveProperty("models");
   });
 });

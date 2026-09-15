@@ -24,6 +24,8 @@ describe("Usage Quota & Provider Limits i18n", () => {
     expect(zhCN["Command Code API key not configured."]).toBe("Command Code API 密钥未配置。");
     expect(zhCN["Command Code API key invalid or expired."]).toBe("Command Code API 密钥无效或已过期。");
     expect(zhCN["Qoder usage unavailable: no access token"]).toBe("Qoder 用量不可用：无访问令牌");
+    expect(zhCN["Last 7 days (>50 requests)"]).toBe("最近 7 天（>50 次请求）");
+    expect(zhCN["No nodes with 50+ requests in this period"]).toBe("本时间段内没有请求数达到 50 的节点");
   });
 
   it("zh-TW dictionary contains required quota names and notice translations", () => {
@@ -42,6 +44,8 @@ describe("Usage Quota & Provider Limits i18n", () => {
     expect(zhTW["Command Code API key not configured."]).toBe("Command Code API 金鑰未設定。");
     expect(zhTW["Command Code API key invalid or expired."]).toBe("Command Code API 金鑰無效或已過期。");
     expect(zhTW["Qoder usage unavailable: no access token"]).toBe("Qoder 用量無法使用：無存取權杖");
+    expect(zhTW["Last 7 days (>50 requests)"]).toBe("最近 7 天（>50 次請求）");
+    expect(zhTW["No nodes with 50+ requests in this period"]).toBe("本時間段內沒有請求數達到 50 的節點");
   });
 
   it("ProviderLimitCard pipes quota.name through translateQuotaName and error/message through translate", () => {

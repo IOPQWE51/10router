@@ -310,12 +310,12 @@ export default function UsageDashboard() {
         )}
       </Card>
       <Card title={translate("Node Health")} icon="dns" padding="md">
-        <p className="mb-2 text-xs text-text-muted">{translate("Last 7 days")}</p>
+        <p className="mb-2 text-xs text-text-muted">{translate("Last 7 days (>50 requests)")}</p>
         <ScoreTable
           rows={nodes}
           columns={NODE_COLUMNS}
           nameKey="name"
-          emptyText={translate("No nodes with 100+ requests in this period")}
+          emptyText={translate("No nodes with 50+ requests in this period")}
         />
       </Card>
     </>
