@@ -113,15 +113,26 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
         : isCookieConnection
           ? "Cookie"
           : "API Key";
+  // Multi-account readability: MiMo rows otherwise read as a bare
+  // "6786673@xiaomi" address. Prefer an explicit name, then the Xiaomi account
+  // id in a friendlier shape, then whatever identity the row carries.
+  const xiaomiUid =
+    connection.providerSpecificData?.mimoUserId || connection.providerSpecificData?.uid || null;
+  const isXiaomi = connection.provider === "xiaomi-mimo" || connection.provider === "xiaomi-tokenplan";
+  const xiaomiDisplayName = isXiaomi && xiaomiUid ? `MiMo ${xiaomiUid}` : null;
+
   const displayName = connection.name?.trim()
+    || xiaomiDisplayName
     || connection.email?.trim()
     || connection.displayName?.trim()
     || (isOAuthConnection ? "OAuth Account" : isCookieConnection ? "Cookie Account" : "API Key");
   const secondaryDisplayName = connection.name?.trim() && connection.email?.trim() && connection.name.trim() !== connection.email.trim()
     ? connection.email.trim()
-    : connection.name?.trim() && connection.displayName?.trim() && connection.name.trim() !== connection.displayName.trim()
-      ? connection.displayName.trim()
-      : null;
+    : xiaomiDisplayName && connection.email?.trim() && connection.email.trim() !== xiaomiDisplayName
+      ? connection.email.trim()
+      : connection.name?.trim() && connection.displayName?.trim() && connection.name.trim() !== connection.displayName.trim()
+        ? connection.displayName.trim()
+        : null;
 
   // Use useState + useEffect for impure Date.now() to avoid calling during render
   const [isCooldown, setIsCooldown] = useState(false);

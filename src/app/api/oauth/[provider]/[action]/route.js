@@ -390,12 +390,22 @@ export async function POST(request, { params }) {
               }
             : {};
 
-          // Merge into an existing row for the same account (e.g. the
+          // Merge into an existing row for the same Xiaomi account (e.g. the
           // session-only connection created by the Desktop QR import) instead
-          // of stacking a second connection for one Xiaomi account.
+          // of stacking a second connection. Identity matching is shared with
+          // the api-key route so both paths agree — and the mimoUserId fallback
+          // covers payloads where the platform omits uid.
           const { getProviderConnections, updateProviderConnection } = await import("@/models");
-          const existing = (await getProviderConnections({ provider: "xiaomi-mimo" })).find(
-            (c) => (uid && c.providerSpecificData?.mimoUserId === uid) || (uid && c.email === `${uid}@xiaomi`),
+          const { findXiaomiConnection } = await import("@/lib/oauth/xiaomiIdentity.js");
+          const existing = findXiaomiConnection(
+            await getProviderConnections({ provider: "xiaomi-mimo" }),
+            {
+              uid,
+              key: session.result.accessToken,
+              // The desktop session read above may know the account even when
+              // the browser payload does not carry a uid.
+              mimoUserId: desktopSession?.userId || null,
+            },
           );
 
           const connection = existing

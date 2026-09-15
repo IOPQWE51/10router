@@ -91,13 +91,16 @@ export async function POST(request) {
 
     // Dedup: if a connection with the same uid or the same key already exists, update it
     const { getProviderConnections, updateProviderConnection } = await import("@/models");
-    const existing = (await getProviderConnections()).find(
-      (c) =>
-        c.provider === "xiaomi-mimo" &&
-        ((uid && c.email === `${uid}@xiaomi`) ||
-          (key && c.accessToken === key) ||
-          (isSessionOnly && session.userId && c.providerSpecificData?.mimoUserId === session.userId)),
-    );
+    // Dedup through the SHARED identity matcher (same rules as the browser
+    // exchange path) — uid → mimoUserId → email → accessToken. Previously each
+    // route had its own list and they disagreed, so the same account could end
+    // up with two rows depending on which flow ran last.
+    const { findXiaomiConnection } = await import("@/lib/oauth/xiaomiIdentity.js");
+    const existing = findXiaomiConnection(await getProviderConnections(), {
+      uid,
+      key: key || null,
+      mimoUserId: session.userId || null,
+    });
 
     const sessionData = {
       mimoPassToken: session.passToken,
