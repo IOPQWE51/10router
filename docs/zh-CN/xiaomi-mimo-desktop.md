@@ -209,7 +209,56 @@ base64url 解码后：
 （`redirect_uri=https://platform.xiaomimimo.com/authorize/code/callback`），
 其它参数与自动版完全相同。模态框在有输入框时给出「打开授权码页面」链接。
 
-## 3. 取号与端点选择（执行器）
+## 3. 双凭据模型与身份匹配（2026-09-15 定型）
+
+MiMo 有**两条互相独立的凭据链**，各自的模型家族不同。理解这张表是理解后面所有
+「为什么没合并 / 为什么 401 / 为什么测试失败」的前提：
+
+| 凭据 | 来源 | 能调什么 | 存哪 |
+|---|---|---|---|
+| **`sk-` API Key** | 浏览器授权（ECDH 解出）/ 手动粘贴 | **计费模型 + 订阅计划**（`mimo-v2.5-pro` 等，走 `api.xiaomimimo.com`） | `connection.accessToken` |
+| **桌面账号会话**（`passToken`） | MiMo 桌面版登录（扫码）/ 桌面版 Cookie 库 | **专属 Preview 模型**（`mimo-x-pro/flash-preview`，走 `mimo-server-cn`） | `providerSpecificData.mimoPassToken` |
+
+**一条连接可以同时持有两者**——这是刻意的设计：路由按**模型名**分派
+（Preview → 会话；其余 → key），若两条凭据分散在不同连接上，账号选择器选错那半就必然失败。
+
+### 3.1 三条写入路径与合并规则
+
+| 路径 | 写入内容 | `authMethod` |
+|---|---|---|
+| 桌面扫码导入（`auto-import` → `api-key` 路由，`sessionOnly`） | 仅会话 | `desktop-session` |
+| 浏览器授权（`exchange`） | `sk-`，**并顺带读取本机桌面会话一起写入** | `oauth` |
+| 手动粘贴 key | `sk-` | `api_key` |
+
+三条路径都经过 **共享身份匹配器** `src/lib/oauth/xiaomiIdentity.js`：
+
+```
+uid → mimoUserId → email(`${uid}@xiaomi`) → accessToken
+```
+
+- **命中即合并**（更新那条连接，不新建）；
+- **不命中则新建**（不同 uid = 不同小米账号，各自独立）；
+- `mimoUserId` 这一档专门兜住**浏览器 payload 不带 uid** 的情况——此时用桌面会话读到的
+  账号 id 匹配，否则同一账号会建出第二条（见坑 6.10）。
+
+> 历史教训：`exchange` 与 `api-key` 两条路由**各自维护过一份匹配规则**，且 api-key 侧只在
+> `sessionOnly` 时才查 `mimoUserId` —— 规则漂移的直接后果就是「同账号两条连接」。现在
+> 统一走 matcher，并有用例锁住「不同账号不匹配」「跨 provider 不匹配」。
+
+### 3.2 连接测试怎么测
+
+`testSingleConnection` 按**连接实际持有的凭据**选择探测方式：
+
+| 连接持有 | 测试方式 |
+|---|---|
+| 真 `sk-` | `GET /models`（原逻辑） |
+| 仅桌面会话（占位 token / `authMethod: desktop-session`） | 向 `mimo-server-cn` 发一次**最小 Preview 请求**（`mimo-x-flash-preview`）——只有真实调用才能证明会话可用 |
+| 两者都有 | 优先 `sk-`（更便宜，失败原因也更明确） |
+
+**坑**：`authType` 在仓库里存在 `api_key` / `apikey` **两种拼写**，测试分派此前只认后者，
+导致会话连接走错分支报 `Provider test not supported`（见坑 6.11）。
+
+## 4. 取号与端点选择（执行器）
 
 `open-sse/executors/xiaomi-mimo.js`：
 
@@ -222,26 +271,26 @@ COOKIE_KEY     = "__mimoAccountCookie"
   `Cookie: <账号会话>`；其余 → 云端 API + `sk-`。
 - **401 → 失效缓存并重试一次**（账号 Cookie 30 分钟缓存，`COOKIE_TTL_MS`）。
 
-## 4. 自动化与"不打扰"
+## 5. 自动化与"不打扰"
 
 - `auto-import` 会在桌面版**登录过**的情况下直接复用其登录态；桌面版正开着时
   Cookie 库被锁 → `desktopLocked: true`，UI 提示退出桌面版，**但绝不因为锁而让导入失败**。
 - 导入/配额路径一律 **fail-open**：任何异常都退化成"没有额外信息"，不阻塞用户。
 
-## 5. 踩过的坑（按严重程度，含真因复盘）
+## 6. 踩过的坑（按严重程度，含真因复盘）
 
-### 5.1 授权 URL 漏了 `app=MiMo`（症状：码永远不匹配）
+### 6.1 授权 URL 漏了 `app=MiMo`（症状：码永远不匹配）
 平台据此决定为哪个客户端签发。缺了它就加密给别的客户端密钥。
 → 现在 `buildAuthorizeUrl()` 与官方构造器逐参数一致。
 
-### 5.2 `pk` 用了标准 base64，而不是 base64url
+### 6.2 `pk` 用了标准 base64，而不是 base64url
 官方是 `Buffer.from(publicKey).toString("base64url")`。X25519 SPKI 转标准 base64
 **末尾必带 `=`**，还可能含 `+` `/` —— 这些字符不在 base64url 字母表里，
 严格解码器会**静默跳过**，把 DER 拼成另一个（或无法导入的）公钥，
 等于让平台加密给一把我们不持有的密钥。→ `pk` 用 base64url；
 解密入口对标准 base64 再做一次归一化容错。
 
-### 5.3 真因：载荷布局**前后颠倒**（症状：232 字符、格式正常、怎么都不匹配）
+### 6.3 真因：载荷布局**前后颠倒**（症状：232 字符、格式正常、怎么都不匹配）
 我们曾经按 `nonce(12) + 临时公钥(32) + ...` 读，官方是
 `临时公钥(32) + nonce(12) + ...`。于是把临时公钥的前 12 字节当 nonce、把真 nonce 当公钥，
 **ECDH 派生出的密钥全错，GCM tag 必然失败**。
@@ -251,25 +300,25 @@ COOKIE_KEY     = "__mimoAccountCookie"
 > 现在助手与官方逐字节一致，并有一条"官方字节布局"断言（含字段偏移），
 > 把顺序改回去会立刻变红。
 
-### 5.4 Origin 守卫方向反了
+### 6.4 Origin 守卫方向反了
 早先要求回调的 `Origin` 必须是 loopback —— 而平台登录页是从**它自己的 https 源**调用的，
 于是**唯一的合法调用方被 403**，自动回调这条路一直是断的。
 → 改为"随机回调路径 + 只对平台源回 CORS"，与官方一致。
 
-### 5.5 监听器超时把待用私钥清空了
+### 6.5 监听器超时把待用私钥清空了
 `stopXiaomiMimoProxy()` 曾经 `xiaomiMimoSessions.clear()`，于是用户一看回调不成就改去粘贴时，
 私钥已经被 5 分钟超时清掉 —— 报"不匹配"。而当时那条测试用例还把 bug 当成契约固定了下来。
 → 现在只停止监听，TTL 由 `pendingTtlMs` 管；测试改成"停止后仍可用"。
 
-### 5.6 回执方式不对
+### 6.6 回执方式不对
 返回自定义 HTML → 平台页面无从知道结果（弹窗一直挂着）。
 → 302 到 `${platform}/authorize/callback?status=...`。
 
-### 5.7 死配置
+### 6.7 死配置
 `XIAOMI_MIMO_CONFIG.callbackPath` 曾写着 `"/"`，与"随机路径"的现实矛盾且已无引用。
 → 已删除，避免下一个读代码的人被带偏。
 
-### 5.8 扫码登录的用户「检测不到」——强依赖 auth.json 的假阴性（2026-09-15 修复，`d1bde6eb`）
+### 6.8 扫码登录的用户「检测不到」——强依赖 auth.json 的假阴性（2026-09-15 修复，`d1bde6eb`）
 
 **症状**：用户在 MiMo 桌面版里**扫码登录**（官方登录页），dashboard 点「连接」却提示
 「Xiaomi MiMo Desktop auth file not found … Make sure you are signed in」，或（桌面版开着时）
@@ -301,10 +350,37 @@ COOKIE_KEY     = "__mimoAccountCookie"
 云端只认后者。任何「必须有 X 才算登录」的判定都会在另一种登录姿势下假阴性。导入完成后连接里已存
 `mimoPassToken`（`getServiceCookie` 优先用它），之后**桌面版开着也能正常调用**，无需退出。
 
-## 6. 测试与验证
+### 6.9 弹窗把 sessionOnly 响应误判为「未找到」（2026-09-15，`afc3784c`）
+
+后端已经正确返回 `{found:true, sessionOnly:true}`，前端却仍弹「未找到本地凭据」。
+根因是**判定条件写了 `data.found && data.apiKey`** —— sessionOnly 响应没有 `apiKey`，
+于是走了 not-found 分支，还显示后端那段英文原文（中英混排）。修法：判定只看 `data.found`，
+并由后端改为返回**错误码**（`code`）+ 明细（`details`），前端按码映射三语文案。
+
+> 教训：改「后端返回结构」时必须同步搜一遍**所有消费该响应的判定条件**——
+> 同一份逻辑当时在弹窗里有两处（`detect()` 与 `useEffect`），只改一处仍会复现。
+
+### 6.10 同一账号被拆成两条连接（2026-09-15，`06631197`）
+
+浏览器授权成功后没有合并进已有的会话连接。两层原因：
+① `exchange` 与 `api-key` 的匹配规则不一致（见 §3.1）；
+② `exchange` 只拿浏览器 payload 的 `uid` 去匹配，**payload 不带 uid 时两个条件都落空** → 新建。
+
+修法：抽出共享 matcher，并让 `exchange` 把**桌面会话读到的 `mimoUserId`** 一并作为匹配键。
+用例覆盖「uid 缺失但有 mimoUserId」「不同账号不匹配」「跨 provider 不匹配」。
+
+### 6.11 会话连接的测试报 `Provider test not supported`（2026-09-15，`5fdb3d5a`）
+
+`testSingleConnection` 用 `authType === "apikey"` 分派，而会话连接存的是 **`api_key`**（下划线），
+两边都不匹配 → 落到 OAuth 分支 → `OAUTH_TEST_CONFIG` 里没有 xiaomi-mimo → 报「不支持」。
+
+修法：① 分派兼容两种拼写；② 会话连接改用 **Preview 模型真实探测**（占位 token 打 `/models`
+必然 401，那不是「密钥无效」而是「这条连接本来就没有 key」）。
+
+## 7. 测试与验证
 
 - 单测：`tests/unit/xiaomi-mimo-{oauth,routes,submit-code,account,executor,paths,icon,tts}.test.js`
-  （8 文件）。路径类用例用伪造 home，并**只 mock `node:os.homedir`**（不要 mock `tmpdir`），
+  （8 文件）+ `xiaomi-identity.test.js`（身份匹配规则，7 例）。路径类用例用伪造 home，并**只 mock `node:os.homedir`**（不要 mock `tmpdir`），
   且用 `assertSandboxed()` 保证**绝不写到沙箱外**（曾经因此覆盖过开发机上的真实 Cookie 库）。
 - `process.platform` 是数据属性，要改就用
   `Object.defineProperty(process, "platform", { value, configurable: true })` 并在 `afterEach` 还原。
@@ -314,7 +390,7 @@ COOKIE_KEY     = "__mimoAccountCookie"
   `code rejected (decrypt_failed): N chars, M pending session(s)` —— **只打长度和计数，绝不打载荷**。
 - 构建/替换/验证的通用流程见 `docs/zh-CN/local-build-and-verify.md`。
 
-## 7. 相关文件
+## 8. 相关文件
 
 | 关注点 | 文件 |
 |---|---|
@@ -322,8 +398,12 @@ COOKIE_KEY     = "__mimoAccountCookie"
 | 取号与端点选择 | `open-sse/executors/xiaomi-mimo.js` |
 | 桌面版凭据路径 / Cookie / 用量 | `open-sse/shared/mimoAccount.js` |
 | 握手与解密 | `src/lib/oauth/providers/xiaomi-mimo.js` |
+| **账号身份匹配（共享 matcher）** | `src/lib/oauth/xiaomiIdentity.js` |
 | 本地监听器 / 会话 / 粘贴解密 | `src/lib/oauth/utils/server.js` |
 | 常量 | `src/lib/oauth/constants/oauth.js` |
 | 端点 | `src/app/api/oauth/xiaomi-mimo/*`、`src/app/api/oauth/[provider]/[action]/route.js` |
+| 连接测试 | `src/app/api/providers/[id]/test/testUtils.js`（`case "xiaomi-mimo"`） |
 | 模态框 | `src/shared/components/XiaomiMimoAuthModal.js` |
+| 连接行标签/显示名 | `src/app/(dashboard)/dashboard/providers/[id]/ConnectionRow.js` |
+| 编辑弹窗的 OAuth 判定 | `src/shared/components/EditConnectionModal.js` |
 | 图标 | `public/providers/xiaomi-mimo.png`（128×128 PNG，按 provider id 解析） |
