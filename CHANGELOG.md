@@ -16,6 +16,11 @@
 
 ### 🛠️ 优化与修复
 
+- **小米 MiMo 思考级别软映射与动态 Token 预算控制**：
+  - **能力与窗口修正**：在 `capabilities.js` 中为 `*mimo*preview*` 声明 `reasoning: true`、`thinkingFormat: "openai"`，并将上下文窗口修正为 1M (`contextWindow: 1048576`)；
+  - **思考档位接入**：在 `thinkingLevels.js` 为 `*mimo*preview*` 配置 `["none", "low", "medium", "high", "xhigh"]` 5 档支持，使仪表盘供应商详情页可正常唤出 Thinking 思考档位选择器；
+  - **动态 Token 预算与深度思考引导**：在执行器 `XiaomiMimoExecutor` 中实现对客户端 `reasoning_effort` 及 Claude Code `/effort` 档位的动态捕获，按档位阶梯分配 `max_tokens`（`none`: 4K, `low`: 8K, `medium`: 16K, `high`: 32K, `xhigh`: 64K），解决长思维链耗尽默认 4096 预算导致正文截断空白的痛点；对 `high` 与 `xhigh` 幂等注入兼顾工具调用规范的 UltraThinking 提示词；新增单元测试覆盖。
+
 - **用量与配额国际化全量清扫（福利抢先修复）**：
   - **配额项名称国际化**：修复用量面板配额名称硬编码英文问题，Command Code 滚动限额（`session (5h)` / `Session (5h)` → 滚动 / 滾動）、每周限额（`weekly (7d)` / `Weekly (7d)` → 每周 / 每週）、Qoder 账号级别（`Personal` / `Organization` → 个人 / 组织）、DeepSeek 及其他渠道通用余额（`Balance`、`Balance (CNY)`、`Balance (USD)`、`Balance ($)` 及任意货币模式 `Balance (XXX)` 动态正则回落）全部接入国际化字典与展示层转换；
   - **卡片视图与进度条管道接入**：修复 `ProviderLimitCard` 视图中直接渲染原始英文 `quota.name`、`message`、`error` 导致界面未翻译的遗漏，全量接入 `translateQuotaName()` 与 `translate()` 管道；进度条 `QuotaProgressBar` 补齐重置词（`Reset` / `Expires` → 重置 / 过期）与请求次数（`requests` → 次请求）的多语言翻译；

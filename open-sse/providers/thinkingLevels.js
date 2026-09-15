@@ -40,6 +40,7 @@ const PATTERN_THINKING = [
   { provider: "codex", pattern: "*gpt-5.6-terra*", levels: [...CODEX_GPT_5_6_LEVELS, "ultra"] },
   { provider: "codex", pattern: "*gpt-5.6-luna*", levels: CODEX_GPT_5_6_LEVELS },
   { pattern: "*codex*", levels: ["low", "medium", "high", "xhigh"] }, // codex cannot disable thinking
+  { pattern: "*mimo*preview*", levels: ["none", "low", "medium", "high", "xhigh"] },
   // AMD Token Factory per-model effort sets (AMD probed every value on the live
   // endpoint; its 2026-09-09 doc revision supersedes the earlier low/medium-only
   // reading). Both DeepSeek ids take all seven efforts and think only when asked;
