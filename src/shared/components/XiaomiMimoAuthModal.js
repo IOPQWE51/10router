@@ -224,6 +224,75 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
     }
   };
 
+  // Browser-authorization block: the code-entry UI used after "Sign in via
+  // Browser" starts a flow. Rendered in BOTH the not-found path and from the
+  // session-only card's "Add Browser Authorization" button (which previously
+  // opened the browser but had nowhere to paste the code).
+  const renderBrowserAuth = () => (
+    <div className="flex flex-col gap-2">
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          {translate("Browser opened. Complete the Xiaomi sign-in there.")}
+        </p>
+        <p className="text-sm text-blue-800 dark:text-blue-200 mt-1 opacity-80">
+          {translate("The page may show an authorization code — paste it below. If it came back automatically instead, click")}{" "}
+          <strong>{translate("Check Again")}</strong>.
+        </p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
+      {/* Recovery: a code that will not decrypt means the sign-in attempt is
+          stale, so re-issuing one must be one click away, not a dead end. */}
+      {error && (
+        <Button onClick={handleStartOAuth} variant="outline" fullWidth>
+          {translate("Sign in via Browser")}
+        </Button>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium mb-2">{translate("Authorization Code")}</label>
+        <textarea
+          value={authCode}
+          onChange={(e) => setAuthCode(e.target.value)}
+          placeholder={translate("Paste the authorization code shown in the browser")}
+          rows={3}
+          className="w-full px-3 py-2 text-sm font-mono border border-border rounded-lg bg-background focus:outline-none focus:border-primary resize-none"
+        />
+        <p className="text-xs text-text-muted mt-1">
+          {translate("The code is a long string (100+ characters) — copy it whole, using the Copy button on the sign-in page.")}
+        </p>
+        {manualUrl && (
+          <a
+            href={manualUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block text-xs text-primary hover:underline mt-2"
+          >
+            {translate("Open the code page")}
+          </a>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <Button
+          onClick={handleSubmitCode}
+          disabled={submittingCode || !authCode.trim()}
+          fullWidth
+        >
+          {submittingCode ? translate("Checking...") : translate("Submit Code")}
+        </Button>
+        <Button onClick={handlePollOAuth} variant="outline" fullWidth>
+          {translate("Check Again")}
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Modal isOpen={isOpen} title={translate("Connect Xiaomi MiMo")} onClose={onClose}>
       <div className="flex flex-col gap-4">
@@ -300,7 +369,7 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
                   ? translate("Connect with Desktop Session")
                   : translate("Connect with Local Credentials")}
               </Button>
-              {detectResult.sessionOnly ? (
+              {detectResult.sessionOnly && !oauthUrl ? (
                 <Button onClick={handleStartOAuth} variant="secondary" fullWidth>
                   {translate("Add Browser Authorization")}
                 </Button>
@@ -310,6 +379,10 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
                 </Button>
               )}
             </div>
+
+            {/* Browser flow started from the session-only card: the code entry
+                must be reachable here too, not only in the not-found path. */}
+            {detectResult.sessionOnly && oauthUrl && renderBrowserAuth()}
           </>
         )}
 
@@ -370,75 +443,12 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    {translate("Browser opened. Complete the Xiaomi sign-in there.")}
-                  </p>
-                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-1 opacity-80">
-                    {translate("The page may show an authorization code — paste it below. If it came back automatically instead, click")}{" "}
-                    <strong>{translate("Check Again")}</strong>.
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-                  </div>
-                )}
-
-                {/* Recovery: a code that will not decrypt means the sign-in attempt is
-                    stale, so re-issuing one must be one click away, not a dead end. */}
-                {error && (
-                  <Button onClick={handleStartOAuth} variant="outline" fullWidth>
-                    {translate("Sign in via Browser")}
-                  </Button>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">{translate("Authorization Code")}</label>
-                  <textarea
-                    value={authCode}
-                    onChange={(e) => setAuthCode(e.target.value)}
-                    placeholder={translate("Paste the authorization code shown in the browser")}
-                    rows={3}
-                    className="w-full px-3 py-2 text-sm font-mono border border-border rounded-lg bg-background focus:outline-none focus:border-primary resize-none"
-                  />
-                  <p className="text-xs text-text-muted mt-1">
-                    {translate("The code is a long string (100+ characters) — copy it whole, using the Copy button on the sign-in page.")}
-                  </p>
-                  {manualUrl && (
-                    // The platform's own code-display page: the same request as the popup,
-                    // except it renders the code for copying instead of handing it to a
-                    // listener. The fallback when the popup or the localhost hand-off
-                    // does not show a code at all.
-                    <a
-                      href={manualUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-block text-xs text-primary hover:underline mt-2"
-                    >
-                      {translate("Open the code page")}
-                    </a>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSubmitCode}
-                    disabled={submittingCode || !authCode.trim()}
-                    fullWidth
-                  >
-                    {submittingCode ? translate("Checking...") : translate("Submit Code")}
-                  </Button>
-                  <Button onClick={handlePollOAuth} variant="outline" fullWidth>
-                    {translate("Check Again")}
-                  </Button>
-                </div>
+              <>
+                {renderBrowserAuth()}
                 <Button onClick={onClose} variant="ghost" fullWidth>
                   {translate("Cancel")}
                 </Button>
-              </div>
+              </>
             )}
           </>
         )}
