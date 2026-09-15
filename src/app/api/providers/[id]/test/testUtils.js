@@ -1044,7 +1044,12 @@ export async function testSingleConnection(id) {
   // NOTE: both spellings exist in the wild — legacy rows and some routes write
   // "api_key", the dashboard/test paths use "apikey". Treat them as one.
   const isKeyLike = connection.authType === "apikey" || connection.authType === "api_key" || connection.authType === "cookie";
-  if (isKeyLike) {
+  // Xiaomi MiMo dual-credential rows carry authType "oauth" when they arrive
+  // via transfer import (accountTransfer defaults to it), but their probe —
+  // sk- key → /models, session cookie → Preview model — lives in the apikey
+  // path's provider switch. Route xiaomi-mimo there regardless of authType,
+  // otherwise the Test button reports "Provider test not supported".
+  if (isKeyLike || connection.provider === "xiaomi-mimo") {
     result = await testApiKeyConnection(connection, effectiveProxy);
   } else {
     result = await testOAuthConnection(connection, effectiveProxy);
