@@ -31,8 +31,12 @@ export function decodeJwt(jwt) {
 
 /**
  * Extract the transferable account list from a provider's connections.
- * Generic fields only — provider-specific extras (cookies, passTokens) live
- * outside the connection row and are not transferred.
+ *
+ * Generic fields (tokens/identity) plus `providerSpecificData` — the latter is
+ * what carries platform-bound extras like Xiaomi MiMo's `mimoPassToken`
+ * (Desktop session for Preview models) or provider-specific baseUrl overrides.
+ * Without it, a cross-machine transfer (e.g. Windows → NAS) would silently lose
+ * the session and Preview models would 403 on the target.
  */
 export function buildExportAccounts(provider, connections, now = Date.now()) {
   const accounts = [];
@@ -45,6 +49,9 @@ export function buildExportAccounts(provider, connections, now = Date.now()) {
     } else if (c.expiresAt) {
       expiresAt = c.expiresAt;
     }
+    const psd = c.providerSpecificData && typeof c.providerSpecificData === "object"
+      ? c.providerSpecificData
+      : null;
     accounts.push({
       provider,
       name: c.name || claims.nickname || claims.preferred_username || null,
@@ -54,6 +61,8 @@ export function buildExportAccounts(provider, connections, now = Date.now()) {
       refreshToken: c.refreshToken || null,
       expiresAt,
       expiresIn: typeof c.expiresIn === "number" ? c.expiresIn : null,
+      // Carried verbatim; the import side merges it into the connection row.
+      ...(psd ? { providerSpecificData: psd } : {}),
     });
   }
   return accounts;
@@ -122,17 +131,35 @@ export async function importAccounts(provider, accounts) {
 
       const payload = {
         provider,
-        authType: "oauth",
+        authType: item.authType || "oauth",
         accessToken,
         refreshToken,
         name: nickname || undefined,
         email: item.email || undefined,
         expiresAt: expiresAt || undefined,
         testStatus: "active",
+        // Platform-bound extras (e.g. Xiaomi MiMo `mimoPassToken` for Preview
+        // models). Merged over the existing row on update — never dropped.
+        ...(item.providerSpecificData && typeof item.providerSpecificData === "object"
+          ? { providerSpecificData: item.providerSpecificData }
+          : {}),
       };
 
       if (match) {
-        await updateProviderConnection(match.id, payload);
+        // updateProviderConnection replaces the whole providerSpecificData blob,
+        // so merge it here or a re-import would wipe fields the file omitted.
+        const merged = {
+          ...payload,
+          ...(payload.providerSpecificData || match.providerSpecificData
+            ? {
+                providerSpecificData: {
+                  ...(match.providerSpecificData || {}),
+                  ...(payload.providerSpecificData || {}),
+                },
+              }
+            : {}),
+        };
+        await updateProviderConnection(match.id, merged);
         updated++;
         results.push({ index: i, ok: true, updated: true, id: match.id });
       } else {

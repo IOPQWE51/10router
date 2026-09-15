@@ -100,12 +100,59 @@ describe("accountTransfer.importAccounts", () => {
     expect(res.updated).toBe(1);
   });
 
+  it("carries providerSpecificData across machines (mimoPassToken survives transfer)", async () => {
+    // Seed a connection the way the xiaomi-mimo session-only import does.
+    await mod.importAccounts("xiaomi-mimo", [
+      {
+        name: "Desktop Session",
+        accessToken: "mimo-desktop-session-6786673",
+        providerSpecificData: {
+          mimoPassToken: "PT-abc123",
+          mimoUserId: "6786673",
+          authMethod: "desktop-session",
+        },
+      },
+    ]);
+    const { getProviderConnections } = await import("../../src/models/index.js");
+    const conns = await getProviderConnections({ provider: "xiaomi-mimo" });
+    const seeded = conns.find((c) => c.accessToken === "mimo-desktop-session-6786673");
+    expect(seeded?.providerSpecificData?.mimoPassToken).toBe("PT-abc123");
+
+    // Export → the passToken must be in the payload (cross-machine transfer).
+    const exported = mod.buildExportAccounts("xiaomi-mimo", conns);
+    const row = exported.find((a) => a.accessToken === "mimo-desktop-session-6786673");
+    expect(row?.providerSpecificData?.mimoPassToken).toBe("PT-abc123");
+
+    // Re-import on another machine (fresh provider) → session preserved.
+    const res = await mod.importAccounts("xiaomi-mimo-copy", [
+      { ...row, provider: "xiaomi-mimo-copy" },
+    ]);
+    expect(res.imported).toBe(1);
+    const copyConns = await getProviderConnections({ provider: "xiaomi-mimo-copy" });
+    expect(copyConns[0]?.providerSpecificData?.mimoPassToken).toBe("PT-abc123");
+  });
+
+  it("re-import merges providerSpecificData instead of wiping omitted fields", async () => {
+    // First import carries both fields; second carries only one → merge keeps both.
+    await mod.importAccounts("gemini", [
+      { name: "M", accessToken: tokenFor("sub-merge"), providerSpecificData: { a: 1, b: 2 } },
+    ]);
+    await mod.importAccounts("gemini", [
+      { name: "M", accessToken: tokenFor("sub-merge"), providerSpecificData: { b: 99 } },
+    ]);
+    const { getProviderConnections } = await import("../../src/models/index.js");
+    const conns = await getProviderConnections({ provider: "gemini" });
+    const row = conns.find((c) => c.name === "M");
+    expect(row?.providerSpecificData?.a).toBe(1);
+    expect(row?.providerSpecificData?.b).toBe(99);
+  });
+
   it("skips items without accessToken", async () => {
     const res = await mod.importAccounts("gemini", [{ name: "no-token" }]);
     expect(res.failed).toBe(1);
   });
 
-  it("buildExportAccounts only exports provider-matching rows with generic fields", async () => {
+  it("buildExportAccounts exports provider-matching rows with generic fields + providerSpecificData", async () => {
     const conns = await (async () => {
       const { getProviderConnections } = await import("@/lib/db/index.js").then((m) => ({ getProviderConnections: m.getProviderConnections }));
       return getProviderConnections;
