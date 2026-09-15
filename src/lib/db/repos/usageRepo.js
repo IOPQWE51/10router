@@ -758,13 +758,13 @@ function speedScoreFromTps(tps) {
   return 20;
 }
 
-// success 60% + latency 20% + speed 20%. A missing perf axis contributes a
-// neutral 50 — NOT the success rate. Redistribution-to-success used to let
-// nodes with zero latency/speed samples (gateway-synced rows whose
-// requestDetails never existed locally, rotated-out ring buffer on NAS)
-// reach a perfect 100 on success alone; unproven perf must not read as
-// best-in-class. Neutral 50 still surfaces their real success rate while
-// keeping fully-measured nodes on top.
+// success 60% + latency 20% + speed 20%. A node with ZERO latency samples
+// (gateway-synced rows with no local requestDetails, rotated-out ring buffer
+// on NAS) never reaches this function — toEntry scores it as null and the
+// row does not participate in health ranking at all (user decision: missing
+// data is not a neutral score, it is no score). Only the speed axis can be
+// missing here (latency measured but no token-timed durations); it takes a
+// neutral 50 rather than being rewarded with the success rate.
 function computeScore(successRate, latencyScore, speedScore) {
   const ls = latencyScore == null ? 50 : latencyScore;
   const ss = speedScore == null ? 50 : speedScore;
@@ -1015,10 +1015,12 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
       avgLatencyMs,
       avgTtftMs,
       avgSpeed,
-      // Frontend dims the score badge when no latency sample exists — the
-      // number then only reflects success rate + neutral perf placeholders.
+      // No latency sample → no health score: the row shows its traffic but
+      // stays out of the ranking entirely (frontend renders "—").
       hasPerfData: avgLatencyMs != null,
-      score: computeScore(successRate, latencyScoreFromMs(avgLatencyMs), speedScoreFromTps(avgSpeed)),
+      score: avgLatencyMs == null
+        ? null
+        : computeScore(successRate, latencyScoreFromMs(avgLatencyMs), speedScoreFromTps(avgSpeed)),
       promptTokens: row.promptTokens || 0,
       completionTokens: row.completionTokens || 0,
       cost: row.cost || 0,

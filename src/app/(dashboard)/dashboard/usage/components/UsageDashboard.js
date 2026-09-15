@@ -74,17 +74,10 @@ function CellContent({ col, row, nameKey, subKey, expandable, isOpen }) {
         </div>
       );
     case "badge":
-      // A score computed without a single latency sample (hasPerfData false)
-      // only reflects success rate + neutral placeholders — dim it and
-      // explain on hover instead of letting it pose as fully measured.
-      return (
-        <span
-          className={cn(row.hasPerfData === false && "opacity-60")}
-          title={row.hasPerfData === false ? translate("No latency samples — score reflects success rate only") : undefined}
-        >
-          <Badge variant={scoreVariant(row.score)} size="sm">{row.score}</Badge>
-        </span>
-      );
+      // score null = no latency sample ever measured → the row does not
+      // participate in health ranking; render a plain dash, not a badge.
+      if (row.score == null) return <span className="text-text-muted">—</span>;
+      return <Badge variant={scoreVariant(row.score)} size="sm">{row.score}</Badge>;
     case "rate":
       return (
         <span className={cn(

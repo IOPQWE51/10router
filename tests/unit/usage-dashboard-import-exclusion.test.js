@@ -225,11 +225,13 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(node.avgSpeed).toBe(100);
   });
 
-  it("nodes with zero latency samples never score a perfect 100 (neutral perf axes)", async () => {
+  it("nodes with zero latency samples are excluded from health scoring entirely", async () => {
     // Regression: NAS-style nodes whose traffic exists only in usageHistory
     // (gateway-synced rows / rotated-out requestDetails ring) used to
     // redistribute the missing perf weight to successRate — 100% success
     // with NO measured latency/speed displayed as a full 100 health score.
+    // Decision: missing perf data is not a neutral score, it is NO score —
+    // the row keeps its traffic stats but does not participate in ranking.
     for (let i = 0; i < 6; i++) {
       await usageRepo.saveRequestUsage({
         ...LIVE_ROW,
@@ -245,8 +247,7 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(node.successRate).toBe(100);
     expect(node.hasPerfData).toBe(false);
     expect(node.avgLatencyMs).toBeNull();
-    // 100*0.6 (success) + 50*0.2 (neutral latency) + 50*0.2 (neutral speed) = 80
-    expect(node.score).toBe(80);
+    expect(node.score).toBeNull();
   });
 
   it("defaults minRequests to 50 in getUsageDashboard", async () => {

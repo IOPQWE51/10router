@@ -1735,7 +1735,6 @@
   "No nodes with 50+ requests in this period": "本时间段内没有请求数达到 50 的节点",
   "Most Used Model": "常用模型",
   "Node Health": "节点健康度",
-  "No latency samples — score reflects success rate only": "无延迟样本，分数仅按成功率计算",
   "No models with 10+ requests under this node": "该节点下没有 10+ 请求的模型",
   "Health": "健康度",
   "Avg TTFT": "平均首字延迟",

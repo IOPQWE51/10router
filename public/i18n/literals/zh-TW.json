@@ -554,7 +554,6 @@
   "No nodes with 50+ requests in this period": "本時間段內沒有請求數達到 50 的節點",
   "Most Used Model": "常用模型",
   "Node Health": "節點健康度",
-  "No latency samples — score reflects success rate only": "無延遲樣本，分數僅按成功率計算",
   "No models with 10+ requests under this node": "該節點下沒有 10+ 請求的模型",
   "Health": "健康度",
   "Avg TTFT": "平均首字延遲",
