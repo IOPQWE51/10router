@@ -432,6 +432,7 @@
   "The desktop session covers the Preview models only. Authorize the same account in the browser once to add an API key for the metered and subscription-plan models.": "桌面工作階段只能使用專屬 Preview 模型。為同一帳號完成一次瀏覽器授權，即可補上 API Key，用於計費模型與訂閱方案。",
   "Add Browser Authorization": "新增瀏覽器授權",
   "Checked paths": "已檢查的路徑",
+  "Session + Key": "用戶端工作階段 + 金鑰",
   "Export failed": "匯出失敗",
   "Enter your current password to export CodeBuddy CN accounts.": "輸入目前密碼以匯出 CodeBuddy CN 帳號。",
   "Enter your current password to import CodeBuddy CN accounts.": "輸入目前密碼以匯入 CodeBuddy CN 帳號。",

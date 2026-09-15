@@ -89,30 +89,44 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
   const isCookieConnection = rowAuthType === "cookie";
   // Label by HOW the user signed in, not by the storage-compat authType field.
   // Three shapes exist for OAuth-capable providers (e.g. Xiaomi MiMo):
-  //   desktop-session → Desktop QR login (session only, Preview models)
-  //   oauth           → browser sign-in (sk- key, may also carry a session)
-  //   api_key         → manually pasted key
+  // Label by WHAT CREDENTIALS THE ROW ACTUALLY HOLDS, not by which flow wrote
+  // it last. A Xiaomi row can end up with both halves (desktop session from the
+  // QR import + sk- key from the browser authorization) — showing only
+  // "Browser sign-in" hides the fact that Preview models work too.
+  //   session + key → "Session + Key"
+  //   session only  → "Desktop Session"
+  //   key only      → "Browser sign-in" (oauth) / "API Key" (manual paste)
   const authMethod = connection.providerSpecificData?.authMethod;
-  const isDesktopSession = authMethod === "desktop-session";
-  const isBrowserOAuth = authMethod === "oauth";
-  const authIcon = isDesktopSession
-    ? "computer"
-    : isBrowserOAuth
-      ? "login"
-      : isCookieConnection
-        ? "cookie"
-        : isOAuthConnection
-          ? "lock"
-          : "key";
-  const authLabel = isDesktopSession
-    ? translate("Desktop Session")
-    : isBrowserOAuth
-      ? translate("Browser sign-in")
-      : isOAuthConnection
-        ? "OAuth"
+  const hasSession = Boolean(connection.providerSpecificData?.mimoPassToken);
+  const hasRealKey =
+    typeof connection.accessToken === "string" &&
+    connection.accessToken.startsWith("sk-") &&
+    !connection.accessToken.startsWith("mimo-desktop-session");
+  const isDesktopSession = authMethod === "desktop-session" || (hasSession && !hasRealKey);
+  const isSessionPlusKey = hasSession && hasRealKey;
+  const isBrowserOAuth = !isSessionPlusKey && !isDesktopSession && authMethod === "oauth";
+  const authIcon = isSessionPlusKey
+    ? "key"
+    : isDesktopSession
+      ? "computer"
+      : isBrowserOAuth
+        ? "login"
         : isCookieConnection
-          ? "Cookie"
-          : "API Key";
+          ? "cookie"
+          : isOAuthConnection
+            ? "lock"
+            : "key";
+  const authLabel = isSessionPlusKey
+    ? translate("Session + Key")
+    : isDesktopSession
+      ? translate("Desktop Session")
+      : isBrowserOAuth
+        ? translate("Browser sign-in")
+        : isOAuthConnection
+          ? "OAuth"
+          : isCookieConnection
+            ? "Cookie"
+            : "API Key";
   // Multi-account readability: MiMo rows otherwise read as a bare
   // "6786673@xiaomi" address. Prefer an explicit name, then the Xiaomi account
   // id in a friendlier shape, then whatever identity the row carries.
