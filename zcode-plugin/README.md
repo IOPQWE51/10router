@@ -1,12 +1,12 @@
-# 10router-sync (ZCode / OpenCode / mirasim / 小米 MiMo 插件)
+# 10router-sync (ZCode / OpenCode / mirasim / 小米 MiMo / 10Router·9Router 实例插件)
 
-把本机 ZCode 的模型调用流水（`~/.zcode/cli/db/db.sqlite` 的 `model_usage` 表）、OpenCode 桌面端的会话用量（`~/.local/share/opencode/opencode.db` 的 `session` 表）、mirasim 桌面端的调用账本（`~/.mirasim/insights/usage-*.ndjson`）或小米 MiMo 桌面版的逐条消息用量（`~/.local/share/mimocode/mimocode.db` 的 `message` 表）导出并导入 10Router 的用量统计，复用 10Router 的 `/api/settings/database/import-usage` 接口。
+把本机 ZCode 的模型调用流水（`~/.zcode/cli/db/db.sqlite` 的 `model_usage` 表）、OpenCode 桌面端的会话用量（`~/.local/share/opencode/opencode.db` 的 `session` 表）、mirasim 桌面端的调用账本（`~/.mirasim/insights/usage-*.ndjson`）、小米 MiMo 桌面版的逐条消息用量（`~/.local/share/mimocode/mimocode.db` 的 `message` 表），或**另一个 10Router/9Router 实例**的用量库（其 `data.sqlite` 的 `usageHistory` 表）导出并导入 10Router 的用量统计，复用 10Router 的 `/api/settings/database/import-usage` 接口。
 
 ## 能力
 
 - **幂等**：10Router 按行签名去重，重复运行不会产生重复数据
 - **防双重计数**：ZCode 源默认**只导出官方渠道**（`builtin:*`，如 `builtin:bigmodel-*`、`builtin:zai-*`）——自定义/网关类 provider 的流量已由 10Router 自身或其他同步源记账，导出会重复（需要时用 `--include-custom` 恢复导出）；mirasim 源按 `upstreamHost` 排除中转流量
-- **溯源**：导入后 provider 显示为 `zcode-<名称>`（如 `zcode-bigmodel-start-plan`）、`opencode-<providerID>`、`mirasim-<协议>`、`mimo-<providerID>`，cost 记 0（订阅制渠道），agent/会话/时长等明细在 meta 里
+- **溯源**：导入后 provider 显示为 `zcode-<名称>`（如 `zcode-bigmodel-start-plan`）、`opencode-<providerID>`、`mirasim-<协议>`、`mimo-<providerID>`，cost 记 0（订阅制渠道），agent/会话/时长等明细在 meta 里；`--source 10r` 原样保留源实例的 provider/cost/status（同名 provider 在目标侧自然合并），来源路径记在 `meta.syncedFrom`
 - **鉴权**：虚拟 key（`sk-…`，推荐）或仪表盘密码，与 10Router v1.0.7+ 的导入鉴权匹配
 
 ## 安装
@@ -33,7 +33,7 @@ node scripts/export-usage.mjs --endpoint http://127.0.0.1:20127 --key sk-… --d
 node scripts/export-usage.mjs --endpoint http://127.0.0.1:20127 --key sk-…
 ```
 
-数据源由 `--source` 指定：`--source zcode`（默认）读 ZCode，`--source opencode` 读 OpenCode 桌面端，`--source mirasim` 读 mirasim 桌面端，`--source mimo` 读小米 MiMo 桌面版。OpenCode / mirasim / MiMo 不会自动检测——导出其用量须显式指定 `--source`。
+数据源由 `--source` 指定：`--source zcode`（默认）读 ZCode，`--source opencode` 读 OpenCode 桌面端，`--source mirasim` 读 mirasim 桌面端，`--source mimo` 读小米 MiMo 桌面版，`--source 10r` 读另一个 10Router/9Router 实例的用量库。OpenCode / mirasim / MiMo / 10r 不会自动检测——导出其用量须显式指定 `--source`。
 
 ### OpenCode 用量同步
 
@@ -79,6 +79,35 @@ node scripts/export-usage.mjs --import mimo-usage.json --endpoint http://<host>:
 
 说明：导入后 provider 显示为 `mimo-<providerID>`（如 `mimo-xiaomi`、`mimo-mimo`），cost 记 0（套餐制）；
 空转/中断的 0-token 轮次自动跳过；message id/会话/agent/mode 等溯源明细在 meta 里。`--source mimocode` 是 `--source mimo` 的别名。
+
+### 10Router / 9Router 实例用量同步
+
+把**另一个 10Router（或遗留 9Router）实例**的用量汇总进你常看的那块仪表盘（NAS 上的实例、
+兄弟中继、9Router 老安装）。源实例 `data.sqlite` 的 `usageHistory` 行与导入格式完全一致，
+原样透传：provider/cost/status 都保留（同名 provider 在目标侧自然合并），只有
+`connectionId` 是源实例的外部 uuid——挪进 `meta.sourceConnectionId` 并置空，避免污染目标的
+按账户聚合；`meta.syncedFrom` 记录来源库路径（或 `--tag <标签>` 自定义）。
+
+```bash
+# 自动发现本机实例库（%APPDATA%\10router|9router\db\data.sqlite，Unix 为 ~/.10router|~/.9router/db/data.sqlite）
+node scripts/export-usage.mjs --source 10r --endpoint http://127.0.0.1:20127 --key sk-… --dry-run
+
+# 显式指定源库（NAS 拷贝 / 挂载盘 / 拷贝过来的 data.sqlite）
+node scripts/export-usage.mjs --source 10r --db /path/to/data.sqlite --endpoint http://<host>:<port> --key sk-…
+
+# 离线：先导出，再在能连通 10Router 的机器导入
+node scripts/export-usage.mjs --source 10r --db /path/to/data.sqlite --export 10r-usage.json
+node scripts/export-usage.mjs --import 10r-usage.json --endpoint http://<host>:<port> --key sk-…
+```
+
+说明：`--source 10router` / `--source 9r` / `--source 9router` 均为别名；`--limit N` 只取最新 N 条；
+读运行中的库是快照式复制（可能缺最后几秒的流量），不必停源实例。
+
+**同实例防护**：若源库路径是本机默认实例库、且 `--endpoint` 指向 loopback，脚本会以退出码 2 拒绝——
+把实例导回自己比空跑更糟：所有行都会撞上已有行签名，而服务端在撞签时会给旧行补写
+`meta.imported=true`，把全部实时行标成「导入行」。确实是另一个实例时加 `--force`。
+反过来也成立：**不要**把上游流量由目标实例供着的下游实例往回导——链式行签名两边不同，
+服务端去重拦不住，会双倍统计。
 
 ### 离线模式（ZCode 与 10Router 不在同一网段）
 
@@ -128,7 +157,7 @@ Node 22 需加 `--experimental-sqlite`；Node 24+ 直接跑。
 
 | 脚本 | 用途 |
 |---|---|
-| `scripts/export-usage.mjs` | 主程序：四源导出 → 在线导入 / 离线导出导入 |
+| `scripts/export-usage.mjs` | 主程序：五源导出（zcode / opencode / mirasim / mimo / 10r）→ 在线导入 / 离线导出导入 |
 | `scripts/verify-usage-db.mjs` | 10Router 用量库只读体检（见上节） |
 | `scripts/clean-usage-db.mjs` | 10Router 用量库删行 + 日聚合重建（见上节） |
 | `scripts/usage-daily.mjs` | 聚合契约共享实现，被上面两个工具引用 |

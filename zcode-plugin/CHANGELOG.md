@@ -7,6 +7,47 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 本插件尚未发布 1.0.0——0.3.0 之后直接进入 1.1.0（首次支持多数据源）。
 
+## [1.3.0] — 2026-09-15
+
+### 新增
+
+- **10Router/9Router 实例用量同步**（`--source 10r`，别名 `--source 10router` / `9r` /
+  `9router`）：读另一个 10Router（或遗留 9Router）实例的 `data.sqlite`（`usageHistory` 表），
+  原样透传导入目标实例——provider/cost/status/tokens/meta 全保留（同名 provider 在目标侧
+  自然合并），适用于把 NAS 实例、兄弟中继、9Router 老安装的用量汇总进一处仪表盘。
+  - 源库发现：`--db <path>` 显式指定（NAS 拷贝/挂载盘），否则自动发现
+    `%APPDATA%\10router|9router\db\data.sqlite` / `~/.10router|~/.9router/db/data.sqlite`
+    （env `TENROUTER_DB` 优先），多库共存时提示并取第一个。
+  - 转换约定：源实例的 `connectionId` 是外部 uuid——挪进 `meta.sourceConnectionId` 并置空
+    （避免污染目标的按账户聚合）；`meta.syncedFrom` 记来源库路径，`--tag <标签>` 可自定义；
+    原 meta（含 `imported`/`source` 标记）原样带走。
+  - **同实例防护**：源库路径命中本机默认实例库且 `--endpoint` 为 loopback 时以退出码 2 拒绝
+    ——把实例导回自己时所有行都撞签名，服务端撞签会给旧行补写 `meta.imported=true`，把
+    实时行标成「导入行」；确实是另一个实例时用 `--force` 越过。反向链式双计（源实例上游
+    是目标实例）签名两边不同、服务端拦不住，文档明示不可这么用。**09-16 扩展到离线回导**：
+    10r 导出的每行盖 `meta.sourceDbPath`（与 `--tag` 标签无关的机器可查来源），`--import`
+    分支识别「文件来自本机默认实例库 + loopback endpoint」同样拒绝，堵上离线路径的同实例
+    回导口子。
+  - 读运行中的库为快照式复制（含 `-wal`/`-shm`），不必停源实例（可能缺最后几秒流量）。
+  - 沿用服务端既有兼容面：列集与 `readUsageFromSqlite()`（9router 备份导入路径）一致，
+    旧库缺列时自动降级为最小列集。
+  - 两处加固（同日审查补）：**无 scheme 的 endpoint**（如 `127.0.0.1:20127`）也能被同实例防护
+    正确识别（否则守卫静默失效开）；**NULL 时间戳行导出侧跳过**——服务端会给空时间戳回填
+    `new Date()`，每次重跑签名都不同，幂等破防会重复插入。
+  - **gatewaySync 标记**（2026-09-16 补，配合服务端数据口径例外）：源库**原生**行（meta 无
+    `imported` 标记）导出时加 `meta.gatewaySync = true`，目标侧健康度评分凭此豁免「导入行
+    排除」；源实例自己从客户端账本导入过的行不打标，链式同步多远都保持排除。
+
+### 文档
+
+- SKILL.md / README / AGENTS.md / 命令描述补 `10r` 源用法、发现规则、同实例防护与排查表；
+  README 标题与「脚本一览」同步为五源。
+- **根 `marketplace.json`（Discover 页市场索引）同步 1.3.0 与新描述**——此前只改了
+  `zcode-plugin/marketplace.json`（本地开发变体），审查发现漂移后补齐。
+- AGENTS.md 另补：仪表盘对导入前缀零特殊处理（grep 核验结论）、幂等回归基线与积压补齐
+  事故、10Router 用量 API 速查（pageSize 1–100 默认 20，仅认仪表盘凭据）、NAS 管道退出码
+  陷阱、inline 安装说明；修复 `zcode-plan-proxy-feasibility.md` 失效链接（已归档至 archive/）。
+
 ## [1.2.0] — 2026-09-15
 
 ### 新增
@@ -109,6 +150,7 @@
 - 交付形态：skill + slash 命令（`/10router-sync:sync-usage`）+ 插件 manifest。
 - 已装本机 ZCode（`plugins.dirs` inline）并端到端验证。
 
+[1.3.0]: #130--2026-09-15
 [1.2.0]: #120--2026-09-15
 [1.1.0]: #110--2026-09-11
 [0.3.0]: #030--2026-09-08

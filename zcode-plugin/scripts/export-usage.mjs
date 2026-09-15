@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * 10router usage exporter — supports ZCode, OpenCode, mirasim *and* Xiaomi MiMo.
+ * 10router usage exporter — supports ZCode, OpenCode, mirasim, Xiaomi MiMo
+ * *and* another 10Router/9Router instance.
  *
  * Reads a local model-usage ledger (ZCode: ~/.zcode/cli/db/db.sqlite,
  * OpenCode: ~/.local/share/opencode/opencode.db,
  * mirasim: ~/.mirasim/insights/usage-*.ndjson,
- * Xiaomi MiMo: ~/.local/share/mimocode/mimocode.db) and either POSTs to
- * 10Router's /api/settings/database/import-usage (online) or writes a JSON
- * file for offline import.
+ * Xiaomi MiMo: ~/.local/share/mimocode/mimocode.db,
+ * 10Router/9Router instance: its own data.sqlite via --db or auto-discovery)
+ * and either POSTs to 10Router's /api/settings/database/import-usage (online)
+ * or writes a JSON file for offline import.
  *
  * Modes:
  *   (default)  export + POST to --endpoint            (needs network + auth)
@@ -19,6 +21,9 @@
  *   --source opencode   read OpenCode desktop ledger
  *   --source mirasim    read mirasim desktop insights ledger
  *   --source mimo       read Xiaomi MiMo (mimocode) desktop ledger
+ *   --source 10r        read another 10Router/9Router instance's data.sqlite
+ *                       (aliases: 10router / 9r / 9router; --db to point at a
+ *                       specific file — e.g. a NAS copy or a sibling relay)
  *
  * Auth (online modes): one of
  *   --key sk-…            virtual proxy key from 10router dashboard (preferred)
@@ -31,6 +36,7 @@
  *   node export-usage.mjs --source opencode --export opencode-usage.json
  *   node export-usage.mjs --source mirasim --export mirasim-usage.json
  *   node export-usage.mjs --source mimo --export mimo-usage.json
+ *   node export-usage.mjs --source 10r --db /path/to/nas/data.sqlite --export 10r-usage.json
  *   node export-usage.mjs --import opencode-usage.json --endpoint http://nas:20128 --key sk-…
  */
 
@@ -49,7 +55,10 @@ function parseArgs(argv) {
     endpoint: process.env.TENROUTER_ENDPOINT || "http://127.0.0.1:20127",
     key: process.env.TENROUTER_KEY || "",
     password: process.env.TENROUTER_PASSWORD || "",
-    source: "zcode", // "zcode" | "opencode" | "mirasim" | "mimo"
+    source: "zcode", // "zcode" | "opencode" | "mirasim" | "mimo" | "10r"
+    dbPath: null,    // 10r: explicit source instance db (else auto-discover)
+    tag: null,       // 10r: label stamped into meta.syncedFrom (default: db path)
+    force: false,    // 10r: bypass the same-instance import guard
     limit: 0,
     dryRun: false,
     quiet: false,
@@ -64,8 +73,11 @@ function parseArgs(argv) {
     else if (a === "--password") args.password = argv[++i];
     else if (a === "--source") {
       const s = argv[++i];
-      args.source = s === "mimocode" ? "mimo" : s;
+      args.source = ({ mimocode: "mimo", "10router": "10r", "9r": "10r", "9router": "10r" })[s] || s;
     }
+    else if (a === "--db") args.dbPath = argv[++i];
+    else if (a === "--tag") args.tag = argv[++i];
+    else if (a === "--force") args.force = true;
     else if (a === "--limit") args.limit = parseInt(argv[++i], 10) || 0;
     else if (a === "--export") args.exportFile = argv[++i];
     else if (a === "--import") args.importFile = argv[++i];
@@ -84,11 +96,19 @@ Source:
   --source opencode    read OpenCode desktop ledger (~/.local/share/opencode/opencode.db)
   --source mirasim     read mirasim insights ledger (~/.mirasim/insights/usage-*.ndjson)
   --source mimo        read Xiaomi MiMo ledger (~/.local/share/mimocode/mimocode.db)
+  --source 10r         read another 10Router/9Router instance's data.sqlite
+                       (aliases: 10router / 9r / 9router)
 
 Options:
   --endpoint URL       10Router base URL (default http://127.0.0.1:20127)
   --key sk-...         virtual proxy key (recommended)   [online modes]
   --password PASS      dashboard password                 [online modes]
+  --db PATH            10r: path to the source instance's data.sqlite
+                       (default: auto-discover %APPDATA%\\10router|9router and
+                       ~/.10router|~/.9router; env TENROUTER_DB also works)
+  --tag LABEL          10r: label stored in meta.syncedFrom (default: db path)
+  --force              10r: import even when the db looks like it belongs to
+                       the very instance behind --endpoint (see --source 10r)
   --limit N            keep only the newest N rows
   --include-custom     zcode: also export non-builtin providers (default: only
                        official builtin:* channels — custom/gateway providers are
@@ -102,8 +122,12 @@ Options:
     console.error("error: --export and --import are mutually exclusive");
     process.exit(2);
   }
-  if (!["zcode", "opencode", "mirasim", "mimo"].includes(args.source)) {
-    console.error(`error: --source must be "zcode", "opencode", "mirasim" or "mimo", got "${args.source}"`);
+  if (!["zcode", "opencode", "mirasim", "mimo", "10r"].includes(args.source)) {
+    console.error(`error: --source must be "zcode", "opencode", "mirasim", "mimo" or "10r", got "${args.source}"`);
+    process.exit(2);
+  }
+  if (args.dbPath && args.source !== "10r") {
+    console.error(`error: --db only applies to --source 10r (got --source ${args.source})`);
     process.exit(2);
   }
   // Offline export needs neither endpoint nor credentials.
@@ -604,10 +628,160 @@ function collectMimoEntries() {
   return entries;
 }
 
+// ---------------------------------------------------------------------------
+// Another 10Router / 9Router instance (source "10r")
+// ---------------------------------------------------------------------------
+
+// The other instance's data.sqlite already stores usageHistory rows in
+// exactly the shape this script POSTs — import is a pass-through. Use case:
+// aggregating a second instance (NAS box, sibling relay, 9Router legacy
+// install) into the dashboard you actually watch.
+//
+// Locations mirror src/lib/dataDir.js: DATA_DIR/db/data.sqlite, where
+// DATA_DIR = %APPDATA%\10router (Windows) or ~/.10router (Unix); 9Router
+// legacy installs used %APPDATA%\9router / ~/.9router.
+function routerDbCandidates() {
+  const list = [];
+  if (process.env.TENROUTER_DB) list.push(process.env.TENROUTER_DB);
+  if (process.platform === "win32") {
+    const appData = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+    list.push(path.join(appData, "10router", "db", "data.sqlite"));
+    list.push(path.join(appData, "9router", "db", "data.sqlite"));
+  } else {
+    list.push(path.join(os.homedir(), ".10router", "db", "data.sqlite"));
+    list.push(path.join(os.homedir(), ".9router", "db", "data.sqlite"));
+  }
+  return list;
+}
+
+function normPath(p) {
+  const s = path.resolve(p);
+  return process.platform === "win32" ? s.toLowerCase() : s;
+}
+
+function isLoopbackUrl(u) {
+  try {
+    // Tolerate schemeless endpoints ("127.0.0.1:20127") the same way
+    // isSelfHostedUpstream() does — otherwise the guard silently fails open.
+    const url = u.includes("://") ? u : `http://${u}`;
+    const h = new URL(url).hostname;
+    return h === "localhost" || h === "::1" || h === "[::1]" || /^127\./.test(h);
+  } catch { return false; }
+}
+
+function safeParseJson(str) {
+  if (!str) return {};
+  if (typeof str !== "string") return str;
+  try { return JSON.parse(str); } catch { return {}; }
+}
+
+function convertRouterRow(row, dbPath, tag) {
+  const tokens = safeParseJson(row.tokens) || {};
+  const meta = safeParseJson(row.meta) || {};
+  if (!meta.source) meta.source = "10r";
+  meta.syncedFrom = tag || dbPath;
+  // Machine-checkable provenance, independent of the --tag label: the
+  // --import same-instance guard reads this to refuse feeding a file back
+  // into the very instance it was exported from.
+  meta.sourceDbPath = dbPath;
+  // Gateway-sync marker: rows NATIVE on the source instance are real gateway
+  // observations — the target's health scoring keeps them (exception to the
+  // imported-rows exclusion). Rows the source instance itself imported from a
+  // client ledger (zcode/mirasim/mimo) stay excluded, however far they travel.
+  if (meta.imported !== true) meta.gatewaySync = true;
+  // connectionId is the SOURCE instance's connection uuid — meaningless here;
+  // keep it under meta for tracing but null the column so the target's
+  // byAccount aggregation doesn't render foreign uuid fragments.
+  if (row.connectionId) meta.sourceConnectionId = row.connectionId;
+  const promptTokens = row.promptTokens ?? tokens.prompt_tokens ?? tokens.input_tokens ?? 0;
+  const completionTokens = row.completionTokens ?? tokens.completion_tokens ?? tokens.output_tokens ?? 0;
+  return {
+    timestamp: row.timestamp,
+    provider: row.provider || "unknown",
+    model: row.model || "unknown",
+    connectionId: null,
+    apiKey: row.apiKey || null,
+    endpoint: row.endpoint || null,
+    promptTokens,
+    completionTokens,
+    // cost/status pass through untouched: native 10r/9r rows may carry real
+    // metered spend and error statuses — unlike the plan-based sources above,
+    // there is nothing to zero out here.
+    cost: row.cost || 0,
+    status: row.status || "ok",
+    tokens,
+    meta,
+  };
+}
+
+function collectRouterEntries() {
+  const localDefaults = routerDbCandidates(); // includes TENROUTER_DB when set
+  let dbPath = args.dbPath;
+  if (dbPath) {
+    if (!fs.existsSync(dbPath)) {
+      console.error(`error: db not found: ${dbPath}`);
+      process.exit(1);
+    }
+  } else {
+    const found = localDefaults.filter((p) => { try { return fs.existsSync(p); } catch { return false; } });
+    if (found.length === 0) {
+      console.error("error: no 10Router/9Router db found. Looked at:");
+      for (const p of localDefaults) console.error(`  - ${p}`);
+      console.error("use --db <path/to/data.sqlite> to point at another instance's database");
+      process.exit(1);
+    }
+    dbPath = found[0];
+    if (found.length > 1) log(`10r: multiple local instance dbs found, using ${dbPath} (override with --db)`);
+  }
+
+  // Same-instance guard: importing a live instance's db into ITSELF is worse
+  // than a no-op — every row dedup-hits, and importUsageRows stamps
+  // meta.imported=true on dedup hits, which would relabel every LIVE row as an
+  // import in the request-details view. Loopback endpoint + local default path
+  // is the classic accident (both defaults point at the same local instance).
+  if (!args.force && !args.exportFile && isLoopbackUrl(args.endpoint)
+      && localDefaults.some((p) => normPath(p) === normPath(dbPath))) {
+    console.error(`error: ${dbPath} looks like the database of the very instance behind ${args.endpoint}`);
+    console.error("(loopback endpoint + local default db path). Importing it into itself would");
+    console.error("mark all live rows as imported. If this really is a different instance,");
+    console.error("re-run with --force; otherwise pick the source db explicitly with --db.");
+    process.exit(2);
+  }
+
+  const { tmpDir, dst } = snapshotDb(dbPath);
+  try {
+    const db = new DatabaseSync(dst, { readOnly: true });
+    try {
+      // Same column set the server's readUsageFromSqlite() accepts (which in
+      // turn is documented for 9router files). Fallback for schema drift in
+      // very old instances.
+      let rows;
+      try {
+        rows = db.prepare(`SELECT timestamp, provider, model, connectionId, apiKey, endpoint, promptTokens, completionTokens, cost, status, tokens, meta FROM usageHistory ORDER BY id ASC`).all();
+      } catch {
+        rows = db.prepare(`SELECT timestamp, provider, model, promptTokens, completionTokens, tokens FROM usageHistory ORDER BY id ASC`).all();
+      }
+      log(`10r: read ${rows.length} rows from ${dbPath}`);
+      // A NULL-timestamp row must never reach the server: importUsageRows
+      // backfills `new Date().toISOString()` for it, which differs per run and
+      // defeats signature dedup — every re-run would insert it again.
+      const usable = rows.filter((r) => r.timestamp);
+      const noTs = rows.length - usable.length;
+      if (noTs > 0) log(`10r: skipped ${noTs} rows without a timestamp (would defeat dedup)`);
+      return usable.map((r) => convertRouterRow(r, dbPath, args.tag));
+    } finally {
+      db.close();
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 function collectEntries() {
   if (args.source === "opencode") return collectOpencodeEntries();
   if (args.source === "mirasim") return collectMirasimEntries();
   if (args.source === "mimo") return collectMimoEntries();
+  if (args.source === "10r") return collectRouterEntries();
   return collectZcodeEntries();
 }
 
@@ -647,6 +821,30 @@ async function main() {
     if (selected.length === 0) {
       log("nothing to import (0 rows in file)");
       return;
+    }
+
+    // Same-instance guard for offline files: a JSON exported by `--source 10r`
+    // records its source db path in meta.sourceDbPath (meta.syncedFrom as a
+    // fallback for label-only files). Feeding it back into the very instance
+    // behind that path (loopback endpoint) is the same accident the online
+    // mode refuses — every row dedup-hits and the server stamps
+    // meta.imported=true on the LIVE rows.
+    if (!args.force && isLoopbackUrl(args.endpoint)) {
+      const localDefaults = routerDbCandidates();
+      const seenPaths = new Set();
+      for (const r of raw.slice(0, 200)) { // provenance is uniform per file; sample is enough
+        const m = r && typeof r.meta === "object" ? r.meta : null;
+        if (!m) continue;
+        if (m.sourceDbPath) seenPaths.add(normPath(m.sourceDbPath));
+        else if (m.source === "10r" && m.syncedFrom) seenPaths.add(normPath(m.syncedFrom));
+      }
+      if (localDefaults.some((p) => seenPaths.has(normPath(p)))) {
+        console.error(`error: ${args.importFile} was exported from the database of the very instance behind ${args.endpoint}`);
+        console.error("(loopback endpoint + local default db path in meta.sourceDbPath). Importing it");
+        console.error("into itself would mark all live rows as imported. Use --force only if this");
+        console.error("really is a different instance (e.g. the file was copied from elsewhere).");
+        process.exit(2);
+      }
     }
     if (args.dryRun) {
       log(`[dry-run] would import ${selected.length} rows from ${args.importFile} to ${args.endpoint}`);
