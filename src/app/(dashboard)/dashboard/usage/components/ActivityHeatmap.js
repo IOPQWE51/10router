@@ -42,9 +42,9 @@ function TipCell({ dateLine, statsLine, style, className, onEnter, onLeave, show
     >
       <div className={className} style={{ width: "100%", height: "100%" }} />
       {showTip && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[11px] leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover/tt:opacity-100 dark:bg-gray-700">
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded border border-black/10 bg-white px-2 py-1 text-[11px] leading-snug text-text-main opacity-0 shadow-lg transition-opacity duration-150 group-hover/tt:opacity-100 dark:border-white/10 dark:bg-gray-700 dark:text-white">
           <div className="font-medium">{dateLine}</div>
-          <div className="text-white/80">{statsLine}</div>
+          <div className="text-text-muted dark:text-white/80">{statsLine}</div>
         </div>
       )}
     </div>
@@ -234,11 +234,11 @@ export default function ActivityHeatmap({ daily, days = 365 }) {
                       />
                       {dow === 0 && inRangeDays.length > 0 && (
                         <div className={cn(
-                          "pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[11px] leading-snug text-white shadow-lg transition-opacity duration-150 dark:bg-gray-700",
+                          "pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-max -translate-x-1/2 rounded border border-black/10 bg-white px-2 py-1 text-[11px] leading-snug text-text-main shadow-lg transition-opacity duration-150 dark:border-white/10 dark:bg-gray-700 dark:text-white",
                           colHighlight ? "opacity-100" : "opacity-0"
                         )}>
                           <div className="font-medium">{`${fullDateFmt(inRangeDays[inRangeDays.length - 1].date)} ${translate("This Week")}`}</div>
-                          <div className="text-white/80">{`${fmtTokens(ws.tokens, locale, true)} tokens · ${ws.requests} ${translate("requests")}`}</div>
+                          <div className="text-text-muted dark:text-white/80">{`${fmtTokens(ws.tokens, locale, true)} tokens · ${ws.requests} ${translate("requests")}`}</div>
                         </div>
                       )}
                     </div>
