@@ -116,8 +116,11 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
           : isOAuthConnection
             ? "lock"
             : "key";
+  // A row holding BOTH credentials gets TWO badges (desktop session + browser
+  // key) instead of one merged label — each credential is an independent
+  // capability (Preview vs metered models) and users think of them separately.
   const authLabel = isSessionPlusKey
-    ? translate("Session + Key")
+    ? translate("Desktop Session")
     : isDesktopSession
       ? translate("Desktop Session")
       : isBrowserOAuth
@@ -127,6 +130,9 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
           : isCookieConnection
             ? "Cookie"
             : "API Key";
+  // Extra badge rendered after the primary one when the row carries a real sk-
+  // key on top of the desktop session.
+  const secondaryAuthLabel = isSessionPlusKey ? translate("Browser sign-in") : null;
   // Multi-account readability: MiMo rows otherwise read as a bare
   // "6786673@xiaomi" address. Prefer an explicit name, then the Xiaomi account
   // id in a friendlier shape, then whatever identity the row carries.
@@ -241,6 +247,11 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             <Badge variant="default" size="sm">
               {authLabel}
             </Badge>
+            {secondaryAuthLabel && (
+              <Badge variant="default" size="sm">
+                {secondaryAuthLabel}
+              </Badge>
+            )}
             {hasAnyProxy && (
               <Badge variant={proxyBadgeVariant} size="sm">
                 Proxy
