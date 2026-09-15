@@ -1,5 +1,5 @@
 ---
-description: Export ZCode, OpenCode or mirasim's local usage ledger into 10Router (idempotent; online direct import or offline JSON export; --source opencode / --source mirasim for those sources). 将 ZCode/OpenCode/mirasim 本地用量导出并导入 10Router（幂等；可在线直传或离线导出 JSON；其他来源用 --source opencode / --source mirasim 指定）
+description: Export ZCode, OpenCode, mirasim or Xiaomi MiMo's local usage ledger into 10Router (idempotent; online direct import or offline JSON export; --source opencode / --source mirasim / --source mimo for those sources). 将 ZCode/OpenCode/mirasim/小米MiMo 本地用量导出并导入 10Router（幂等；可在线直传或离线导出 JSON；其他来源用 --source opencode / --source mirasim / --source mimo 指定）
 ---
 
 Export ZCode model-usage records into 10Router by running the plugin's export script.
@@ -17,5 +17,6 @@ node "$ZCODE_PLUGIN_ROOT/scripts/export-usage.mjs" --endpoint <URL> --key <sk-�
 
 5. If the dry-run looks right (non-zero rows, sensible provider split), run the real import and report the `imported X, skipped Y` result. The operation is idempotent — safe to re-run.
 6. If the user writes in Chinese, respond in Chinese.
+7. To sync a non-ZCode source, pass `--source opencode` / `--source mirasim` / `--source mimo` (they are not auto-detected; "全平台" means running all four sources one by one).
 
 Arguments (all optional): $ARGUMENTS

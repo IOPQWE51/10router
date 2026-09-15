@@ -22,20 +22,21 @@
 
 ## 数据源
 
-用 `--source` 指定，**只支持这三个值，且不会自动检测**（默认 `zcode`）：
+用 `--source` 指定，**只支持这四个值，且不会自动检测**（默认 `zcode`）：
 
 | `--source` | 读取位置 | 导入后 provider 前缀 |
 |---|---|---|
 | `zcode`（默认）| `~/.zcode/cli/db/db.sqlite`（`model_usage` 表），另扫旧布局 `~/.zcode/projects/*/db.sqlite` | `zcode-<渠道名>` |
 | `opencode` | `~/.local/share/opencode/opencode.db`，Windows 回退 `%LOCALAPPDATA%\opencode\opencode.db` | `opencode-<providerID>` |
 | `mirasim` | `~/.mirasim/insights/usage-YYYY-MM.ndjson` | `mirasim-<协议>` |
+| `mimo`（别名 `mimocode`）| `~/.local/share/mimocode/mimocode.db`（`message` 表，assistant 消息的 JSON `data`），Windows 回退 `%APPDATA%\Xiaomi MiMo\mimocode.db` | `mimo-<providerID>` |
 
-三个源互相独立，需要各自单独跑一次。ZCode 源会把扫到的多个库合并去重（按行 id 去重），
+四个源互相独立，需要各自单独跑一次。ZCode 源会把扫到的多个库合并去重（按行 id 去重），
 所以有多份 db 时不必手动挑。
 
 ## 固定套路
 
-大多数情况照抄这四步即可（把 `<源>` 换成 `zcode` / `opencode` / `mirasim`，`<URL>` 换成
+大多数情况照抄这四步即可（把 `<源>` 换成 `zcode` / `opencode` / `mirasim` / `mimo`，`<URL>` 换成
 10Router 地址）：
 
 ```bash
@@ -110,16 +111,25 @@ node scripts/export-usage.mjs --import usage.json --endpoint <URL> --key sk-…
   历史坑与 usageKey 修复）；本脚本走 `importUsageRows()` 分支——**该文档的同毫秒问题不适用
   于导入场景**，导入侧关心的是下面那条防双重计数。
 - **防双重计数**：这是最容易踩的坑。
-  - ZCode 源会排除 baseURL 指向 10Router 自身的 provider（那些调用 10Router 已记账）。
+  - **ZCode 源：只导出官方渠道**（provider id 以 `builtin:` 开头，如 `builtin:bigmodel-*`、
+    `builtin:zai-*`）。非 `builtin:` 的 provider 一律是用户自行添加的自定义渠道，其流量
+    在用户体系里都走本地网关（10Router 自身或兄弟中继），已由 10Router 自身记账或别的
+    同步源覆盖，再导出就会重复。这是**结构性判据**（不依赖名称/URL/模型名格式），能免疫
+    provider 删除重建导致的 id 变化——历史上一版基于「配置里 baseURL 匹配」的守卫就是这么
+    漏掉旧 id 的 3810 行网关流量。逃生口：`--include-custom` 可恢复导出非官方渠道。
+    跳过时脚本会打印按 provider 分组的计数，绝不静默丢数据。
   - mirasim 源会排除 `upstreamHost` 指向 10Router 实例的行——**必须在导出侧排除**，
     因为两侧行签名不同，服务端去重拦不住，漏掉就会双倍统计。判断逻辑见
     `isSelfHostedUpstream()`：私网/loopback 地址 + 常见端口（20127/20128/80/443），
     或 host 与目标 endpoint 同机。
+  - mimo 源目前**没有**自指排除（mimocode 的 provider 体系里未发现可配置 baseURL 指向
+    10Router 的路径；本机实测 providerID 只有 `mimo`/`xiaomi` 内置渠道）。若未来 mimocode
+    支持自定义 provider baseURL 并指向 10Router，需要补一个同 mirasim 的排除逻辑。
   - 新增数据源时同样要先想清楚「这些调用是否已被 10Router 自己记过」。
-- **只读快照，绝不原地打开数据库**：ZCode/OpenCode 的 SQLite 是其他进程正在写的 WAL 库，
+- **只读快照，绝不原地打开数据库**：ZCode/OpenCode/MiMo 的 SQLite 是其他进程正在写的 WAL 库，
   脚本会把它（含 `-wal`/`-shm`）复制到临时目录再读（`snapshotDb()`）。改动时不要破坏这一点。
 - **cost 一律记 0**：这些渠道是订阅/套餐制，不按量计费；若某源有真实计费数据再另议。
-- **失败调用跳过**：mirasim 源会跳过无 token 计数的失败调用，避免污染统计（日志会
+- **失败调用跳过**：mirasim 源与 mimo 源会跳过无 token 计数的失败/空转记录，避免污染统计（日志会
   打印 `skipped N rows without token counts`）。
 
 ## 排查
@@ -131,10 +141,43 @@ node scripts/export-usage.mjs --import usage.json --endpoint <URL> --key sk-…
 | `connection refused` | endpoint 填错或 10Router 没在运行 |
 | `no db.sqlite found` | 该工具在本机从没记录过用量 |
 
+## 运维工具：10Router 用量库校验与清理
+
+导入数据出错（如本插件的网关行重复导入）需要从 10Router 侧删除时，**不要手工 DELETE**：
+`usageDaily` 日聚合是增量维护的，没有任何代码会从 `usageHistory` 重建它——裸删会让仪表盘
+长期显示幽灵数字，而手写重建极易踩两个坑（**必须按服务器本地日期分桶**，不是 UTC 日期；
+**五个维度都要重建**，不只是 byProvider/byModel）。`scripts/` 下三个工具把这套契约固化了：
+
+| 工具 | 用途 |
+|---|---|
+| `usage-daily.mjs` | 聚合契约的共享实现（`aggregateEntryToDay` 的精确移植 + 本地日期分桶）。与 10Router 仓库 `src/lib/db/repos/usageRepo.js` 保持同步 |
+| `verify-usage-db.mjs` | 只读校验：完整性 / 外键 / **usageDaily 与 usageHistory 逐日逐字段一致性** / lifetime 计数器。退出码 0=PASS、1=FAIL |
+| `clean-usage-db.mjs` | 按 `--provider <名>` 或 `--where "<谓词>"` 删行并忠实重建受影响日桶 + 修正计数器；默认 dry-report，`--apply` 才写入；内置事后自检，失败返回 1 |
+
+典型流程（**务必先停 10Router 服务**，它会持有数据库并发的写会损坏文件）：
+
+```bash
+# 1. 体检（可随时跑，只读）
+node scripts/verify-usage-db.mjs /path/to/data.sqlite
+
+# 2. 预览要删什么（不写入）
+node scripts/clean-usage-db.mjs /path/to/data.sqlite --provider zcode-xxxx --export removed-rows.json
+
+# 3. 执行（自带事后校验；失败会提示回滚）
+node scripts/clean-usage-db.mjs /path/to/data.sqlite --provider zcode-xxxx --apply
+
+# 4. 复检
+node scripts/verify-usage-db.mjs /path/to/data.sqlite
+```
+
+实测：本机对同一份含 3810 条重复行的库执行 `clean-usage-db.mjs --apply`，与手工修复结果
+**逐字节一致**（36917 行 / 56 桶 / 2026-09-12 桶 JSON 完全相同），`verify-usage-db.mjs`
+在清理前后均 PASS。Node 22 需加 `--experimental-sqlite`（Node 24+ 不需要）。
+
 ## 结果汇报
 
 跑完把 `imported X, skipped Y` 原样报给用户，并说明数据出现在 10Router 仪表盘 Usage 区的
-`zcode-*` / `opencode-*` / `mirasim-*` 分组下。
+`zcode-*` / `opencode-*` / `mirasim-*` / `mimo-*` 分组下。
 
 ## 相关文档
 

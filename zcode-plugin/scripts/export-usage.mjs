@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * 10router usage exporter — supports ZCode, OpenCode *and* mirasim.
+ * 10router usage exporter — supports ZCode, OpenCode, mirasim *and* Xiaomi MiMo.
  *
  * Reads a local model-usage ledger (ZCode: ~/.zcode/cli/db/db.sqlite,
  * OpenCode: ~/.local/share/opencode/opencode.db,
- * mirasim: ~/.mirasim/insights/usage-*.ndjson) and either POSTs to
+ * mirasim: ~/.mirasim/insights/usage-*.ndjson,
+ * Xiaomi MiMo: ~/.local/share/mimocode/mimocode.db) and either POSTs to
  * 10Router's /api/settings/database/import-usage (online) or writes a JSON
  * file for offline import.
  *
@@ -17,6 +18,7 @@
  *   --source zcode      (default) read ZCode ledger
  *   --source opencode   read OpenCode desktop ledger
  *   --source mirasim    read mirasim desktop insights ledger
+ *   --source mimo       read Xiaomi MiMo (mimocode) desktop ledger
  *
  * Auth (online modes): one of
  *   --key sk-…            virtual proxy key from 10router dashboard (preferred)
@@ -28,6 +30,7 @@
  *   node export-usage.mjs --export zcode-usage.json
  *   node export-usage.mjs --source opencode --export opencode-usage.json
  *   node export-usage.mjs --source mirasim --export mirasim-usage.json
+ *   node export-usage.mjs --source mimo --export mimo-usage.json
  *   node export-usage.mjs --import opencode-usage.json --endpoint http://nas:20128 --key sk-…
  */
 
@@ -46,22 +49,27 @@ function parseArgs(argv) {
     endpoint: process.env.TENROUTER_ENDPOINT || "http://127.0.0.1:20127",
     key: process.env.TENROUTER_KEY || "",
     password: process.env.TENROUTER_PASSWORD || "",
-    source: "zcode", // "zcode" | "opencode" | "mirasim"
+    source: "zcode", // "zcode" | "opencode" | "mirasim" | "mimo"
     limit: 0,
     dryRun: false,
     quiet: false,
     exportFile: null,
     importFile: null,
+    includeCustom: false, // zcode: also export non-builtin (custom/gateway) providers
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--endpoint") args.endpoint = argv[++i];
     else if (a === "--key") args.key = argv[++i];
     else if (a === "--password") args.password = argv[++i];
-    else if (a === "--source") args.source = argv[++i];
+    else if (a === "--source") {
+      const s = argv[++i];
+      args.source = s === "mimocode" ? "mimo" : s;
+    }
     else if (a === "--limit") args.limit = parseInt(argv[++i], 10) || 0;
     else if (a === "--export") args.exportFile = argv[++i];
     else if (a === "--import") args.importFile = argv[++i];
+    else if (a === "--include-custom") args.includeCustom = true;
     else if (a === "--dry-run") args.dryRun = true;
     else if (a === "--quiet") args.quiet = true;
     else if (a === "--help" || a === "-h") {
@@ -75,12 +83,16 @@ Source:
   --source zcode       (default) read ZCode ledger (~/.zcode/cli/db/db.sqlite)
   --source opencode    read OpenCode desktop ledger (~/.local/share/opencode/opencode.db)
   --source mirasim     read mirasim insights ledger (~/.mirasim/insights/usage-*.ndjson)
+  --source mimo        read Xiaomi MiMo ledger (~/.local/share/mimocode/mimocode.db)
 
 Options:
   --endpoint URL       10Router base URL (default http://127.0.0.1:20127)
   --key sk-...         virtual proxy key (recommended)   [online modes]
   --password PASS      dashboard password                 [online modes]
   --limit N            keep only the newest N rows
+  --include-custom     zcode: also export non-builtin providers (default: only
+                       official builtin:* channels — custom/gateway providers are
+                       already accounted elsewhere, exporting them double-counts)
   --dry-run            show what would be sent, send nothing
   --quiet              suppress progress output`);
       process.exit(0);
@@ -90,8 +102,8 @@ Options:
     console.error("error: --export and --import are mutually exclusive");
     process.exit(2);
   }
-  if (!["zcode", "opencode", "mirasim"].includes(args.source)) {
-    console.error(`error: --source must be "zcode", "opencode" or "mirasim", got "${args.source}"`);
+  if (!["zcode", "opencode", "mirasim", "mimo"].includes(args.source)) {
+    console.error(`error: --source must be "zcode", "opencode", "mirasim" or "mimo", got "${args.source}"`);
     process.exit(2);
   }
   // Offline export needs neither endpoint nor credentials.
@@ -195,24 +207,77 @@ function convertOpenCodeSession(s) {
 }
 
 // ---------------------------------------------------------------------------
+// Xiaomi MiMo (mimocode) db discovery & conversion
+// ---------------------------------------------------------------------------
+
+function mimoDbCandidates() {
+  const home = os.homedir();
+  const candidates = [];
+  // Primary: ~/.local/share/mimocode/mimocode.db
+  candidates.push(path.join(home, ".local", "share", "mimocode", "mimocode.db"));
+  // Fallbacks: AppData/Roaming or Local on Windows
+  if (process.platform === "win32") {
+    candidates.push(path.join(home, "AppData", "Roaming", "Xiaomi MiMo", "mimocode.db"));
+    candidates.push(path.join(home, "AppData", "Roaming", "Xiaomi MiMo", "mimocode", "mimocode.db"));
+    const localAppData = process.env.LOCALAPPDATA || path.join(home, "AppData", "Local");
+    candidates.push(path.join(localAppData, "mimocode", "mimocode.db"));
+  }
+  return candidates.filter((p) => fs.existsSync(p));
+}
+
+const MIMO_PROVIDER_PREFIX = "mimo-";
+
+function convertMimoMessage(row, d) {
+  const t = d.tokens || {};
+  const tokens = {
+    prompt_tokens: t.input || 0,
+    completion_tokens: t.output || 0,
+    ...(t.reasoning ? { reasoning_tokens: t.reasoning } : {}),
+    ...(t.cache?.read ? { cache_read_input_tokens: t.cache.read } : {}),
+    ...(t.cache?.write ? { cache_creation_input_tokens: t.cache.write } : {}),
+  };
+  const providerId = d.providerID || "mimo";
+  const modelId = d.modelID || "unknown";
+  const ts = d.time?.completed || d.time?.created || row.time_created || Date.now();
+  return {
+    timestamp: new Date(ts).toISOString(),
+    provider: MIMO_PROVIDER_PREFIX + providerId,
+    model: modelId,
+    connectionId: null,
+    apiKey: null,
+    endpoint: "mimo://" + (d.agent || "desktop"),
+    cost: d.cost || 0,
+    status: "ok",
+    tokens,
+    meta: {
+      source: "mimo",
+      mimoMessageId: row.id || null,
+      sessionId: row.session_id || null,
+      agent: d.agent || null,
+      mode: d.mode || null,
+      planUsage: true,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // model_usage → usageHistory conversion
 // ---------------------------------------------------------------------------
 
-// Providers whose baseURL points at 10router itself: their calls are already
-// accounted in 10router's usageHistory, importing them again would double-count.
-function loadSelfProviderIds() {
-  const ids = new Set();
-  const cfgPath = path.join(os.homedir(), ".zcode", "v2", "config.json");
-  try {
-    const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
-    for (const [id, p] of Object.entries(cfg.provider || {})) {
-      const baseURL = String(p?.options?.baseURL || "");
-      if (/[:/]20127\b|\/v1\b/.test(baseURL) && /10router|127\.0\.0\.1|192\.168\.|localhost/i.test(baseURL + " " + (p?.name || ""))) {
-        ids.add(id);
-      }
-    }
-  } catch { /* no config — nothing to exclude */ }
-  return ids;
+// ZCode rows are exported for OFFICIAL channels only (provider ids prefixed
+// "builtin:" — bigmodel / zai / …). Every non-builtin provider is a user-added
+// custom provider, and in this user's setup those all point at local gateways
+// (10Router itself, or a sibling relay) whose traffic is already accounted for
+// by 10Router's own logging or another sync source — importing them here would
+// double-count. This is structural (no reliance on provider names/URLs/model
+// shapes) and survives provider delete+re-add, which changes the UUID and
+// historically slipped past the old config-matching guard.
+//
+// Escape hatch: --include-custom exports them anyway (for setups where custom
+// providers are genuine third-party channels not covered elsewhere).
+const OFFICIAL_PROVIDER_PREFIX = "builtin:";
+function isOfficialProvider(id) {
+  return String(id || "").startsWith(OFFICIAL_PROVIDER_PREFIX);
 }
 
 function statusTo10r(status) {
@@ -283,7 +348,6 @@ async function importBatch(entries, { endpoint, key, password }) {
 
 // Read every ZCode db snapshot and return converted usageHistory entries.
 function collectZcodeEntries() {
-  const selfIds = loadSelfProviderIds();
   const dbs = zcodeDbCandidates();
   if (dbs.length === 0) {
     console.error("error: no ZCode db.sqlite found (~/.zcode/cli/db/db.sqlite)");
@@ -292,6 +356,8 @@ function collectZcodeEntries() {
 
   const entries = [];
   const seenIds = new Set();
+  let skippedCustom = 0;
+  const skippedByProvider = {};
   for (const dbPath of dbs) {
     const { tmpDir, dst } = snapshotDb(dbPath);
     try {
@@ -306,7 +372,14 @@ function collectZcodeEntries() {
           rows = db.prepare(`SELECT logical_request_id, provider_id, model_id, agent, status, started_at, completed_at, duration_ms, input_tokens, output_tokens FROM model_usage ORDER BY started_at ASC`).all();
         }
         for (const row of rows) {
-          if (selfIds.has(row.provider_id)) continue; // already in 10router
+          // Official channels only (default): anything else is a user-added
+          // custom provider pointing at a local gateway, already counted.
+          if (!args.includeCustom && !isOfficialProvider(row.provider_id)) {
+            skippedCustom++;
+            const key = String(row.provider_id || "unknown");
+            skippedByProvider[key] = (skippedByProvider[key] || 0) + 1;
+            continue;
+          }
           if (row.provider_id && row.logical_request_id) {
             const dedupId = `${row.provider_id}|${row.logical_request_id}`;
             if (seenIds.has(dedupId)) continue;
@@ -319,6 +392,12 @@ function collectZcodeEntries() {
       }
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }
+  if (skippedCustom > 0) {
+    log(`zcode: skipped ${skippedCustom} rows from non-official providers (custom/gateway channels — already counted elsewhere)`);
+    for (const [p, c] of Object.entries(skippedByProvider).sort((a, b) => b[1] - a[1]).slice(0, 8)) {
+      log(`  - ${p}: ${c}`);
     }
   }
   return entries;
@@ -474,9 +553,61 @@ function collectMirasimEntries() {
   return entries;
 }
 
+// Read Xiaomi MiMo (mimocode) db and return converted usageHistory entries.
+function collectMimoEntries() {
+  const dbs = mimoDbCandidates();
+  if (dbs.length === 0) {
+    console.error("error: no Xiaomi MiMo db found (~/.local/share/mimocode/mimocode.db)");
+    process.exit(1);
+  }
+
+  const entries = [];
+  const seenIds = new Set();
+  let skippedNoTokens = 0;
+
+  for (const dbPath of dbs) {
+    // mimocode uses WAL too; snapshot before reading.
+    const { tmpDir, dst } = snapshotDb(dbPath);
+    try {
+      const db = new DatabaseSync(dst, { readOnly: true });
+      try {
+        const rows = db.prepare(`SELECT id, session_id, time_created, data FROM message ORDER BY time_created ASC`).all();
+        for (const row of rows) {
+          let d;
+          try { d = JSON.parse(row.data); } catch { continue; }
+          if (d.role !== "assistant") continue;
+
+          // Dedup by message id if present
+          if (row.id) {
+            if (seenIds.has(row.id)) continue;
+            seenIds.add(row.id);
+          }
+
+          const t = d.tokens || {};
+          const consumed = (t.input || 0) + (t.output || 0) + (t.reasoning || 0) + (t.cache?.read || 0) + (t.cache?.write || 0);
+          if (!consumed) {
+            skippedNoTokens++;
+            continue;
+          }
+
+          entries.push(convertMimoMessage(row, d));
+        }
+      } finally {
+        db.close();
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }
+
+  if (skippedNoTokens > 0) log(`mimo: skipped ${skippedNoTokens} rows without token counts (empty/aborted turns)`);
+  return entries;
+}
+
 function collectEntries() {
   if (args.source === "opencode") return collectOpencodeEntries();
   if (args.source === "mirasim") return collectMirasimEntries();
+  if (args.source === "mimo") return collectMimoEntries();
   return collectZcodeEntries();
 }
 

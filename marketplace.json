@@ -9,12 +9,12 @@
     {
       "name": "10router-sync",
       "source": "./zcode-plugin",
-      "description": "Sync ZCode's local model-usage ledger into 10Router (/api/settings/database/import-usage).",
+      "description": "Sync ZCode, OpenCode, mirasim or Xiaomi MiMo's local model-usage ledger into 10Router (/api/settings/database/import-usage).",
       "description_i18n": {
-        "en": "Sync ZCode's local model-usage ledger into 10Router (/api/settings/database/import-usage).",
-        "zh-CN": "将 ZCode 本地模型调用用量导出并导入 10Router。"
+        "en": "Sync ZCode, OpenCode, mirasim or Xiaomi MiMo's local model-usage ledger into 10Router (/api/settings/database/import-usage).",
+        "zh-CN": "将 ZCode/OpenCode/mirasim/小米MiMo 本地模型调用用量导出并导入 10Router。"
       },
-      "version": "0.2.0"
+      "version": "1.2.0"
     }
   ]
 }
