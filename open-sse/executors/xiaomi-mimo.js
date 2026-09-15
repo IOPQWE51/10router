@@ -84,7 +84,9 @@ export class XiaomiMimoExecutor extends DefaultExecutor {
 
     // Preview models: bridge thinking effort (from Claude Code /effort or OpenAI
     // reasoning_effort) via system prompt directives and dynamic max_tokens budgets.
-    if (XiaomiMimoExecutor.isPreviewModel(model)) {
+    // super.transformRequest can return undefined when no body was provided —
+    // skip the bridge rather than crash on a non-object.
+    if (XiaomiMimoExecutor.isPreviewModel(model) && out && typeof out === "object") {
       const rawEffort = out.reasoning_effort || body?.reasoning_effort || body?.output_config?.effort;
       const effort = typeof rawEffort === "string" ? rawEffort.toLowerCase() : null;
 

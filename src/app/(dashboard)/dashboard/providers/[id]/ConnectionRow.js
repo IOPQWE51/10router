@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { getStatusVariant as getConnectionStatusVariant } from "@/shared/utils/connectionStatus";
 import { translate } from "@/i18n/runtime";
 import { extractAccountsVerificationUrl } from "@/shared/utils/validationUrl";
+import { translateQuotaError } from "@/shared/utils/quotaError";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import PropTypes from "prop-types";
 import { Badge, Toggle, Tooltip } from "@/shared/components";
@@ -208,8 +209,8 @@ export default function ConnectionRow({ connection, proxyPools, isOAuth, isFirst
             )}
             {isCooldown && connection.isActive !== false && <CooldownTimer until={modelLockUntil} />}
             {connection.lastError && connection.isActive !== false && (
-              <span className="max-w-full truncate text-xs text-red-500 sm:max-w-[300px]" title={translate(connection.lastError)}>
-                {translate(connection.lastError)}
+              <span className="max-w-full truncate text-xs text-red-500 sm:max-w-[300px]" title={translateQuotaError(connection.lastError)}>
+                {translateQuotaError(connection.lastError)}
               </span>
             )}
             {verificationUrl && (

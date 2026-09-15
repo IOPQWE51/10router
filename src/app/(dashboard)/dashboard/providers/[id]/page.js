@@ -16,6 +16,7 @@ import { useNotificationStore } from "@/store/notificationStore";
 import { fetchSuggestedModels } from "@/shared/utils/providerModelsFetcher";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
 import { extractAccountsVerificationUrl } from "@/shared/utils/validationUrl";
+import { translateQuotaError } from "@/shared/utils/quotaError";
 import ModelRow from "./ModelRow";
 import PassthroughModelsSection from "./PassthroughModelsSection";
 import CompatibleModelsSection from "./CompatibleModelsSection";
@@ -40,6 +41,8 @@ function sleep(ms) {
 
 function formatModelTestError(error) {
   if (!error) return "";
+  const quotaFriendly = translateQuotaError(error);
+  if (quotaFriendly && quotaFriendly !== error) return quotaFriendly;
   const direct = translate(error);
   if (direct && direct !== error) return direct;
 

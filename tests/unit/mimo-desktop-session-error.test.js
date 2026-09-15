@@ -14,6 +14,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 
 import XiaomiMimoExecutor, { __test__ } from "../../open-sse/executors/xiaomi-mimo.js";
 import { checkFallbackError } from "../../open-sse/services/accountFallback.js";
@@ -25,17 +26,29 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("issue 13: mimo desktop session error", () => {
   it("executor throws the friendly message with MIMO_DESKTOP_SESSION_REQUIRED (no passToken wording)", async () => {
-    const executor = new XiaomiMimoExecutor();
-    await expect(
-      executor.execute({
-        model: "mimo-x-flash-preview",
-        credentials: { providerSpecificData: {} }, // no session → no cookie
-        proxyOptions: null,
-      }),
-    ).rejects.toMatchObject({
-      code: "MIMO_DESKTOP_SESSION_REQUIRED",
-      message: SESSION_MESSAGE,
-    });
+    // Isolate from a locally-signed-in MiMo Desktop: the cookie lookup falls back
+    // to the desktop app's profile dir (APPDATA on Windows). Redirect it to an
+    // empty temp dir so the "no session" gate is deterministic on dev machines
+    // that DO have a real desktop login — otherwise the executor proceeds past
+    // the gate and the test becomes a live-network test.
+    const savedAppData = process.env.APPDATA;
+    process.env.APPDATA = join(tmpdir(), `mimo-session-test-empty-${process.pid}`);
+    try {
+      const executor = new XiaomiMimoExecutor();
+      await expect(
+        executor.execute({
+          model: "mimo-x-flash-preview",
+          credentials: { providerSpecificData: {} }, // no session → no cookie
+          proxyOptions: null,
+        }),
+      ).rejects.toMatchObject({
+        code: "MIMO_DESKTOP_SESSION_REQUIRED",
+        message: SESSION_MESSAGE,
+      });
+    } finally {
+      if (savedAppData === undefined) delete process.env.APPDATA;
+      else process.env.APPDATA = savedAppData;
+    }
     expect(SESSION_MESSAGE).not.toContain("passToken");
   });
 

@@ -14,12 +14,22 @@
   - **数据口径**：外部导入行（`meta.imported`）**不参与健康度评分**但计入热力图与生涯统计。
   - 新 API `GET /api/usage/dashboard`（`src/lib/db/repos/usageRepo.js` 的 `getUsageDashboard`，`period/days/start/end` 参数保留兼容但已不使用）；i18n 词条接入 zh-CN；新增 `tests/unit/usage-dashboard-import-exclusion.test.js` 4 例（导入排除/热力包含/阈值/范围无关性 + lifetime 断言）。
 
+- **10router-sync 插件 v1.2.0：新增小米 MiMo 桌面版（mimocode）用量导出**（`--source mimo`，别名 `--source mimocode`）。小米 MiMo 桌面版把每轮 assistant 消息的完整 token 计量记在 `~/.local/share/mimocode/mimocode.db` 的 `message` 表（JSON `data` 列：`input`/`output`/`reasoning`/`cache.read`/`cache.write`，附 `modelID`/`providerID`/`agent`/`mode`/`time`），比 OpenCode 的 session 级汇总粒度更细（逐轮消息级）。实现要点：WAL 活库先快照再读（复用 `snapshotDb()`）、按 `message.id` 去重、0-token 空转/中断轮次跳过（打印 `skipped N rows without token counts`）、provider 落 `mimo-<providerID>`（`mimo-xiaomi`/`mimo-mimo`）、cost 记 0、`meta` 带 messageId/sessionId/agent/mode。Windows 回退路径 `%APPDATA%\Xiaomi MiMo\mimocode.db`。本机实测导入 101 行（`mimo-mimo` 42 / `mimo-xiaomi` 59），重跑幂等（`imported 0, skipped 101`）。文档（README/AGENTS/SKILL/命令描述/manifest）同步更新至 v1.2.0。
+
 ### 🛠️ 优化与修复
 
 - **用量仪表盘生成速度算法优化与门槛调整**：
   - **加权吞吐与上游缓冲突发抑制**：重构 `UsageDashboard` 节点与模型平均生成速度（`avgSpeed` / tok/s）计算逻辑。针对 Antigravity / Gemini 等因上游代理缓冲整包下发导致 `ttft` 滞后、瞬时突发传输（如 100ms 接收 1700 tokens 导致算术平均被拉高至 1,189 tok/s）的失真问题，引入物理合理性探测——当瞬时生成速度 > 250 tok/s 时，自动判定为上游缓冲突发并回退至端到端总延迟（`total`）进行计算；同时将单纯的离散速率算术平均升级为真实的加权输出吞吐（`totalTokens / totalGenerationDuration`），兼容 `completion_tokens` 与 `output_tokens` 两种键名；
   - **健康度统计门槛降低至 50 次请求**：将节点健康度评分与展示的最小请求门槛由默认 100 次调整为 `minRequests = 50`，覆盖更多有一定请求规模的可用节点；
   - **提示文案与多语言规划**：节点健康度卡片提示文案更新为「最近 7 天（>50 次请求）」（`"Last 7 days (>50 requests)"`），空状态提示更新为「本时间段内没有请求数达到 50 的节点」（`"No nodes with 50+ requests in this period"`），并在 `zh-CN.json` 和 `zh-TW.json` 中补齐规范词条；补齐相关单元测试。
+
+- **反重力（Antigravity）429 额度用完友好提示（多语言）**：
+  - 新增共享工具 `src/shared/utils/quotaError.js`：识别 Google 风格 HTTP 429 `RESOURCE_EXHAUSTED` / `QUOTA_EXHAUSTED` 载荷，从 `quotaResetDelay` / `quotaResetTimeStamp`（或消息内 `Resets in …` 回退）解析重置时间与倒计时，模板化替换生成友好多语言提示，如「该账号额度已用完，将于 9月15日 20:52 重置（约 1小时27分 后）；可升级订阅提升限额。」；
+  - 接入供应商详情页 `formatModelTestError` 与连接列表 `ConnectionRow` 的 `lastError` 展示管道，zh-CN / zh-TW 词条补齐；新增 `tests/unit/antigravity-quota-error-i18n.test.js` 8 例（含真实 429 报文回放）。
+
+- **小米 MiMo 执行器加固与测试环境隔离**：
+  - 修复 `transformRequest` 预览模型思考档位桥接在 `body` 缺失（`super.transformRequest` 返回 undefined）时的空引用崩溃风险；
+  - 会话门槛测试改为确定性隔离：将 `APPDATA` 重定向至空临时目录，不再依赖本机是否安装/登录/运行小米 MiMo 桌面版。
 
 - **小米 MiMo 思考级别软映射与动态 Token 预算控制**：
   - **能力与窗口修正**：在 `capabilities.js` 中为 `*mimo*preview*` 声明 `reasoning: true`、`thinkingFormat: "openai"`，并将上下文窗口修正为 1M (`contextWindow: 1048576`)；
