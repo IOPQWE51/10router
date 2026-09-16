@@ -144,7 +144,7 @@ CodeBuddy 对 assistant 消息里带 reasoning 内容的校验报错。性质为
 
 ## 三、排查方法论（跨错误码可复用）
 
-1. **先分错误码**：看 10router.log 具体 code——`11150`/`11101` 可修，`11133` 多客户端/上游，`11128` 间歇风控，`6004` 等重置。别一看到 400/11128 就改连接。
+1. **先分错误码**：看 10router.log 具体 code——`11150`/`11101` 可修，`11133` 多客户端/上游，`11128` 渠道级风控（成片命中看熔断），`11140` 账号级风控，`11134` 上游临时不服务，`6004` 等重置。别一看到 400/11128 就改连接。
 2. **同模型失败 vs 成功抽差异**：`FMT / MSG / TOOL / THINK / ACC` 五个字段对比，差异项即可疑触发点。
 3. **渠道是否死**：此刻渠道能否服务其它模型(如 deepseek-v4-flash 连续 200) → 账号/渠道没死，是单模型/单请求被拦。
 4. **请求侧 vs 响应侧二分**：`DEBUG_RAW_REQ`(chat.js 入口) vs `DEBUG_CB_REQ`(transformRequest 后) 对比，一次定位。用后必须清理(移除 env + 临时代码，重新 `npm run build`)。
@@ -157,7 +157,7 @@ CodeBuddy 对 assistant 消息里带 reasoning 内容的校验报错。性质为
 | 主题 | 文档 |
 |------|------|
 | 11150 reasoning_effort | `CodeBuddy-reasoning-effort-fix.md` (en/zh-CN) |
-| 11128 间歇风控 + 判别法 | skill: `llm-api-channel-health/references/10router-codebuddy-11128-unapproved-channel.md` |
+| 11128 渠道级风控 + 熔断 | 本文 11128 专节；历史案例 skill: `llm-api-channel-health/references/10router-codebuddy-11128-unapproved-channel.md` |
 | 11133 流式空 name(响应侧) | skill: `10router-dev/references/codebuddy-streaming-toolcall-empty-name.md` |
 | 11133 模型特定(hy4 vs deepseek) | skill: `10router-dev/references/codebuddy-toolcall-model-specific.md` |
 | 11133 请求侧 vs 响应侧 | skill: `10router-dev/references/codebuddy-toolcall-request-vs-response.md` |

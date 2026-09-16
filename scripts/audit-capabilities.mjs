@@ -62,7 +62,13 @@ export const ALL_MODELS = REGISTRY.flatMap((entry) =>
     .filter((m) => m.id)
     .map((m) => ({ provider: entry.id, id: m.id, kind: m.kind }))
 );
-export const CHAT_MODELS = ALL_MODELS.filter((m) => !NON_CHAT.test(m.id) && !MEDIA_ONLY.has(m.provider));
+// A model the registry explicitly declares as a media kind (image / video / tts / …)
+// is dispatched by the media handlers and needs no chat capabilities — trusting the
+// declaration beats guessing from the id, which breaks on every new naming scheme
+// (e.g. SiliconFlow's "Kwai-Kolors/Kolors", "zai-org/Z-Image-Turbo", "Wan-AI/Wan2.2-*").
+export const CHAT_MODELS = ALL_MODELS.filter(
+  (m) => !MEDIA_KIND.has(m.kind) && !NON_CHAT.test(m.id) && !MEDIA_ONLY.has(m.provider),
+);
 
 /** Ids that read as multimodal and must therefore not resolve to vision:false. */
 export const VISION_NAME = /vision|(^|[-_/])vl([-_/]|$)|omni/i;
@@ -106,14 +112,12 @@ export const ALLOWLIST = {
   // kilo/openrouter say 262144/235929 text-only without reasoning.
   "kilo-gateway/kwaipilot/kat-coder-pro-v2.5:free": "conflict",
   "cline/kwaipilot/kat-coder-pro": "conflict", // v1 vs v2/v2.5, same split
-
-  // Image-generation endpoints (registry kind: "image"); the NON_CHAT regex simply
-  // has no name to match on, so they fall through to the chat bucket. Asserted
-  // below to really carry a media kind.
-  "sensenova/sensenova-u1.5-lite": "media",
-  "sensenova/sensenova-u1-fast": "media",
-  "venice/venice-sd35": "media",
 };
+
+// Media-kind models (kind: "image" | "video" | "tts" | …) are excluded from
+// CHAT_MODELS generically, so they need no allowlist entry of their own — the
+// registry declaration is the single source of truth. Previously each such model
+// with an id the NON_CHAT regex could not guess had to be listed here by hand.
 
 // Multimodal-looking ids whose resolved value is knowingly disputed. nvidia
 // (first-party) + deepinfra / crusoe / kilo / openrouter report the nano-omni as

@@ -27,7 +27,7 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 
 ### CodeBuddy CN compatibility layers
 
-- [Error Codes Reference](/docs/en/codebuddy-cn-error-codes.md) — quick classification of 11101/11128/11133/11150/11151 + 429/401/402 with fixes.
+- [Error Codes Reference](/docs/en/codebuddy-cn-error-codes.md) — quick classification of 11101/11128/11133/11134/11140/11150/11151 + 429/401/402 with fixes (incl. the 11128 channel-level circuit breaker).
 - [Agent System Prompt Amnesia Fix](/docs/en/CodeBuddy-agent-amnesia-fix.md) — whitelist to stop our own agents' prompts from being wiped (amnesia).
 - [reasoning_effort Compatibility Fix](/docs/en/CodeBuddy-reasoning-effort-fix.md) — DeepSeek models reject `auto`/`off`; mapped to `high`/dropped.
 - [CN account bulk import](/docs/zh-CN/codebuddy-cn-account-import.md) (zh-only) — importing several `codebuddy-cn` accounts at once.
@@ -76,7 +76,7 @@ Architecture and engineering notes for the 10Router gateway + dashboard. All doc
 
 ### CodeBuddy CN 兼容层
 
-- [上游错误码速查与修复](/docs/zh-CN/codebuddy-cn-error-codes.md) — 快速区分 11101/11128/11133/11150/11151 及 429/401/402 并给出修复/出路。
+- [上游错误码速查与修复](/docs/zh-CN/codebuddy-cn-error-codes.md) — 快速区分 11101/11128/11133/11134/11140/11150/11151 及 429/401/402 并给出修复/出路（含 11128 渠道级熔断）。
 - [Agent 系统提示失忆修复](/docs/zh-CN/CodeBuddy-agent-amnesia-fix.md) — 白名单放行自家 Agent 提示，避免"失忆"。
 - [reasoning_effort 兼容修复](/docs/zh-CN/CodeBuddy-reasoning-effort-fix.md) — DeepSeek 模型不支持 `auto`/`off`，映射为 `high`/删除。
 - [CN 账号批量导入](/docs/zh-CN/codebuddy-cn-account-import.md) — 一次性导入多个 `codebuddy-cn` 账号。
