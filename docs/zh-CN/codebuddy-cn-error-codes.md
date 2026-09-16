@@ -75,6 +75,7 @@ CodeBuddy 服务端**安全策略**对"来自未批准渠道形态"的请求做�
 - `open-sse/config/errorConfig.js`：两条 11128 规则带 `channelScope: true`；`checkFallbackError` 透出该标志。
 - `markAccountUnavailable`：`channelScope` 错误**不加账号级 `modelLock`**（仅记 `lastError` 供仪表盘展示），返回 `channelScope: true`。
 - `src/sse/handlers/chat.js`：收到 `channelScope` 立即**中止账号 fallback**，改设 provider 级熔断 `settings.channelBlocks[provider]`——**60s 起步，5 分钟内复发升级到 10 分钟**；熔断期间直接返回 503 + `Retry-After`，不再触达上游。**任一成功请求立即清除熔断**。
+- **与「配额包到期优先」的交互**：熔断期间**跳过** SWR 配额刷新（渠道正被整体拒绝时多打一次上游只会拖慢恢复）；熔断真正生效过后，成功请求会 `invalidateQuotaCache(provider)`（见 `src/sse/services/auth.js`），让下一次选号重拉 `earliestPackageExpiry`——熔断窗口可能跨过配额包边界，earliest-expiry 排序不能用熔断前的旧数据。
 - 效果：命中时对上游的调用从「4 次/秒 × 每 30s 重演」降为「1 次 / 60s」，且不再误锁四个账号（其余模型不受牵连）。
 
 > 排障时**先看是不是成片命中**（同一秒多账号同模型）：若是，属渠道熔断范畴，别去翻单个账号；若单个账号独自持续 11128 而其它账号正常，才按账号维度排查。

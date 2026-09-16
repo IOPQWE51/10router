@@ -33,7 +33,8 @@
   - **实测判据（NAS 生产实例）**：同一账号、同一 token、带 registry 那套 CLI 认证头**直连上游**，`1MSG` / `31TOOL` / `54TOOL` / `1752MSG+54TOOL` **全部 200**；逐账号复刻真实失败形态（`5MSG+54TOOL`，含 ZCode 身份 system prompt）**四个账号全部 200**。但 11128 命中的账号分布是 `1697(12) / 1698(10) / 余师洋(4) / 洋芋(5)`，且失败耗时仅 323–654ms（上游快速拒绝，非超时）。**结论**：不是某账号坏了、也不是 ZCode 入口特征——失败属于**渠道**（出口指纹 / 请求突发），单发请求永远成功。
   - **修法（配置驱动，`errorConfig.js` 新增 `channelScope` 规则位）**：命中 `unapproved channel` / `illegal api invocation` 时标记为 `channelScope: true`；`markAccountUnavailable` 对这类错误**不加任何账号级 `modelLock`**（只写 `lastError` 供仪表盘解释），由调用方改为设**provider 级渠道熔断**并立即中止账号 fallback。熔断落在 `settings.channelBlocks[provider]`（与 `codeBuddyDailyDone` 同层，非用户可见配置项），**60s 起步，5 分钟内复发升级到 10 分钟**；熔断期间该 provider 的请求直接返回 503 + `Retry-After`，不再触达上游。**任一成功请求立即清除熔断**（证明渠道已恢复，不必白等窗口）。
   - 效果：命中 11128 时对上游的调用从「4 次/秒 × 每 30s 重演」降为「1 次 / 60s」，且不再误锁四个账号（其余模型不受牵连）。
-  - 新增 `tests/unit/codebuddy-channel-block.test.js` 12 例：真实 11128 报文分类、大小写与纯 msg 匹配、11133/6004/429 不误判、既有 401/402/403/404 规则无回归、`channelScope` 仅由两条 11128 规则携带、熔断首次/升级/窗口外回落/过期归零、以及「渠道熔断不产生任何账号级 modelLock」。
+  - **与「配额包到期优先」的交互**：渠道熔断期间**跳过** SWR 配额刷新（`getProviderCredentials` 里判 `settings.channelBlocks[provider]`）——渠道正被整体拒绝时，多打一次上游（哪怕是 billing 端点）只会拖慢恢复，且读回的到期时间也不可用；熔断由任一成功请求清除，届时刷新自动恢复。反过来，**熔断真正生效过**时（清除前存在 block），成功请求会顺带 `invalidateQuotaCache(provider)` 把该 provider 全部连接的 `quotaCheckedAt` 置空，让下一次选号重新拉取——熔断窗口可能跨过配额包边界，earliest-expiry 排序不能拿熔断前的旧数据排。
+  - 新增 `tests/unit/codebuddy-channel-block.test.js` 17 例：真实 11128 报文分类、大小写与纯 msg 匹配、11133/6004/429 不误判、既有 401/402/403/404 规则无回归、`channelScope` 仅由两条 11128 规则携带、熔断首次/升级/窗口外回落/过期归零、「渠道熔断不产生任何账号级 modelLock」，以及配额刷新交互三例（invalidate 逐连接置空 / store 故障不抛 / 熔断未过期才跳过刷新）。
   - 文档：`docs/zh-CN/codebuddy-cn-error-codes.md` 的 11128 条目补「渠道级熔断」处置与实测判据。
 
 - **用量仪表盘生成速度算法优化与门槛调整**：

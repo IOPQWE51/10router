@@ -1,6 +1,6 @@
 import { getProviderConnections, validateApiKey, updateProviderConnection, getSettings, getProxyPools } from "@/lib/localDb";
 import { resolveConnectionProxyConfig, pickProxyPoolId } from "@/lib/network/connectionProxy";
-import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil } from "open-sse/services/accountFallback.js";
+import { formatRetryAfter, checkFallbackError, isModelLockActive, buildModelLockUpdate, getEarliestModelLockUntil, channelBlockRemainingMs } from "open-sse/services/accountFallback.js";
 import { MAX_RATE_LIMIT_COOLDOWN_MS } from "open-sse/config/errorConfig.js";
 import { resolveProviderId, FREE_PROVIDERS } from "@/shared/constants/providers.js";
 import { getUsageForProvider } from "open-sse/services/usage.js";
@@ -13,6 +13,15 @@ let selectionMutex = Promise.resolve();
 // In-flight tracking for non-blocking background quota refresh
 const _quotaRefreshInFlight = new Set();
 
+/**
+ * Background quota refresh for the earliest-expiry strategy.
+ *
+ * Callers skip this entirely while a channel-level breaker is active: the breaker
+ * exists because the whole channel is being rejected (e.g. CodeBuddy 11128), so
+ * any extra upstream call — even to the billing endpoint — works against letting
+ * it clear, and the resulting timestamps would be unusable anyway. The breaker is
+ * cleared by a successful chat request, so refresh resumes on its own.
+ */
 function triggerBackgroundQuotaRefresh(connections) {
   const STALE_MS = 15 * 60 * 1000;
   const now = Date.now();
@@ -47,6 +56,28 @@ function triggerBackgroundQuotaRefresh(connections) {
     })();
   }
 }
+
+/**
+ * Invalidate cached package-expiry timestamps so the next account selection
+ * refetches them. Called when a channel breaker lifts: the window it covered may
+ * have crossed a package boundary, and the earliest-expiry ordering would
+ * otherwise rank accounts on stale data (the SWR path only refreshes after
+ * STALE_MS, which the breaker could easily have exceeded without noticing).
+ *
+ * Best-effort: failures are swallowed, the next natural refresh still applies.
+ */
+export async function invalidateQuotaCache(provider) {
+  try {
+    const connections = await getProviderConnections({ provider });
+    for (const conn of connections) {
+      if (!conn?.id) continue;
+      await updateProviderConnection(conn.id, { quotaCheckedAt: null });
+    }
+  } catch {
+    // best-effort — never let cache invalidation break a successful request
+  }
+}
+
 
 const GITHUB_MONTHLY_USAGE_LIMIT = "you've reached your additional usage limit for your plan";
 
@@ -159,8 +190,14 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
     const strategy = providerOverride.fallbackStrategy || settings.fallbackStrategy || "fill-first";
     const earliestExpiryFirst = providerOverride.earliestExpiryFirst === true;
 
-    // Trigger non-blocking background quota checks if earliest-expiry is active and any account is missing/stale
-    if (earliestExpiryFirst && availableConnections.length > 1) {
+    // Trigger non-blocking background quota checks if earliest-expiry is active and any account is missing/stale.
+    // Skipped during an active channel breaker: the channel is being rejected wholesale (e.g. 11128),
+    // so an extra upstream call only works against letting it clear — and a successful chat request
+    // clears the breaker, after which this resumes on its own.
+    const channelBlockLeftMs = channelBlockRemainingMs(settings.channelBlocks?.[providerId]);
+    if (channelBlockLeftMs > 0) {
+      log.debug("AUTH", `${providerId} | channel blocked (${Math.ceil(channelBlockLeftMs / 1000)}s left) — skipping quota refresh`);
+    } else if (earliestExpiryFirst && availableConnections.length > 1) {
       triggerBackgroundQuotaRefresh(availableConnections);
     }
 

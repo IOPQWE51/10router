@@ -137,3 +137,12 @@
   - `src/app/(dashboard)/dashboard/providers/[id]/ConnectionRow.js`
   - `src/app/(dashboard)/dashboard/providers/components/ConnectionsCard.js`
 - 单元测试：`tests/unit/earliest-expiry-first.test.js`（6/6 全部通过）
+
+### 与渠道级熔断的交互（v1.1.2 起）
+
+渠道级熔断（如 CodeBuddy `11128`「unapproved channel」）会暂停整个 provider，与本策略有两处交叉，均已处理：
+
+1. **熔断期间跳过 SWR 配额刷新**：`getProviderCredentials` 里判 `settings.channelBlocks[providerId]` 未过期即不派发刷新任务。理由：渠道正被整体拒绝时，多打一次上游（哪怕是 billing 端点）只会拖慢恢复，读回的到期时间也不可用。熔断由任一成功请求清除，届时刷新自动恢复（无需额外调度）。
+2. **熔断生效过后失效配额缓存**：`chat.js` 的成功回调里，若清除前确实存在 block，则调用 `invalidateQuotaCache(provider)` 把该 provider 全部连接的 `quotaCheckedAt` 置空，让下一次选号重新拉取。理由：熔断窗口可能跨过配额包边界，而 SWR 的 15 分钟窗口未必覆盖到，earliest-expiry 排序不能拿熔断前的旧数据排。
+
+> 注意该交叉**只在多账号（`availableConnections.length > 1`）且开启本策略时**才涉及——单账号场景本就不跑后台刷新。

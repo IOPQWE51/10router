@@ -196,3 +196,39 @@ describe("markAccountUnavailable on 11128 — no account lock, channelScope repo
     expect(writes[1].testStatus).toBe("unavailable");
   });
 });
+
+// ─── quota-refresh interaction ────────────────────────────────────────────────
+describe("channel block vs. earliest-expiry quota refresh", () => {
+  it("invalidateQuotaCache marks every connection of the provider stale", async () => {
+    const { invalidateQuotaCache } = await import("../../src/sse/services/auth.js");
+    dbMocks.getProviderConnections.mockResolvedValue([
+      { id: "cb-1", provider: "codebuddy-cn" },
+      { id: "cb-2", provider: "codebuddy-cn" },
+      { id: "cb-3", provider: "codebuddy-cn" },
+    ]);
+
+    await invalidateQuotaCache("codebuddy-cn");
+
+    // One write per connection, each clearing the freshness marker:
+    const writes = dbMocks.updateProviderConnection.mock.calls;
+    expect(writes.map((c) => c[0])).toEqual(["cb-1", "cb-2", "cb-3"]);
+    for (const [, patch] of writes) expect(patch).toEqual({ quotaCheckedAt: null });
+  });
+
+  it("never throws when the store fails (a successful request must not break on cache invalidation)", async () => {
+    const { invalidateQuotaCache } = await import("../../src/sse/services/auth.js");
+    dbMocks.getProviderConnections.mockRejectedValue(new Error("db down"));
+
+    await expect(invalidateQuotaCache("codebuddy-cn")).resolves.toBeUndefined();
+  });
+
+  it("a fresh block reports remaining time, so the refresh can be skipped", () => {
+    // The refresh guard is `channelBlockRemainingMs(settings.channelBlocks[provider]) > 0`.
+    const block = buildChannelBlock(null, Date.now());
+    expect(channelBlockRemainingMs(block)).toBeGreaterThan(0);
+
+    // ...and an expired one does not, so refresh resumes on its own.
+    const stale = { until: new Date(Date.now() - 1000).toISOString(), lastAt: "", strikes: 1 };
+    expect(channelBlockRemainingMs(stale)).toBe(0);
+  });
+});

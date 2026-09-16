@@ -4,6 +4,7 @@ import {
   getProviderCredentials,
   markAccountUnavailable,
   clearAccountError,
+  invalidateQuotaCache,
   extractApiKey,
   isValidApiKey,
 } from "../services/auth.js";
@@ -316,7 +317,13 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         await clearAccountError(credentials.connectionId, credentials, model);
         // A success proves the channel is serving again — drop any block
         // immediately instead of making callers wait out the remaining window.
+        // If one was actually in force, the covered window may have crossed a
+        // package boundary, so invalidate the cached expiry timestamps too and
+        // let the next selection refetch them (earliest-expiry ordering must not
+        // rank accounts on data collected before the breaker).
+        const hadBlock = (await getChannelBlock(provider)) !== null;
         await clearChannelBlock(provider);
+        if (hadBlock) await invalidateQuotaCache(provider);
       }
     });
 
