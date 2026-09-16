@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import {
   AreaChart,
@@ -16,6 +16,7 @@ import Card from "@/shared/components/Card";
 import { fmtCost } from "@/shared/utils/currency";
 
 const fmtTokens = (n) => {
+  if (n >= 1000000000) return `${(n / 1000000000).toFixed(1)}B`;
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return String(n || 0);
@@ -23,53 +24,128 @@ const fmtTokens = (n) => {
 
 const fmtChartCost = (n) => fmtCost(n, 4);
 
+// Family series palette (by legend order); "other" always renders gray.
+const FAMILY_COLORS = ["#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f43f5e", "#84cc16"];
+const OTHER_COLOR = "#64748b";
+
+const familyColor = (family, idx) =>
+  family === "other" ? OTHER_COLOR : FAMILY_COLORS[idx % FAMILY_COLORS.length] || OTHER_COLOR;
+
 export default function UsageChart({ period = "7d" }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("tokens");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/usage/chart?period=${period}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
+  // No setLoading(true): state starts true; period changes re-fetch with the
+  // fresh result (inline IIFE mirrors UsageDashboard — a named callback that
+  // sets state trips react-hooks/set-state-in-effect when called from here).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/usage/chart?period=${period}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (!cancelled) setData(json);
+        }
+      } catch (e) {
+        console.error("Failed to fetch chart data:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to fetch chart data:", e);
-    } finally {
-      setLoading(false);
-    }
+    })();
+    return () => { cancelled = true; };
   }, [period]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Model families ordered by period total (server already folded the tail
+  // into "other"); rows are flattened so recharts stackId handles the layers.
+  const modelFamilies = useMemo(() => {
+    const totals = {};
+    for (const d of data) {
+      for (const [f, t] of Object.entries(d.byModel || {})) totals[f] = (totals[f] || 0) + t;
+    }
+    return Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
+  }, [data]);
 
-  const hasData = data.some((d) => d.tokens > 0 || d.cost > 0);
+  const modelData = useMemo(
+    () => data.map((d) => ({ label: d.label, ...(d.byModel || {}) })),
+    [data]
+  );
+
+  const hasData =
+    viewMode === "models"
+      ? modelFamilies.length > 0
+      : data.some((d) => d.tokens > 0 || d.cost > 0);
+
+  const MODES = [
+    { key: "tokens", label: "Tokens" },
+    { key: "cost", label: "Cost" },
+    { key: "models", label: "Model Type" },
+  ];
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
-      <div className="grid w-full grid-cols-2 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1 sm:w-auto sm:self-start">
-        <button
-          onClick={() => setViewMode("tokens")}
-          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === "tokens" ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
-        >
-          Tokens
-        </button>
-        <button
-          onClick={() => setViewMode("cost")}
-          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === "cost" ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
-        >
-          Cost
-        </button>
+      <div className="grid w-full grid-cols-3 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1 sm:w-auto sm:self-start">
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => setViewMode(m.key)}
+            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === m.key ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
         <div className="h-48 flex items-center justify-center text-text-muted text-sm">Loading...</div>
       ) : !hasData ? (
         <div className="h-48 flex items-center justify-center text-text-muted text-sm">No data for this period</div>
+      ) : viewMode === "models" ? (
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={modelData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.5 }}
+              tickLine={false}
+              axisLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.5 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={fmtTokens}
+              width={50}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "var(--color-bg)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+                fontSize: "12px",
+              }}
+              formatter={(value, name) => [fmtTokens(value), name]}
+            />
+            <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+            {modelFamilies.map((f, i) => (
+              <Area
+                key={f}
+                type="monotone"
+                dataKey={f}
+                stackId="1"
+                stroke={familyColor(f, i)}
+                strokeWidth={2}
+                fill={familyColor(f, i)}
+                fillOpacity={0.55}
+                dot={false}
+                activeDot={{ r: 3 }}
+                name={f}
+              />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>

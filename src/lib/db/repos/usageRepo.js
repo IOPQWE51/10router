@@ -673,6 +673,47 @@ export async function getUsageStats(period = "all") {
   return stats;
 }
 
+// Model-family normalization for the distribution chart: this is an API
+// gateway serving the same underlying model through many channels, so the
+// chart aggregates by FAMILY, not by full model id and never by provider.
+//   openai/gpt-4          → gpt-4        (provider prefix stripped, lowercased)
+//   Xiaomi/MiMo-V2.5      → mimo         (version segment kept only when it
+//   bai/glm-5.3-flash     → glm           is a pure major digit: gpt-4, claude-3)
+//   85d2a64e-…:323e…      → other        (custom-channel UUID-ish ids)
+export function modelFamilyName(model) {
+  const raw = String(model || "unknown");
+  const noPrefix = raw.includes("/") ? raw.slice(raw.lastIndexOf("/") + 1) : raw;
+  const lower = noPrefix.toLowerCase();
+  // Custom-channel ids look like "<uuid>:<name>" — hex prefix catches them;
+  // no length cap (real descriptive names run 25-30 chars).
+  if (/^[0-9a-f]{8,}/.test(lower)) return "other";
+  const segs = lower.split("-");
+  let family = segs[0] || "other";
+  if (segs[1] && /^\d+$/.test(segs[1])) family += "-" + segs[1];
+  return family;
+}
+
+// Keep the top families by period total, fold the rest into "other" — the
+// gateway sees dozens of model ids and the chart must stay readable.
+function finalizeModelBuckets(buckets, maxFamilies = 7) {
+  const totals = {};
+  for (const b of buckets) {
+    for (const [f, t] of Object.entries(b.byModel || {})) totals[f] = (totals[f] || 0) + t;
+  }
+  const top = new Set(
+    Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, maxFamilies).map(([f]) => f)
+  );
+  for (const b of buckets) {
+    const merged = {};
+    for (const [f, t] of Object.entries(b.byModel || {})) {
+      const key = top.has(f) ? f : "other";
+      merged[key] = (merged[key] || 0) + t;
+    }
+    b.byModel = merged;
+  }
+  return buckets;
+}
+
 export async function getChartData(period = "7d") {
   const db = await getAdapter();
   const now = Date.now();
@@ -685,10 +726,10 @@ export async function getChartData(period = "7d") {
     const startTime = startOfDay.getTime();
     const endTime = startTime + bucketCount * bucketMs;
     const labelFn = (ts) => new Date(ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-    const buckets = Array.from({ length: bucketCount }, (_, i) => ({ label: labelFn(startTime + i * bucketMs), tokens: 0, cost: 0 }));
+    const buckets = Array.from({ length: bucketCount }, (_, i) => ({ label: labelFn(startTime + i * bucketMs), tokens: 0, cost: 0, byModel: {} }));
 
     const rows = db.all(
-      `SELECT timestamp, promptTokens, completionTokens, cost FROM usageHistory WHERE timestamp >= ?`,
+      `SELECT timestamp, model, promptTokens, completionTokens, cost FROM usageHistory WHERE timestamp >= ?`,
       [new Date(startTime).toISOString()]
     );
     for (const r of rows) {
@@ -696,11 +737,14 @@ export async function getChartData(period = "7d") {
       if (t < startTime || t >= endTime) continue;
       const idx = Math.floor((t - startTime) / bucketMs);
       if (idx >= 0 && idx < bucketCount) {
-        buckets[idx].tokens += (r.promptTokens || 0) + (r.completionTokens || 0);
+        const tokens = (r.promptTokens || 0) + (r.completionTokens || 0);
+        buckets[idx].tokens += tokens;
         buckets[idx].cost += r.cost || 0;
+        const fam = modelFamilyName(r.model);
+        buckets[idx].byModel[fam] = (buckets[idx].byModel[fam] || 0) + tokens;
       }
     }
-    return buckets;
+    return finalizeModelBuckets(buckets);
   }
 
   if (period === "24h") {
@@ -708,20 +752,23 @@ export async function getChartData(period = "7d") {
     const bucketMs = 3600000;
     const labelFn = (ts) => new Date(ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
     const startTime = now - bucketCount * bucketMs;
-    const buckets = Array.from({ length: bucketCount }, (_, i) => ({ label: labelFn(startTime + i * bucketMs), tokens: 0, cost: 0 }));
+    const buckets = Array.from({ length: bucketCount }, (_, i) => ({ label: labelFn(startTime + i * bucketMs), tokens: 0, cost: 0, byModel: {} }));
 
     const rows = db.all(
-      `SELECT timestamp, promptTokens, completionTokens, cost FROM usageHistory WHERE timestamp >= ?`,
+      `SELECT timestamp, model, promptTokens, completionTokens, cost FROM usageHistory WHERE timestamp >= ?`,
       [new Date(startTime).toISOString()]
     );
     for (const r of rows) {
       const t = new Date(r.timestamp).getTime();
       if (t < startTime || t > now) continue;
       const idx = Math.min(Math.floor((t - startTime) / bucketMs), bucketCount - 1);
-      buckets[idx].tokens += (r.promptTokens || 0) + (r.completionTokens || 0);
+      const tokens = (r.promptTokens || 0) + (r.completionTokens || 0);
+      buckets[idx].tokens += tokens;
       buckets[idx].cost += r.cost || 0;
+      const fam = modelFamilyName(r.model);
+      buckets[idx].byModel[fam] = (buckets[idx].byModel[fam] || 0) + tokens;
     }
-    return buckets;
+    return finalizeModelBuckets(buckets);
   }
 
   const bucketCount = period === "7d" ? 7 : period === "30d" ? 30 : 60;
@@ -733,17 +780,42 @@ export async function getChartData(period = "7d") {
   const dayMap = {};
   for (const r of dayRows) dayMap[r.dateKey] = parseJson(r.data, {});
 
-  return Array.from({ length: bucketCount }, (_, i) => {
+  const buckets = Array.from({ length: bucketCount }, (_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (bucketCount - 1 - i));
     const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const dayData = dayMap[dateKey];
     return {
+      dateKey,
       label: labelFn(d),
       tokens: dayData ? (dayData.promptTokens || 0) + (dayData.completionTokens || 0) : 0,
       cost: dayData ? (dayData.cost || 0) : 0,
+      byModel: {},
     };
   });
+
+  // Model distribution needs row-level data — usageDaily aggregates only
+  // carry day totals. One range scan grouped by the same local-day buckets.
+  try {
+    const rangeStart = new Date(today);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeStart.setDate(rangeStart.getDate() - (bucketCount - 1));
+    const mrows = db.all(
+      `SELECT timestamp, model, promptTokens, completionTokens FROM usageHistory WHERE timestamp >= ?`,
+      [rangeStart.toISOString()]
+    );
+    const byKey = {};
+    for (const b of buckets) byKey[b.dateKey] = b;
+    for (const r of mrows) {
+      const b = byKey[getLocalDateKey(r.timestamp)];
+      if (!b) continue;
+      const tokens = (r.promptTokens || 0) + (r.completionTokens || 0);
+      const fam = modelFamilyName(r.model);
+      b.byModel[fam] = (b.byModel[fam] || 0) + tokens;
+    }
+  } catch {}
+
+  return finalizeModelBuckets(buckets.map(({ dateKey, ...rest }) => rest));
 }
 
 function latencyScoreFromMs(avgMs) {
