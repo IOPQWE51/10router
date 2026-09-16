@@ -449,7 +449,7 @@ export default function UsageDashboard() {
         )}
       </Card>
       <Card title={translate("Node Health")} icon="dns" padding="md">
-        <p className="mb-2 text-xs text-text-muted">{translate("Last 7 days (>50 requests)")}</p>
+        <p className="mb-2 text-xs text-text-muted">{translate("Last 7 days (≥50 real requests)")}</p>
         <ScoreTable
           rows={nodes}
           columns={NODE_COLUMNS}

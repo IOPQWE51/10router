@@ -1739,7 +1739,7 @@
   "Health": "健康度",
   "Avg TTFT": "平均首字延迟",
   "Last 7 days": "最近 7 天",
-  "Last 7 days (>50 requests)": "最近 7 天（>50 次请求）",
+  "Last 7 days (≥50 real requests)": "最近 7 天（≥50 次真实有效请求）",
   "Individual quota reached. Resets at {time} (in {duration}).": "该账号额度已用完，将于 {time} 重置（约 {duration} 后）；可升级订阅提升限额。",
   "{n}h": "{n}小时",
   "{n}m": "{n}分",
