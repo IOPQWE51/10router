@@ -21,6 +21,12 @@ export default {
   },
   category: "apikey",
   authType: "apikey",
+  // 媒体面(issue #19-3 补全): 图片/视频/嵌入与 chat 同一 Bearer key, OpenAI 风格
+  // 端点; 模型经「Import from /models」拉全, 媒体模型按 kind 标记归入对应页面。
+  serviceKinds: ["llm", "image", "video", "embedding"],
+  imageConfig: { baseUrl: "https://api.siliconflow.cn/v1/images/generations" },
+  videoConfig: { baseUrl: "https://api.siliconflow.cn/v1/videos/generations" },
+  embeddingConfig: { baseUrl: "https://api.siliconflow.cn/v1/embeddings" },
   transport: {
     baseUrl: "https://api.siliconflow.cn/v1/chat/completions",
     validateUrl: "https://api.siliconflow.cn/v1/models",
@@ -30,6 +36,14 @@ export default {
     { id: "deepseek-ai/DeepSeek-V4-Pro", name: "DeepSeek V4 Pro" },
     { id: "deepseek-ai/DeepSeek-V4-Flash", name: "DeepSeek V4 Flash" },
     { id: "moonshotai/Kimi-K2.6", name: "Kimi K2.6" },
+    // 媒体基线(官方价目 2026-09-16): Kolors 免费, Z-Image-Turbo ¥0.10/张,
+    // Qwen-Image ¥0.30/张, Wan2.2 文生/图生视频 ¥2/条。长尾(ERNIE-Image 等)
+    // 走导入目录。
+    { id: "Kwai-Kolors/Kolors", name: "Kolors", params: ["size"], kind: "image" },
+    { id: "zai-org/Z-Image-Turbo", name: "Z-Image Turbo", params: ["size"], kind: "image" },
+    { id: "Qwen/Qwen-Image", name: "Qwen Image", params: ["size"], kind: "image" },
+    { id: "Wan-AI/Wan2.2-T2V-A14B", name: "Wan2.2 T2V", params: ["size"], kind: "video" },
+    { id: "Wan-AI/Wan2.2-I2V-A14B", name: "Wan2.2 I2V", params: ["size"], kind: "video" },
   ],
   features: {
     usage: true,
