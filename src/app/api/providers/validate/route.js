@@ -364,6 +364,7 @@ export async function POST(request) {
         case "cohere":
         case "nebius":
         case "siliconflow":
+        case "siliconflow-cn":
         case "hyperbolic":
         case "ollama":
         case "ollama-local":

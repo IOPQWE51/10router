@@ -91,6 +91,7 @@ export const LOBE_PROVIDER_ICONS = {
   together: Together,
   fireworks: Fireworks,
   siliconflow: SiliconCloud,
+  "siliconflow-cn": SiliconCloud,
   kimi: Moonshot,
   glm: Zhipu,
   "glm-cn": Zhipu,

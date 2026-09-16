@@ -152,6 +152,15 @@ export const PROVIDER_PRICING = {
   gh: {
     "gpt-5.3-codex": { input: 1.75, output: 14.00, cached: 0.175, reasoning: 14.00, cache_creation: 1.75 },
   },
+  // SiliconFlow 中国区 (issue #19-3) — 官方价目 ¥/1M ÷ 7.15 → $/1M
+  // (https://siliconflow.cn/pricing, 2026-09-16)。key 用 SF 原始 id(含 org 前缀、
+  // 原大小写)——查不到的长尾模型由用户侧「导入 /models」目录 + 手工定价覆盖。
+  "siliconflow-cn": {
+    "deepseek-ai/DeepSeek-V3.2": { input: 0.56, output: 0.85, cached: 0.06, reasoning: 0.85 },
+    "deepseek-ai/DeepSeek-V4-Pro": { input: 1.68, output: 3.36, cached: 0.14, reasoning: 3.36 },
+    "deepseek-ai/DeepSeek-V4-Flash": { input: 0.21, output: 0.63, cached: 0.02, reasoning: 0.63 },
+    "moonshotai/Kimi-K2.6": { input: 0.91, output: 3.78, cached: 0.15, reasoning: 3.78 },
+  },
   // TokenRouter — exact rates from https://api.tokenrouter.com/api/pricing ($1/1M tokens).
   // Ratio→USD: input = model_ratio×2, output = model_ratio×completion_ratio×2.
   // These override the canonical MODEL_PRICING/PATTERN_PRICING, whose rates often
