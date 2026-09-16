@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { translate } from "@/i18n/runtime";
 import { getStatusVariant as getConnectionStatusVariant } from "@/shared/utils/connectionStatus";
 import PropTypes from "prop-types";
 import { Card, Badge, Button, Modal, Select, Toggle, EditConnectionModal, ConfirmModal } from "@/shared/components";
@@ -348,7 +349,12 @@ export default function ConnectionsCard({ providerId, isOAuth }) {
     finally { setLoading(false); }
   }, [providerId]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    // Deferred: fetch_ sets state, and calling it synchronously in the effect
+    // body trips react-hooks/set-state-in-effect (same fix as UsageDashboard).
+    const t = setTimeout(fetch_, 0);
+    return () => clearTimeout(t);
+  }, [fetch_]);
 
   const saveStrategy = async (strategy, stickyLimit, earliestExpiry = earliestExpiryFirst) => {
     try {
