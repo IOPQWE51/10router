@@ -28,6 +28,12 @@
 
 ### 🛠️ 优化与修复
 
+- **渠道级熔断三项跟进修复（P0 运行时崩溃 + 并发竞态 + 死代码）**：
+  - **P0：`chat.js` 运行时必崩修复**——`0065bd0c` 引入渠道熔断时，`getChannelBlock / setChannelBlock / clearChannelBlock` 只加在 `src/lib/db/index.js`，**漏了 `src/lib/localDb.js` 兼容 shim 的 re-export**。ESM 缺失命名导入在构建期不报错、单测又把 localDb 整个 mock 掉，导致全量测试绿灯但**运行时每个聊天请求都会 `TypeError: getChannelBlock is not a function` 直接 500**。补上 shim 导出；新增 `tests/unit/localdb-shim-export-guard.test.js`——解析全库 `import { … } from "@/lib/localDb"` 并逐一核对 shim 真实导出，下次再漏会在 CI 红而不是生产崩。
+  - **熔断状态并发竞态修复**：`setChannelBlock` / `clearChannelBlock` 原实现在事务**外** `getSettings()` 读、再把整个 `channelBlocks` map 传入 `updateSettings` 覆盖写——两个 provider 同时熔断会互相丢 block，`clearChannelBlock` 也可能复活期间新设的 block（注释声称的并发安全并不成立）。新增事务内 read-modify-write helper `mutateSettings`，合并逻辑进事务才真正原子；`tests/unit/channel-block-repo.test.js` 5 例在真实 store 上跑（含并发 set 无丢失、set+clear 竞态一致性），旧实现下该并发用例必红。
+  - 清理 `accountFallback.js` 里从未被引用的 `CHANNEL_BLOCK_KEY_PREFIX` / `getChannelBlockKey`（kv 存储方案的遗留物，实际落点是 `settings.channelBlocks`，注释同步纠正）。
+  - 补交 `siliconflow-cn` 的 golden URL/header 快照（`ac72c71d` 应带未带，本地跑测试自动更新出来的正确产物）。
+
 - **CodeBuddy 11128「unapproved channel」改为渠道级熔断（不再逐账号重试放大风控）**：
   - **问题**：`codebuddy-cn` 命中上游安全策略 `11128` 时，10Router 按常规走账号 fallback——**同一秒内把 4 个账号依次打同一个模型**（`余师洋 → 1698 → 1697 → 洋芋`，整体 <2s，各锁 `modelLock 30s`），日志呈现 `all 4 accounts locked`。这段突发本身就是上游 WAF 关注的信号，于是重试变成自我放大：四个账号全被拒绝，且下一个请求等锁一过又重演。
   - **实测判据（NAS 生产实例）**：同一账号、同一 token、带 registry 那套 CLI 认证头**直连上游**，`1MSG` / `31TOOL` / `54TOOL` / `1752MSG+54TOOL` **全部 200**；逐账号复刻真实失败形态（`5MSG+54TOOL`，含 ZCode 身份 system prompt）**四个账号全部 200**。但 11128 命中的账号分布是 `1697(12) / 1698(10) / 余师洋(4) / 洋芋(5)`，且失败耗时仅 323–654ms（上游快速拒绝，非超时）。**结论**：不是某账号坏了、也不是 ZCode 入口特征——失败属于**渠道**（出口指纹 / 请求突发），单发请求永远成功。

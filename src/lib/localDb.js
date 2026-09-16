@@ -2,6 +2,7 @@
 // Kept for backward compatibility with existing imports.
 export {
   getSettings, updateSettings, isCloudEnabled, getCloudUrl,
+  getChannelBlock, setChannelBlock, clearChannelBlock,
   getProviderConnections, getProviderConnectionById,
   createProviderConnection, updateProviderConnection,
   deleteProviderConnection, deleteProviderConnectionsByProvider,

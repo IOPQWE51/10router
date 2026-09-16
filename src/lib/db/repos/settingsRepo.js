@@ -129,6 +129,29 @@ export async function updateSettings(updates) {
   return mergeWithDefaults(next);
 }
 
+// Atomic read-modify-write inside a transaction: `mutator` receives the current
+// raw settings and returns the patch to apply (or null/undefined for no-op).
+// Needed when the patch depends on existing values (e.g. one key of an object
+// map) — reading via getSettings() first and then passing the whole map to
+// updateSettings() would overwrite concurrent writes made in between.
+async function mutateSettings(mutator) {
+  const db = await getAdapter();
+  let next = null;
+  let current = null;
+  db.transaction(function () {
+    const row = db.get(`SELECT data FROM settings WHERE id = 1`);
+    current = row ? parseJson(row.data, {}) : {};
+    const patch = mutator(current);
+    if (!patch) return;
+    next = { ...current, ...patch };
+    db.run(
+      `INSERT INTO settings(id, data) VALUES(1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data`,
+      [stringifyJson(next)],
+    );
+  });
+  return mergeWithDefaults(next || current || {});
+}
+
 export async function isCloudEnabled() {
   const settings = await getSettings();
   return settings.cloudEnabled === true;
@@ -145,24 +168,25 @@ export async function getChannelBlock(provider) {
 }
 
 /**
- * Persist a channel block for a provider. Written through updateSettings, whose
- * read-merge-write runs inside a transaction, so concurrent requests cannot drop
- * each other's block.
+ * Persist a channel block for a provider. The merge happens inside the
+ * transaction (mutateSettings), so two providers tripping their breakers
+ * concurrently cannot drop each other's block.
  */
 export async function setChannelBlock(provider, block) {
-  const settings = await getSettings();
-  const next = { ...(settings.channelBlocks || {}), [provider]: block };
-  await updateSettings({ channelBlocks: next });
-  return next[provider];
+  await mutateSettings((current) => ({
+    channelBlocks: { ...(current.channelBlocks || {}), [provider]: block },
+  }));
+  return block;
 }
 
 /** Remove a provider's channel block (called once it has expired/succeeded). */
 export async function clearChannelBlock(provider) {
-  const settings = await getSettings();
-  const blocks = { ...(settings.channelBlocks || {}) };
-  if (!(provider in blocks)) return null;
-  delete blocks[provider];
-  await updateSettings({ channelBlocks: blocks });
+  await mutateSettings((current) => {
+    if (!(provider in (current.channelBlocks || {}))) return null;
+    const blocks = { ...current.channelBlocks };
+    delete blocks[provider];
+    return { channelBlocks: blocks };
+  });
   return null;
 }
 

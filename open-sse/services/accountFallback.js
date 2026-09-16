@@ -164,18 +164,12 @@ export function buildClearModelLocksUpdate(connection) {
 }
 
 /**
- * Channel-scope block: a provider-wide pause kept in the `kv` store rather than
- * on any single connection, because the failure is a property of the channel
- * (egress fingerprint / request shape), not of one account.
+ * Channel-scope block: a provider-wide pause kept in `settings.channelBlocks`
+ * rather than on any single connection, because the failure is a property of
+ * the channel (egress fingerprint / request shape), not of one account.
  *
  * Shape: { until: ISO string, lastAt: ISO string, strikes: number }
  */
-export const CHANNEL_BLOCK_KEY_PREFIX = "channelBlock_";
-
-/** Build the kv key for a provider's channel block */
-export function getChannelBlockKey(provider) {
-  return `${CHANNEL_BLOCK_KEY_PREFIX}${provider}`;
-}
 
 /**
  * Decide the next channel-block state for a provider that just answered with a
