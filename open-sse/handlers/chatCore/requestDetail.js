@@ -94,7 +94,7 @@ export function formatDoneLine({ usage, latency }) {
   return `DONE ${latency?.total ?? 0}ms${ttftStr} · ${inStr} · OUT ${outTok}`;
 }
 
-export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, latency = null, label = "USAGE", silent = false }) {
+export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, endpoint, latency = null, usageKey = undefined, label = "USAGE", silent = false }) {
   if (!tokens || typeof tokens !== "object") return;
 
   const inTokens = tokens.input_tokens ?? tokens.prompt_tokens ?? 0;
@@ -136,6 +136,11 @@ export function saveUsageStats({ provider, model, tokens, connectionId, apiKey, 
     connectionId: connectionId || undefined,
     apiKey: apiKey || undefined,
     endpoint: endpoint || null,
+    // Forward the dedup key: every call site stamps one per upstream attempt.
+    // Without it two distinct requests landing in the same millisecond with
+    // identical token counts collapse into one row (the legacy content-only
+    // dedup silently ate the second).
+    usageKey,
     meta: Object.keys(meta).length > 0 ? meta : undefined
   }).catch(() => {});
 }

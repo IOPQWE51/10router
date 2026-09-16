@@ -31,6 +31,7 @@ function exactEmbeddingUsage(raw) {
  * @param {Request} request
  */
 export async function handleEmbeddings(request) {
+  const requestStartTime = Date.now();
   let body;
   try {
     body = await request.json();
@@ -147,6 +148,10 @@ export async function handleEmbeddings(request) {
           usageKey: randomUUID(),
           tokens: usage,
           status: "success",
+          // Latency observation for the same meta-travel pipeline as chat
+          // (health/speed survives the requestDetails ring and gateway sync).
+          // Embeddings are non-streaming: no TTFT, duration = total.
+          meta: { latencyMs: Date.now() - requestStartTime },
         }).catch(() => {});
       }
       return result.response;
