@@ -376,6 +376,36 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(node.avgSpeed).toBe(40);
   });
 
+  it("per-metric merge: TTFT survives from requestDetails when meta rows lack it", async () => {
+    // Observed on mimo-x-pro-preview: meta rows came from the non-streaming
+    // branch (latencyMs only, no ttftMs) and the old meta-preference hid the
+    // TTFT history kept in requestDetails. Both stores now feed one bucket
+    // per metric; rows missing one metric never drag the others down.
+    const { getAdapter } = await import("@/lib/db/driver.js");
+    const db = await getAdapter();
+    const detail = {
+      id: "pm-detail-1", timestamp: todayIso(), provider: "pmtest", model: "pmtest-1",
+      latency: { ttft: 800, total: 3000 }, tokens: { prompt_tokens: 10, completion_tokens: 100 },
+    };
+    db.run(
+      `INSERT INTO requestDetails(id, timestamp, provider, model, connectionId, status, data) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+      [detail.id, detail.timestamp, detail.provider, detail.model, null, "success", JSON.stringify(detail)]
+    );
+    await usageRepo.saveRequestUsage({
+      timestamp: todayIso(), provider: "pmtest", model: "pmtest-1", status: "ok",
+      tokens: { prompt_tokens: 10, completion_tokens: 100 },
+      meta: { latencyMs: 2000 },
+    });
+
+    const dash = await usageRepo.getUsageDashboard({ days: 30, minRequests: 1 });
+    const model = dash.models.find((m) => m.provider === "pmtest");
+    expect(model).toBeTruthy();
+    expect(model.avgTtftMs).toBe(800);   // only the details row carries ttft
+    expect(model.avgLatencyMs).toBe(2500); // (3000 + 2000) / 2
+    // details: 100tok / 2.2s; meta: 100tok / 2.0s → 200 / 4.2s = 47.6
+    expect(model.avgSpeed).toBe(47.6);
+  });
+
   it("defaults minRequests to 50 in getUsageDashboard", async () => {
     const dash = await usageRepo.getUsageDashboard();
     // Default call without arguments succeeds with minRequests = 50

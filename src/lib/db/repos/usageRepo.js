@@ -963,8 +963,16 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
     [nodeTsGte, nodeTsLt]
   );
 
-  // Perf stats (avg total latency / TTFT / output speed) come from
-  // requestDetails — recent window only (~200 records, observability-capped).
+  // Perf stats (avg total latency / TTFT / output speed) aggregate BOTH
+  // stores into one bucket per (scope, key), per-metric:
+  //   • requestDetails — recent window only (~200 records, observability-capped);
+  //   • usageHistory meta.latencyMs/ttftMs — long-lived, travels with sync.
+  // The two stores record the SAME measurement for overlapping requests, so
+  // merging never skews an average (sum and count scale together) — it only
+  // fills gaps: a model whose meta rows all lack ttftMs (non-streaming
+  // branch) still shows the TTFT history kept in requestDetails, and rows
+  // missing one metric never drag the other metrics down (each metric counts
+  // only its own valid samples — ttftCount vs count already encode that).
   const perfAgg = { node: {}, model: {} };
   try {
     const rdRows = db.all(`SELECT provider, model, connectionId, data FROM requestDetails`);
@@ -1005,14 +1013,12 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
     }
   } catch {}
 
-  // Primary perf source: latency observations carried on usageHistory rows
-  // themselves (meta.latencyMs/ttftMs — stamped by executors since 1.1.2 and
-  // travelling with gateway-synced imports). Unlike requestDetails' 200-record
-  // ring these rows survive indefinitely, so once the deployment is a week
-  // old the trailing-7d health window is fully covered — including synced
-  // models on a sibling instance. requestDetails stays as the fallback for
-  // (provider, model) keys with no meta samples yet (pre-1.1.2 history).
-  const metaPerf = { node: {}, model: {} };
+  // Second feed into the same buckets: latency observations carried on
+  // usageHistory rows themselves (meta.latencyMs/ttftMs — stamped by executors
+  // since 1.1.2 and travelling with gateway-synced imports). These rows
+  // outlive the requestDetails ring, so a week-old deployment covers the
+  // trailing-7d health window entirely — including synced models on a
+  // sibling instance.
   try {
     const metaRows = db.all(
       `SELECT provider, model, meta, completionTokens FROM usageHistory
@@ -1041,8 +1047,8 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
       const nodeKey = r.provider || "";
       const modelKey = `${r.provider || ""}|${r.model || ""}`;
       for (const [scope, key] of [["node", nodeKey], ["model", modelKey]]) {
-        if (!metaPerf[scope][key]) metaPerf[scope][key] = { sum: 0, count: 0, ttftSum: 0, ttftCount: 0, tokensSum: 0, durMsSum: 0 };
-        const agg = metaPerf[scope][key];
+        if (!perfAgg[scope][key]) perfAgg[scope][key] = { sum: 0, count: 0, ttftSum: 0, ttftCount: 0, tokensSum: 0, durMsSum: 0 };
+        const agg = perfAgg[scope][key];
         agg.sum += total;
         agg.count += 1;
         if (ttft != null) { agg.ttftSum += ttft; agg.ttftCount += 1; }
@@ -1055,10 +1061,7 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
   } catch {}
 
   const perfOf = (scope, key) => {
-    // meta first, requestDetails only when the key has no meta samples —
-    // never both, so a request recorded in the two stores is never counted
-    // twice (and both stores hold identical latency values anyway).
-    const agg = metaPerf[scope][key] || perfAgg[scope][key];
+    const agg = perfAgg[scope][key];
     if (!agg) return { avgLatencyMs: null, avgTtftMs: null, avgSpeed: null };
     return {
       avgLatencyMs: Math.round(agg.sum / agg.count),
