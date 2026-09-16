@@ -430,7 +430,12 @@ export default function UsageDashboard() {
     );
   }
 
-  const nodes = data.nodes || [];
+  // Node Health lists only nodes with a real health score — a node with zero
+  // latency observations (score null, e.g. a purely gateway-synced channel
+  // like bai) has no ranking signal at all and stays off the list. The API
+  // still returns those rows (traffic/success stats remain queryable); this
+  // is a display-level filter.
+  const nodes = (data.nodes || []).filter((n) => n.score != null);
   const daily = data.daily || [];
 
   return (
