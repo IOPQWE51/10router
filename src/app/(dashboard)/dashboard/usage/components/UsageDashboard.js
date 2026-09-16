@@ -119,6 +119,11 @@ CellContent.propTypes = {
   isOpen: PropTypes.bool,
 };
 
+// Perf columns (TTFT / latency / speed) under an expanded node: shown only
+// when at least ONE model row has an observation — three all-dash columns
+// carry no signal.
+const PERF_COLUMN_KEYS = new Set(["avgTtftMs", "avgLatencyMs", "avgSpeed"]);
+
 // Static per-model table shown inside an expanded node row. No header row —
 // the columns mirror the parent table the user just read, and no provider
 // subline either: the model name alone identifies the row, the parent node
@@ -128,6 +133,12 @@ function ExpandedModelTable({ rows, emptyText }) {
   if (rows.length === 0) {
     return <p className="px-8 py-3 text-xs text-text-muted">{emptyText}</p>;
   }
+  const hasAnyPerf = rows.some(
+    (r) => r.avgLatencyMs != null || r.avgTtftMs != null || r.avgSpeed != null
+  );
+  const cols = hasAnyPerf
+    ? MODEL_COLUMNS
+    : MODEL_COLUMNS.filter((c) => !PERF_COLUMN_KEYS.has(c.key));
   return (
     <table className="w-full">
       <tbody>
@@ -136,7 +147,7 @@ function ExpandedModelTable({ rows, emptyText }) {
             key={row.model}
             className="border-b border-black/5 dark:border-white/5 last:border-b-0"
           >
-            {MODEL_COLUMNS.map((col) => (
+            {cols.map((col) => (
               <td
                 key={col.key}
                 className={cn(
