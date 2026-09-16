@@ -8,7 +8,7 @@
 | Code | HTTP | 报错(节选) | 性质 | 归属 | 修复/出路 |
 |------|------|-----------|------|------|----------|
 | `11101` | 400 | Non-stream chat request is currently not supported | **可修(代码)** | executor | 强制 `stream=true`(CodeBuddy 只支持流式)；10router 为非流式客户端本地聚合 |
-| `11128` | 400 | Illegal API invocation from an unapproved channel | **间歇风控** | 服务端 | 无配置可解；等锁恢复/降请求形态/换号。见下方专节 |
+| `11128` | 400 | Illegal API invocation from an unapproved channel | **渠道级风控（间歇）** | 服务端 | 10router 已改为**渠道级熔断**（不逐账号重试）；无配置可解，等熔断窗口或换渠道。见下方专节 |
 | `11133` | 400 | the request parameters were rejected by the model provider (`model_param_invalid`) | **多为客户端/上游缺陷** | mirasim/上游 | 二分请求侧 vs 响应侧定位；workaround 换 hy4。见相关文档 |
 | `11134` | 500 | the model provider is temporarily unavailable, please retry later or switch… | **上游临时不可用** | 上游 | 等上游自报的 reset 时间；**不是目录错误，勿因此下架模型**。见下方专节 |
 | `11140` | 403 | `{"code":11140,"msg":"request illegal","requestid":"…"}` | **账号级风控（新）** | 服务端 | 本地无解——额度接口仍 200、与请求形态/模型/代理无关；等恢复或换号。见下方专节 |
@@ -29,7 +29,7 @@ CodeBuddy 上游只接受流式（HTTP 400 code 11101）。10Router 的 `CodeBud
 - 位置：`open-sse/executors/codebuddy-cn.js`
 - 性质：稳定可复现，代码已处理。
 
-### 11128 — unapproved channel 安全策略拦截（间歇风控，勿乱改）
+### 11128 — unapproved channel 安全策略拦截（渠道级风控，勿乱改）
 
 CodeBuddy 服务端**安全策略**对"来自未批准渠道形态"的请求做拦截（官方 displayMsg：请求被安全策略拦截）。排查要点：
 
@@ -40,9 +40,45 @@ CodeBuddy 服务端**安全策略**对"来自未批准渠道形态"的请求做�
   - 超大上下文（500+ MSG）
   - 账号配额紧张（伴随 429 `6004` / modelLock）时更易触发
 - **与账号/格式/模型是否被禁无关**（glm/hy/deepseek 在 54 工具下都曾命中；同两账号切 31 工具 deepseek 立即 200）。
-- **无 10router 配置可解**（不是缺 header/key）；出路 = 等 30s 锁自动恢复 / 降请求形态(收敛工具数、消息数) / 换号重试。
-- 记忆：`11128 = 间歇风控，自动恢复`。
+- **无 10router 配置可解**（不是缺 header/key）；出路 = 等熔断窗口 / 降请求形态(收敛工具数、消息数) / 换渠道。
+- 记忆：`11128 = 渠道级风控，等熔断或换渠道`。
 - 社区：workbuddy/codebuddy 反代项目（codebuddyapi-proxy、workbuddy2api）同样遇到，非本项目特有。
+
+#### 2026-09-16 实测复核：这是**渠道**属性，且「逐账号重试」会放大它
+
+生产实例（NAS）复测，判据如下：
+
+| 实验 | 结果 |
+|---|---|
+| 同账号直连上游 `1MSG` / `31TOOL` / `54TOOL` / `1752MSG+54TOOL` | **全部 200** |
+| 逐账号（4 个）复刻真实失败形态 `5MSG+54TOOL`（含 ZCode 身份 system prompt） | **四个账号全部 200** |
+| 日志里 11128 的账号分布 | `1697(12) / 1698(10) / 余师洋(4) / 洋芋(5)` |
+| 11128 的探测耗时 | 323–654ms（上游**快速拒绝**，非超时） |
+
+**关键现场**：命中时日志形如
+
+```
+[22:39:01] ▶ POST cbcn/hy4-preview · 5 MSG · 54 TOOL · ACC:余师洋
+[22:39:01] ✗ ERROR 400 · 475ms → 11128
+[22:39:01] [FALLBACK] ⇄ ACC:余师洋 UNAVAILABLE (400) → NEXT ACCOUNT
+[22:39:01] ▶ POST cbcn/hy4-preview · 5 MSG · 54 TOOL · ACC:1698
+[22:39:02] ✗ ERROR 400 · 654ms → 11128
+... 1697 → 洋芋 同样 11128（合计 <2s，随后 all 4 accounts locked）
+```
+
+**结论（修正早前"单请求形态"的判断）**：
+- 单发请求（无论 ZCode / dsh / 1 MSG / 54 TOOL）**直连永远 200** → 不是账号坏、不是模型坏、**也不是 ZCode 入口特征**（ZCode 身份的 system prompt 直传亦 200）。
+- 失败只在**同一秒内多账号连打同一个模型**时成片出现 → 是**出口/突发指纹**触发的渠道级策略，账号 fallback 的连发正是放大器。
+
+#### 10router 的处置：渠道级熔断（v1.1.2 起）
+
+- `open-sse/config/errorConfig.js`：两条 11128 规则带 `channelScope: true`；`checkFallbackError` 透出该标志。
+- `markAccountUnavailable`：`channelScope` 错误**不加账号级 `modelLock`**（仅记 `lastError` 供仪表盘展示），返回 `channelScope: true`。
+- `src/sse/handlers/chat.js`：收到 `channelScope` 立即**中止账号 fallback**，改设 provider 级熔断 `settings.channelBlocks[provider]`——**60s 起步，5 分钟内复发升级到 10 分钟**；熔断期间直接返回 503 + `Retry-After`，不再触达上游。**任一成功请求立即清除熔断**。
+- 效果：命中时对上游的调用从「4 次/秒 × 每 30s 重演」降为「1 次 / 60s」，且不再误锁四个账号（其余模型不受牵连）。
+
+> 排障时**先看是不是成片命中**（同一秒多账号同模型）：若是，属渠道熔断范畴，别去翻单个账号；若单个账号独自持续 11128 而其它账号正常，才按账号维度排查。
+
 
 ### 11133 — 请求参数被拒（model_param_invalid）
 

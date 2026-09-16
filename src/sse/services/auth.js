@@ -284,10 +284,12 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
  * @param {string} errorText
  * @param {string|null} provider
  * @param {string|null} model - The specific model that triggered the error
- * @returns {{ shouldFallback: boolean, cooldownMs: number }}
+ * @returns {{ shouldFallback: boolean, cooldownMs: number, channelScope: boolean }}
+ *   `channelScope: true` means the caller must NOT try sibling accounts — the
+ *   error belongs to the channel, not to this account.
  */
 export async function markAccountUnavailable(connectionId, status, errorText, provider = null, model = null, resetsAtMs = null) {
-  if (!connectionId || connectionId === "noauth") return { shouldFallback: false, cooldownMs: 0 };
+  if (!connectionId || connectionId === "noauth") return { shouldFallback: false, cooldownMs: 0, channelScope: false };
   const connections = await getProviderConnections({ provider });
   const conn = connections.find(c => c.id === connectionId);
   const backoffLevel = conn?.backoffLevel || 0;
@@ -296,7 +298,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
   const githubResetAtMs = githubMonthlyResetMs(status, errorText, provider);
 
   // Provider-specific precise cooldown (e.g. codex usage_limit_reached resets_at) overrides backoff
-  let shouldFallback, cooldownMs, newBackoffLevel;
+  let shouldFallback, cooldownMs, newBackoffLevel, channelScope = false;
   if (githubResetAtMs) {
     shouldFallback = true;
     cooldownMs = githubResetAtMs - Date.now();
@@ -306,9 +308,27 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
     cooldownMs = Math.min(resetsAtMs - Date.now(), MAX_RATE_LIMIT_COOLDOWN_MS);
     newBackoffLevel = 0;
   } else {
-    ({ shouldFallback, cooldownMs, newBackoffLevel } = checkFallbackError(status, errorText, backoffLevel));
+    ({ shouldFallback, cooldownMs, newBackoffLevel, channelScope } = checkFallbackError(status, errorText, backoffLevel));
   }
-  if (!shouldFallback) return { shouldFallback: false, cooldownMs: 0 };
+  if (!shouldFallback) return { shouldFallback: false, cooldownMs: 0, channelScope: false };
+
+  // Channel-scope failures are not this account's fault: do NOT lock the account
+  // (the caller sets a provider-wide block instead, so a later request is not
+  // rejected by a stale per-account lock the channel never justified). The error
+  // is still recorded on the connection so the dashboard row can explain the
+  // failure instead of looking silently broken.
+  if (channelScope) {
+    const reason = typeof errorText === "string" ? errorText.slice(0, 500) : "Provider error";
+    await updateProviderConnection(connectionId, {
+      lastError: reason,
+      errorCode: status,
+      lastErrorAt: new Date().toISOString(),
+    });
+    if (provider && status && reason) {
+      console.error(`❌ ${provider} [${status}]: ${reason}`);
+    }
+    return { shouldFallback: true, cooldownMs, channelScope: true };
+  }
 
   // Keep enough of the upstream text for the UI to extract reset info
   // (quotaResetDelay / quotaResetTimeStamp live deep in the JSON body — a
@@ -334,7 +354,7 @@ export async function markAccountUnavailable(connectionId, status, errorText, pr
     console.error(`❌ ${provider} [${status}]: ${reason}`);
   }
 
-  return { shouldFallback: true, cooldownMs };
+  return { shouldFallback: true, cooldownMs, channelScope: false };
 }
 
 /**

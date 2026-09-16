@@ -28,6 +28,14 @@
 
 ### 🛠️ 优化与修复
 
+- **CodeBuddy 11128「unapproved channel」改为渠道级熔断（不再逐账号重试放大风控）**：
+  - **问题**：`codebuddy-cn` 命中上游安全策略 `11128` 时，10Router 按常规走账号 fallback——**同一秒内把 4 个账号依次打同一个模型**（`余师洋 → 1698 → 1697 → 洋芋`，整体 <2s，各锁 `modelLock 30s`），日志呈现 `all 4 accounts locked`。这段突发本身就是上游 WAF 关注的信号，于是重试变成自我放大：四个账号全被拒绝，且下一个请求等锁一过又重演。
+  - **实测判据（NAS 生产实例）**：同一账号、同一 token、带 registry 那套 CLI 认证头**直连上游**，`1MSG` / `31TOOL` / `54TOOL` / `1752MSG+54TOOL` **全部 200**；逐账号复刻真实失败形态（`5MSG+54TOOL`，含 ZCode 身份 system prompt）**四个账号全部 200**。但 11128 命中的账号分布是 `1697(12) / 1698(10) / 余师洋(4) / 洋芋(5)`，且失败耗时仅 323–654ms（上游快速拒绝，非超时）。**结论**：不是某账号坏了、也不是 ZCode 入口特征——失败属于**渠道**（出口指纹 / 请求突发），单发请求永远成功。
+  - **修法（配置驱动，`errorConfig.js` 新增 `channelScope` 规则位）**：命中 `unapproved channel` / `illegal api invocation` 时标记为 `channelScope: true`；`markAccountUnavailable` 对这类错误**不加任何账号级 `modelLock`**（只写 `lastError` 供仪表盘解释），由调用方改为设**provider 级渠道熔断**并立即中止账号 fallback。熔断落在 `settings.channelBlocks[provider]`（与 `codeBuddyDailyDone` 同层，非用户可见配置项），**60s 起步，5 分钟内复发升级到 10 分钟**；熔断期间该 provider 的请求直接返回 503 + `Retry-After`，不再触达上游。**任一成功请求立即清除熔断**（证明渠道已恢复，不必白等窗口）。
+  - 效果：命中 11128 时对上游的调用从「4 次/秒 × 每 30s 重演」降为「1 次 / 60s」，且不再误锁四个账号（其余模型不受牵连）。
+  - 新增 `tests/unit/codebuddy-channel-block.test.js` 12 例：真实 11128 报文分类、大小写与纯 msg 匹配、11133/6004/429 不误判、既有 401/402/403/404 规则无回归、`channelScope` 仅由两条 11128 规则携带、熔断首次/升级/窗口外回落/过期归零、以及「渠道熔断不产生任何账号级 modelLock」。
+  - 文档：`docs/zh-CN/codebuddy-cn-error-codes.md` 的 11128 条目补「渠道级熔断」处置与实测判据。
+
 - **用量仪表盘生成速度算法优化与门槛调整**：
   - **加权吞吐与上游缓冲突发抑制**：重构 `UsageDashboard` 节点与模型平均生成速度（`avgSpeed` / tok/s）计算逻辑。针对 Antigravity / Gemini 等因上游代理缓冲整包下发导致 `ttft` 滞后、瞬时突发传输（如 100ms 接收 1700 tokens 导致算术平均被拉高至 1,189 tok/s）的失真问题，引入物理合理性探测——当瞬时生成速度 > 250 tok/s 时，自动判定为上游缓冲突发并回退至端到端总延迟（`total`）进行计算；同时将单纯的离散速率算术平均升级为真实的加权输出吞吐（`totalTokens / totalGenerationDuration`），兼容 `completion_tokens` 与 `output_tokens` 两种键名；
   - **健康度统计门槛降低至 50 次请求**：将节点健康度评分与展示的最小请求门槛由默认 100 次调整为 `minRequests = 50`，覆盖更多有一定请求规模的可用节点；

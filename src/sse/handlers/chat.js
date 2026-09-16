@@ -7,7 +7,8 @@ import {
   extractApiKey,
   isValidApiKey,
 } from "../services/auth.js";
-import { getSettings } from "@/lib/localDb";
+import { getSettings, getChannelBlock, setChannelBlock, clearChannelBlock } from "@/lib/localDb";
+import { buildChannelBlock, channelBlockRemainingMs, formatRetryAfter } from "open-sse/services/accountFallback.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
@@ -224,6 +225,24 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
   let lastError = null;
   let lastStatus = null;
 
+  // A channel-scope failure (e.g. CodeBuddy 11128 "unapproved channel") is a
+  // property of the channel, not of one account: every sibling answers exactly
+  // the same, and walking the list only multiplies the burst. So the first such
+  // answer stops the whole provider for CHANNEL_BLOCK_MS instead of retrying.
+  const activeChannelBlock = await getChannelBlock(provider);
+  const channelBlockLeftMs = channelBlockRemainingMs(activeChannelBlock);
+  if (channelBlockLeftMs > 0) {
+    const until = activeChannelBlock.until;
+    const human = formatRetryAfter(until);
+    log.warn("AUTH", `${provider} | channel blocked (${human}) — skipping all accounts`);
+    return unavailableResponse(
+      HTTP_STATUS.SERVICE_UNAVAILABLE,
+      `[${provider}/${model}] channel temporarily blocked by upstream security policy (${human})`,
+      until,
+      human,
+    );
+  }
+
   while (true) {
     const credentials = await getProviderCredentials(provider, excludeConnectionIds, model);
 
@@ -295,13 +314,35 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       },
       onRequestSuccess: async () => {
         await clearAccountError(credentials.connectionId, credentials, model);
+        // A success proves the channel is serving again — drop any block
+        // immediately instead of making callers wait out the remaining window.
+        await clearChannelBlock(provider);
       }
     });
 
     if (result.success) return result.response;
 
     // Mark account unavailable (auto-calculates cooldown with exponential backoff, or precise resetsAtMs)
-    const { shouldFallback } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs);
+    const { shouldFallback, channelScope } = await markAccountUnavailable(credentials.connectionId, result.status, result.error, provider, model, result.resetsAtMs);
+
+    if (shouldFallback && channelScope) {
+      // Channel-scope: stop the whole provider rather than trying the next
+      // account. Sibling accounts answer identically (verified on a 4-account
+      // CodeBuddy pool: all four 11128 within one second), so the retry burst is
+      // pure amplification. Escalates to a longer pause on repeat offences.
+      const prev = await getChannelBlock(provider);
+      const block = buildChannelBlock(prev);
+      await setChannelBlock(provider, block);
+      const human = formatRetryAfter(block.until);
+      log.warn("AUTH", `${provider} | channel blocked for ${Math.round(block.durationMs / 1000)}s (strike ${block.strikes}${block.escalated ? ", escalated" : ""}) — aborting account fallback`);
+      log.warn("CHAT", `[${provider}/${model}] ${result.error} (channel blocked, ${human})`);
+      return unavailableResponse(
+        result.status || HTTP_STATUS.SERVICE_UNAVAILABLE,
+        `[${provider}/${model}] ${result.error}`,
+        block.until,
+        human,
+      );
+    }
 
     if (shouldFallback) {
       log.warn("FALLBACK", `⇄ ACC:${credentials.connectionName} UNAVAILABLE (${result.status}) → NEXT ACCOUNT`);

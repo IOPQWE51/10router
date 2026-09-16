@@ -75,6 +75,12 @@ const DEFAULT_SETTINGS = {
   // Persisted so a restart doesn't re-verify already-done accounts; entries
   // are pruned to today on every write.
   codeBuddyDailyDone: {},
+  // Provider-wide channel blocks: { [provider]: { until, lastAt, strikes } }.
+  // Set when an upstream answers with a channel-scope error (e.g. CodeBuddy
+  // 11128 "unapproved channel"): the failure belongs to the channel, so every
+  // account of that provider is paused together instead of being walked one by
+  // one (that burst is itself the signal the upstream policy reacts to).
+  channelBlocks: {},
 };
 
 async function readRaw() {
@@ -126,6 +132,38 @@ export async function updateSettings(updates) {
 export async function isCloudEnabled() {
   const settings = await getSettings();
   return settings.cloudEnabled === true;
+}
+
+/**
+ * Read the channel block for one provider (null when absent/expired).
+ * A stale entry (window already over) still contributes its `strikes` for
+ * escalation bookkeeping, so callers get the raw record and decide.
+ */
+export async function getChannelBlock(provider) {
+  const settings = await getSettings();
+  return settings.channelBlocks?.[provider] || null;
+}
+
+/**
+ * Persist a channel block for a provider. Written through updateSettings, whose
+ * read-merge-write runs inside a transaction, so concurrent requests cannot drop
+ * each other's block.
+ */
+export async function setChannelBlock(provider, block) {
+  const settings = await getSettings();
+  const next = { ...(settings.channelBlocks || {}), [provider]: block };
+  await updateSettings({ channelBlocks: next });
+  return next[provider];
+}
+
+/** Remove a provider's channel block (called once it has expired/succeeded). */
+export async function clearChannelBlock(provider) {
+  const settings = await getSettings();
+  const blocks = { ...(settings.channelBlocks || {}) };
+  if (!(provider in blocks)) return null;
+  delete blocks[provider];
+  await updateSettings({ channelBlocks: blocks });
+  return null;
 }
 
 export async function getCloudUrl() {

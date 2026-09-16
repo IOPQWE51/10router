@@ -1,4 +1,4 @@
-import { ERROR_RULES, BACKOFF_CONFIG, TRANSIENT_COOLDOWN_MS } from "../config/errorConfig.js";
+import { ERROR_RULES, BACKOFF_CONFIG, TRANSIENT_COOLDOWN_MS, CHANNEL_BLOCK_MS, CHANNEL_BLOCK_ESCALATE_WINDOW_MS } from "../config/errorConfig.js";
 
 /**
  * Calculate exponential backoff cooldown for rate limits (429)
@@ -18,7 +18,10 @@ export function getQuotaCooldown(backoffLevel = 0) {
  * @param {number} status - HTTP status code
  * @param {string} errorText - Error message text
  * @param {number} backoffLevel - Current backoff level for exponential backoff
- * @returns {{ shouldFallback: boolean, cooldownMs: number, newBackoffLevel?: number }}
+ * @returns {{ shouldFallback: boolean, cooldownMs: number, newBackoffLevel?: number, channelScope?: boolean }}
+ *   `channelScope: true` means the error describes the CHANNEL, not this account —
+ *   the caller must NOT walk to sibling accounts (that burst is itself what the
+ *   upstream policy reacts to); it should cool the whole provider down instead.
  */
 export function checkFallbackError(status, errorText, backoffLevel = 0) {
   const lowerError = errorText
@@ -30,23 +33,23 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
     if (rule.text && lowerError && lowerError.includes(rule.text)) {
       if (rule.backoff) {
         const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
-        return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel };
+        return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel, channelScope: !!rule.channelScope };
       }
-      return { shouldFallback: true, cooldownMs: rule.cooldownMs };
+      return { shouldFallback: true, cooldownMs: rule.cooldownMs, channelScope: !!rule.channelScope };
     }
 
     // Status-based rule: match HTTP status code
     if (rule.status && rule.status === status) {
       if (rule.backoff) {
         const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
-        return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel };
+        return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel, channelScope: !!rule.channelScope };
       }
-      return { shouldFallback: true, cooldownMs: rule.cooldownMs };
+      return { shouldFallback: true, cooldownMs: rule.cooldownMs, channelScope: !!rule.channelScope };
     }
   }
 
   // Default: transient cooldown for any unmatched error
-  return { shouldFallback: true, cooldownMs: TRANSIENT_COOLDOWN_MS };
+  return { shouldFallback: true, cooldownMs: TRANSIENT_COOLDOWN_MS, channelScope: false };
 }
 
 /**
@@ -158,6 +161,52 @@ export function buildClearModelLocksUpdate(connection) {
     if (key.startsWith(MODEL_LOCK_PREFIX)) cleared[key] = null;
   }
   return cleared;
+}
+
+/**
+ * Channel-scope block: a provider-wide pause kept in the `kv` store rather than
+ * on any single connection, because the failure is a property of the channel
+ * (egress fingerprint / request shape), not of one account.
+ *
+ * Shape: { until: ISO string, lastAt: ISO string, strikes: number }
+ */
+export const CHANNEL_BLOCK_KEY_PREFIX = "channelBlock_";
+
+/** Build the kv key for a provider's channel block */
+export function getChannelBlockKey(provider) {
+  return `${CHANNEL_BLOCK_KEY_PREFIX}${provider}`;
+}
+
+/**
+ * Decide the next channel-block state for a provider that just answered with a
+ * channel-scope error. Repeat offences inside CHANNEL_BLOCK_ESCALATE_WINDOW_MS
+ * escalate to the long duration; otherwise the short one applies.
+ * @param {object|null} prev - previous stored state (or null)
+ * @param {number} nowMs - current epoch ms (injectable for tests)
+ * @returns {{ until: string, lastAt: string, strikes: number, durationMs: number, escalated: boolean }}
+ */
+export function buildChannelBlock(prev, nowMs = Date.now()) {
+  const prevLast = prev?.lastAt ? new Date(prev.lastAt).getTime() : 0;
+  const withinWindow = prevLast > 0 && nowMs - prevLast <= CHANNEL_BLOCK_ESCALATE_WINDOW_MS;
+  const escalated = withinWindow;
+  const durationMs = escalated ? CHANNEL_BLOCK_MS.long : CHANNEL_BLOCK_MS.short;
+  return {
+    until: new Date(nowMs + durationMs).toISOString(),
+    lastAt: new Date(nowMs).toISOString(),
+    strikes: (prev?.strikes || 0) + 1,
+    durationMs,
+    escalated,
+  };
+}
+
+/**
+ * Remaining ms of an active channel block (0 when none / expired).
+ */
+export function channelBlockRemainingMs(block, nowMs = Date.now()) {
+  if (!block?.until) return 0;
+  const until = new Date(block.until).getTime();
+  if (!Number.isFinite(until)) return 0;
+  return Math.max(0, until - nowMs);
 }
 
 /**

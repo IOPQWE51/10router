@@ -47,19 +47,48 @@ const COOLDOWN = {
   short: 5 * 1000,
 };
 
+// Channel-level (provider-wide) block durations (ms).
+// Some upstreams reject a *request shape* or an *egress fingerprint* rather than
+// an account — CodeBuddy's 11128 "unapproved channel" answers identically for
+// every account of the provider within the same second. Locking accounts one by
+// one triples the burst, which is itself the signal the WAF looks for, so the
+// right response is to stop the whole channel for a while instead.
+export const CHANNEL_BLOCK_MS = {
+  // First offence: short pause. Long enough that the in-flight request gives up
+  // and the client retries into a different provider/model, short enough that a
+  // blip does not blackhole the channel.
+  short: 60 * 1000,
+  // Repeat offence within CHANNEL_BLOCK_ESCALATE_WINDOW_MS: the fingerprint is
+  // clearly sticky, back off properly.
+  long: 10 * 60 * 1000,
+};
+
+// Re-offending inside this window escalates short → long.
+export const CHANNEL_BLOCK_ESCALATE_WINDOW_MS = 5 * 60 * 1000;
+
 /**
  * Unified error classification rules.
  * Checked top-to-bottom: text rules first (by order), then status rules.
- * Each rule: { text?, status?, cooldownMs?, backoff? }
+ * Each rule: { text?, status?, cooldownMs?, backoff?, channelScope? }
  *   - text: substring match (case-insensitive) on error message
  *   - status: HTTP status code match
  *   - cooldownMs: fixed cooldown duration
  *   - backoff: true = use exponential backoff (rate limit)
+ *   - channelScope: true = the failure is a property of the CHANNEL (egress
+ *     fingerprint / request shape), not of the account, so the caller must stop
+ *     retrying sibling accounts and cool the whole provider down instead.
  */
 export const ERROR_RULES = [
   // --- Text-based rules (checked first, order = priority) ---
   { text: "no credentials",           cooldownMs: COOLDOWN.long },
   { text: "request not allowed",      cooldownMs: COOLDOWN.short },
+  // CodeBuddy 11128 "Illegal API invocation from an unapproved channel" —
+  // upstream security policy. Verified on a 4-account pool: all four answer 11128
+  // with the SAME model within the same second (323–654ms), while a direct
+  // single request with the identical shape returns 200. So the block is on the
+  // channel, and walking the account list is what makes it worse.
+  { text: "unapproved channel",       channelScope: true, cooldownMs: CHANNEL_BLOCK_MS.short },
+  { text: "illegal api invocation",   channelScope: true, cooldownMs: CHANNEL_BLOCK_MS.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
   // Missing MiMo Desktop session is a CONFIGURATION state (executors/xiaomi-mimo.js),
   // not a transient fault: cooldown 0 = account never locked, combo falls through
