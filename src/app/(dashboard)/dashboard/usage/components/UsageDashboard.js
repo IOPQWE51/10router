@@ -119,9 +119,11 @@ CellContent.propTypes = {
   isOpen: PropTypes.bool,
 };
 
-// Perf columns (TTFT / latency / speed) under an expanded node: shown only
-// when at least ONE model row has an observation — three all-dash columns
-// carry no signal.
+// Perf columns (TTFT / latency / speed) under an expanded node: gated on the
+// NODE's own latency observation — a node with no measured latency (e.g. a
+// purely gateway-synced channel) expands into three all-dash columns that
+// carry no signal; hide them. When the node HAS latency the columns show and
+// per-model gaps render as "—".
 const PERF_COLUMN_KEYS = new Set(["avgTtftMs", "avgLatencyMs", "avgSpeed"]);
 
 // Static per-model table shown inside an expanded node row. No header row —
@@ -129,14 +131,12 @@ const PERF_COLUMN_KEYS = new Set(["avgTtftMs", "avgLatencyMs", "avgSpeed"]);
 // subline either: the model name alone identifies the row, the parent node
 // is already stated one line up. Rows arrive pre-sorted by the caller with
 // the SAME order as the parent list.
-function ExpandedModelTable({ rows, emptyText }) {
+function ExpandedModelTable({ rows, emptyText, parentNode }) {
   if (rows.length === 0) {
     return <p className="px-8 py-3 text-xs text-text-muted">{emptyText}</p>;
   }
-  const hasAnyPerf = rows.some(
-    (r) => r.avgLatencyMs != null || r.avgTtftMs != null || r.avgSpeed != null
-  );
-  const cols = hasAnyPerf
+  const nodeHasLatency = parentNode?.avgLatencyMs != null;
+  const cols = nodeHasLatency
     ? MODEL_COLUMNS
     : MODEL_COLUMNS.filter((c) => !PERF_COLUMN_KEYS.has(c.key));
   return (
@@ -172,6 +172,7 @@ function ExpandedModelTable({ rows, emptyText }) {
 ExpandedModelTable.propTypes = {
   rows: PropTypes.arrayOf(PropTypes.object).isRequired,
   emptyText: PropTypes.string.isRequired,
+  parentNode: PropTypes.object,
 };
 
 // Shared comparator so expanded child rows follow the exact same order as
@@ -298,7 +299,7 @@ function ScoreTable({ rows, columns, nameKey, subKey, emptyText, renderExpanded,
                         colSpan={columns.length}
                         className="p-0 bg-black/[0.02] dark:bg-white/[0.02]"
                       >
-                        <ExpandedModelTable rows={subRows} emptyText={expandedEmptyText || emptyText} />
+                        <ExpandedModelTable rows={subRows} emptyText={expandedEmptyText || emptyText} parentNode={row} />
                       </td>
                     </tr>
                   )}
