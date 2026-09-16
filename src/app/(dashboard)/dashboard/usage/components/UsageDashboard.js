@@ -55,6 +55,14 @@ function fmtLastUsed(iso) {
   return d.toLocaleString(getCurrentLocale(), { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+// Model/provider strings come from live gateway responses and custom-channel
+// imports — some carry leading/embedded whitespace (observed on legacy custom
+// channels like "snu/…", "85d2a64e-…:…"), which breaks column alignment in
+// the tables. Normalize for display only; the raw value stays the storage key.
+function cleanName(v) {
+  return String(v ?? "").trim().replace(/\s+/g, " ");
+}
+
 function CellContent({ col, row, nameKey, subKey, expandable, isOpen }) {
   switch (col.kind) {
     case "name":
@@ -66,9 +74,9 @@ function CellContent({ col, row, nameKey, subKey, expandable, isOpen }) {
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-text-main">{row[nameKey]}</div>
+            <div className="truncate text-sm font-medium text-text-main">{cleanName(row[nameKey])}</div>
             {subKey && row[subKey] && (
-              <div className="truncate text-xs text-text-muted">{row[subKey]}</div>
+              <div className="truncate text-xs text-text-muted">{cleanName(row[subKey])}</div>
             )}
           </div>
         </div>
@@ -129,7 +137,17 @@ function ExpandedModelTable({ rows, emptyText }) {
             className="border-b border-black/5 dark:border-white/5 last:border-b-0"
           >
             {MODEL_COLUMNS.map((col) => (
-              <td key={col.key} className={cn("p-2 pl-8 text-sm text-text-main", ALIGN_CLASS[col.align])}>
+              <td
+                key={col.key}
+                className={cn(
+                  "p-2 pl-8 text-sm text-text-main",
+                  ALIGN_CLASS[col.align],
+                  // Mirror the parent table: without a width cap a long custom
+                  // channel id ("85d2a64e-…:…") stretches the column and
+                  // truncate never kicks in.
+                  col.kind === "name" && "max-w-[240px]"
+                )}
+              >
                 <CellContent col={col} row={row} nameKey="model" />
               </td>
             ))}
@@ -149,7 +167,7 @@ ExpandedModelTable.propTypes = {
 // the parent list — sortKey "name" maps to each level's own name field.
 function sortRowsBy(list, sortKey, sortDir, nameKey) {
   const valueOf = (row) => {
-    if (sortKey === "name") return String(row[nameKey] || "");
+    if (sortKey === "name") return cleanName(row[nameKey] || "");
     const v = row[sortKey];
     if (typeof v === "string") return v;
     return v == null ? (sortDir === "desc" ? -Infinity : Infinity) : v;
