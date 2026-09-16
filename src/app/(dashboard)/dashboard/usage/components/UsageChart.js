@@ -69,23 +69,17 @@ export default function UsageChart({ period = "7d" }) {
 
   const modelData = useMemo(() => {
     const rows = data.map((d) => ({ label: d.label, ...(d.byModel || {}) }));
-    // Head/tail zero-fill: buckets BEFORE a family's first appearance and
-    // AFTER its last are real 0s, so the curve touches the baseline at the
-    // edges (a silent morning shows a flat 0, not a floating line). INTERIOR
-    // gaps stay undefined so connectNulls keeps drawing the elevated
-    // straight connector between active periods.
+    // Bucket gaps are filled with real 0s — ALWAYS, including interior gaps.
+    // A family that ran at 02:00 and again at 18:00 was simply idle in between;
+    // drawing one straight connector across those 15 silent hours renders as a
+    // hard diagonal that reads as sustained traffic (worse: monotone smoothing
+    // has no interior points to bend on, so it looks like a sharp polyline).
+    // Zero-filling every gap makes idle time visibly idle and leaves the
+    // smoothing to shape runs of real samples.
     for (const f of modelFamilies) {
-      let first = -1;
-      let last = -1;
-      rows.forEach((r, i) => {
-        if (typeof r[f] === "number") {
-          if (first < 0) first = i;
-          last = i;
-        }
-      });
-      if (first < 0) continue;
-      for (let i = 0; i < first; i++) if (typeof rows[i][f] !== "number") rows[i][f] = 0;
-      for (let i = last + 1; i < rows.length; i++) if (typeof rows[i][f] !== "number") rows[i][f] = 0;
+      for (let i = 0; i < rows.length; i++) {
+        if (typeof rows[i][f] !== "number") rows[i][f] = 0;
+      }
     }
     return rows;
   }, [data, modelFamilies]);
@@ -166,10 +160,9 @@ export default function UsageChart({ period = "7d" }) {
                 stroke={familyColor(f, i)}
                 strokeWidth={2}
                 fill={`url(#gradFam-${i})`}
-                // connectNulls draws a straight segment across hours with no
-                // traffic — the connector stays at the neighbors' level
-                // instead of breaking (or diving to zero) at the gap.
-                connectNulls
+                // No connectNulls: every bucket is a real number now (gaps are
+                // zero-filled above), so the curve dives to the baseline during
+                // idle hours instead of floating a connector over them.
                 dot={false}
                 activeDot={{ r: 4 }}
                 name={f}

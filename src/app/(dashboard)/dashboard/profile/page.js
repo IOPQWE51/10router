@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, Button, Toggle, Input } from "@/shared/components";
+import { Card, Button, Toggle, Input, Select } from "@/shared/components";
 import Modal, { ConfirmModal } from "@/shared/components/Modal";
 import LanguageSwitcher from "@/shared/components/LanguageSwitcher";
 import { useTheme } from "@/shared/hooks/useTheme";
@@ -133,6 +133,27 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.log("Error toggling provider disabled-last sort:", error);
+    }
+  };
+
+  // Where this 10Router instance is DEPLOYED (not where the browser is). Some
+  // upstreams are region-bound — Xiaomi MiMo's desktop-preview endpoints only
+  // authorize mainland-China callbacks — so an instance running on an overseas
+  // VPS needs different guidance (and, later, different routing) than one on a
+  // home network in China.
+  const updateServerRegion = async (serverRegion) => {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serverRegion }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSettings((prev) => ({ ...prev, ...data }));
+      }
+    } catch (error) {
+      console.log("Error updating server region:", error);
     }
   };
 
@@ -1090,6 +1111,21 @@ export default function ProfilePage() {
               <p className="text-xs text-text-muted">Large numbers as 亿/万 (zh) or M/B (en); off → full numbers</p>
             </div>
             <Toggle checked={compactUnits} onChange={toggleCompactUnits} />
+          </div>
+          <div className="mt-3 p-3 rounded-lg bg-bg border border-border">
+            <p className="text-sm font-medium">{translate("Deployment region")}</p>
+            <p className="text-xs text-text-muted mb-2">
+              {translate("Where THIS instance runs, not where your browser is. Region-bound upstreams (e.g. Xiaomi MiMo desktop models) authorize mainland-China callbacks only, so an overseas VPS needs a home-network proxy for them.")}
+            </p>
+            <Select
+              options={[
+                { value: "cn", label: translate("Mainland China") },
+                { value: "overseas", label: translate("Overseas") },
+              ]}
+              value={settings.serverRegion === "overseas" ? "overseas" : "cn"}
+              onChange={(e) => updateServerRegion(e.target.value)}
+              selectClassName="py-1.5 text-xs"
+            />
           </div>
         </Card>
 

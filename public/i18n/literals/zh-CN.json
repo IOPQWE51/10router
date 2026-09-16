@@ -1750,5 +1750,9 @@
   "Only real valid data is counted": "仅计算真实有效数据",
   "Current Streak": "当前连续天数",
   "Unit abbreviation": "单位缩写",
+  "Deployment region": "部署地区",
+  "Where THIS instance runs, not where your browser is. Region-bound upstreams (e.g. Xiaomi MiMo desktop models) authorize mainland-China callbacks only, so an overseas VPS needs a home-network proxy for them.": "指本实例运行的位置，而非浏览器所在地。部分上游按地区授权（如小米 MiMo 桌面模型仅授权中国大陆回调），因此部署在海外服务器时需要为其配置回国代理。",
+  "Mainland China": "中国大陆",
+  "Overseas": "海外 / 境外",
   "This Week": "当周"
 }

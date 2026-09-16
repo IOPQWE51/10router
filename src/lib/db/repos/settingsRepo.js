@@ -63,6 +63,10 @@ const DEFAULT_SETTINGS = {
   pxpipeAutoInstall: true,
   pxpipeMinChars: 25000,
   pxpipeTimeoutMs: 15000,
+  // Deployment region: "cn" (Mainland China) | "overseas" (International/Overseas).
+  // Helps adapt gateway routing, timeouts, and friendly troubleshooting for
+  // region-specific backends (e.g. Xiaomi MiMo desktop endpoints).
+  serverRegion: "cn",
   // Experimental: auto daily check-in for CodeBuddy CN accounts.
   codeBuddyCheckin: false,
   // Experimental: intl daily active-session probe (campaign credits).
