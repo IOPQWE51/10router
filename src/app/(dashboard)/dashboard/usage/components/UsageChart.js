@@ -102,7 +102,7 @@ export default function UsageChart({ period = "7d" }) {
       ) : !hasData ? (
         <div className="h-48 flex items-center justify-center text-text-muted text-sm">No data for this period</div>
       ) : viewMode === "models" ? (
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height={264}>
           <AreaChart data={modelData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
             <XAxis
@@ -134,11 +134,13 @@ export default function UsageChart({ period = "7d" }) {
                 key={f}
                 type="monotone"
                 dataKey={f}
-                stackId="1"
                 stroke={familyColor(f, i)}
                 strokeWidth={2}
-                fill={familyColor(f, i)}
-                fillOpacity={0.55}
+                fill="none"
+                // connectNulls draws a straight segment across hours with no
+                // traffic — the connector stays at the neighbors' level
+                // instead of breaking (or diving to zero) at the gap.
+                connectNulls
                 dot={false}
                 activeDot={{ r: 3 }}
                 name={f}
