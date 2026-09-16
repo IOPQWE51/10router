@@ -35,6 +35,12 @@
 |---|---|---|---|
 | 2026-09-10 | [v108-version-drift](test-report-v108-version-drift.md) | 四版本位漂移产出同名不同载安装器；tag 与 main 同推被静默丢事件 | `test-build-version.mjs` 四文件盖章 + manifest 同步脚本；**tag 永远单独推** + 推后查 run 列表 |
 
+## 代码与数据链路（静默缺陷：丢数据/泄数据都不报错）
+
+| 日期 | 报告 | 一句话结论 | 闸门反哺 |
+|---|---|---|---|
+| 2026-09-16 | [1.1.2-silent-data-drop](test-report-1.1.2-silent-data-drop.md) | 签名静默丢参（meta/usageKey）+ 多入口 authType 分流错位 + providerSpecificData 整包透传泄露 passToken | meta 落库链路测试、usageKey 双 key 存活测试、providers 响应脱敏契约测试（local-build-and-verify §6 各一行） |
+
 ## 既有专项复盘（问题 → 根因 → 修复 的独立文档，收编入索引）
 
 | 文档 | 一句话 |

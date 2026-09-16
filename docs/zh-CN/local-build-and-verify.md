@@ -258,6 +258,7 @@ INSTALL_CHANNEL=desktop DATA_DIR="/tmp/verify-data" "$INST/10Router.exe" custom-
 | `cmd //c start "" "…exe"` 像什么都没发生 | 空标题被 Git Bash 吃掉，exe 路径被当成窗口标题（§2.3） |
 | `Setup.exe /S` 返回 0 但版本没变 | 经 `cmd /c start /wait` 转手会让它静默空转；必须直接执行 exe（§2.5） |
 | 装完应用不会自己起来 | 静默安装跳过 `runAfterFinish`，按 §2.3 手动启动（§2.5） |
+| 新功能字段存不进去 / 去重键不生效 | 签名静默丢参：saveRequestUsage 曾丢 entry.meta、saveUsageStats 曾丢 usageKey——传参外观正常，只有断言"终点真有该字段"的测试能拦（[test-report-1.1.2-silent-data-drop.md](test-report-1.1.2-silent-data-drop.md)） |
 
 ## 7. 相关文件
 
