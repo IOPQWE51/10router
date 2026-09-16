@@ -104,6 +104,16 @@ export default function UsageChart({ period = "7d" }) {
       ) : viewMode === "models" ? (
         <ResponsiveContainer width="100%" height={264}>
           <AreaChart data={modelData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            {/* Same soft vertical-fade fill as the Tokens/Cost curves, one
+                gradient per family color. */}
+            <defs>
+              {modelFamilies.map((f, i) => (
+                <linearGradient key={f} id={`gradFam-${i}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={familyColor(f, i)} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={familyColor(f, i)} stopOpacity={0} />
+                </linearGradient>
+              ))}
+            </defs>
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
             <XAxis
               dataKey="label"
@@ -127,6 +137,7 @@ export default function UsageChart({ period = "7d" }) {
                 fontSize: "12px",
               }}
               formatter={(value, name) => [fmtTokens(value), name]}
+              itemSorter={(item) => -(Number(item.value) || 0)}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
             {modelFamilies.map((f, i) => (
@@ -136,13 +147,13 @@ export default function UsageChart({ period = "7d" }) {
                 dataKey={f}
                 stroke={familyColor(f, i)}
                 strokeWidth={2}
-                fill="none"
+                fill={`url(#gradFam-${i})`}
                 // connectNulls draws a straight segment across hours with no
                 // traffic — the connector stays at the neighbors' level
                 // instead of breaking (or diving to zero) at the gap.
                 connectNulls
                 dot={false}
-                activeDot={{ r: 3 }}
+                activeDot={{ r: 4 }}
                 name={f}
               />
             ))}
