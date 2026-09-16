@@ -34,7 +34,9 @@ describe("provider quota visibility", () => {
       "claude",
     ]);
     expect(quotas[0].name).toBe("Gemini (Flash / Pro)");
-    expect(quotas[1].name).toBe("Claude (Sonnet / Opus)");
+    expect(quotas[1].name).toBe("Claude (Sonnet / Opus / GPT)");
+    expect(quotas[0].percentScale).toBe(true);
+    expect(quotas[1].percentScale).toBe(true);
   });
 
   it("shows all quotas by default and hides configured provider rows", () => {
@@ -206,6 +208,22 @@ describe("antigravity family grouping (multi-account)", () => {
     expect(gemini.remainingPercentage).toBe(50);
     const claude = quotas.find((q) => q.modelKey === "claude");
     expect(claude.remainingPercentage).toBe(20);
+  });
+
+  it("groups gpt-oss models into claude-gpt family and sets percentScale true", () => {
+    const dataWithGpt = {
+      quotas: {
+        "gpt-oss-120b-medium": { displayName: "GPT-OSS 120B (Medium)", used: 0, total: 1000, remainingPercentage: 100 },
+        "claude-sonnet-4-6": { displayName: "Claude Sonnet 4.6", used: 100, total: 1000, remainingPercentage: 90 },
+        "gemini-3.1-flash-image": { displayName: "Gemini 3.1 Flash Image", used: 0, total: 1000, remainingPercentage: 100 },
+      },
+    };
+    const quotas = parseQuotaData("antigravity", dataWithGpt);
+    expect(quotas.map((q) => q.modelKey)).toEqual(["gemini-3.1-flash-image", "claude"]);
+    expect(quotas[1].name).toBe("Claude (Sonnet / Opus / GPT)");
+    expect(quotas[1].remainingPercentage).toBe(90);
+    expect(quotas[0].percentScale).toBe(true);
+    expect(quotas[1].percentScale).toBe(true);
   });
 
   it("trimHiddenQuotaKeys drops stale keys per connection snapshot only", () => {

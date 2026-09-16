@@ -126,7 +126,10 @@ async function getGeminiSubscriptionInfo(accessToken, proxyOptions = null) {
 export async function getAntigravityUsage(accessToken, providerSpecificData, proxyOptions = null, options = {}) {
   try {
     const subscriptionInfo = await getAntigravitySubscriptionInfo(accessToken, proxyOptions);
-    const projectId = subscriptionInfo?.cloudaicompanionProject || null;
+    let projectId = normalizeCloudCodeProjectId(providerSpecificData?.projectId);
+    if (!projectId) {
+      projectId = normalizeCloudCodeProjectId(subscriptionInfo?.cloudaicompanionProject);
+    }
     const plan = subscriptionInfo?.currentTier?.name || "Antigravity";
 
     // 1) Prefer the dual-window summary (per-family 5h + weekly).

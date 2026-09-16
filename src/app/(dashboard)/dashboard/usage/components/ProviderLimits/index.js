@@ -621,7 +621,7 @@ export default function ProviderLimits() {
         }
       } else if (key === "claude") {
         for (const k of hidden) {
-          if (k.startsWith("claude-")) hidden.delete(k);
+          if (k.startsWith("claude-") || k.startsWith("gpt-")) hidden.delete(k);
         }
       }
     }
@@ -650,7 +650,7 @@ export default function ProviderLimits() {
         }
       } else if (key === "claude") {
         for (const k of hidden) {
-          if (k.startsWith("claude-")) hidden.delete(k);
+          if (k.startsWith("claude-") || k.startsWith("gpt-")) hidden.delete(k);
         }
       }
     }

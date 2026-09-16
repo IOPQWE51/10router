@@ -433,9 +433,9 @@ export function parseQuotaData(provider, data) {
           // that is the binding limit for the family.
           const entries = Object.entries(data.quotas);
           const geminiModels = entries.filter(([k]) => k.startsWith("gemini-") && !k.includes("image"));
-          const claudeModels = entries.filter(([k]) => k.startsWith("claude-"));
+          const claudeModels = entries.filter(([k]) => k.startsWith("claude-") || k.startsWith("gpt-"));
           const imageModels = entries.filter(([k]) => k.includes("image"));
-          const otherModels = entries.filter(([k]) => !k.startsWith("gemini-") && !k.startsWith("claude-") && !k.includes("image"));
+          const otherModels = entries.filter(([k]) => !k.startsWith("gemini-") && !k.startsWith("claude-") && !k.startsWith("gpt-") && !k.includes("image"));
 
           if (geminiModels.length > 0) {
             const rep = geminiModels.reduce((min, cur) =>
@@ -448,6 +448,7 @@ export function parseQuotaData(provider, data) {
               total: rep.total || 0,
               resetAt: rep.resetAt || null,
               remainingPercentage: rep.remainingPercentage,
+              percentScale: true,
             });
           }
 
@@ -456,12 +457,13 @@ export function parseQuotaData(provider, data) {
               (cur[1].remainingPercentage ?? 100) < (min[1].remainingPercentage ?? 100) ? cur : min
             )[1];
             normalizedQuotas.push({
-              name: "Claude (Sonnet / Opus)",
+              name: "Claude (Sonnet / Opus / GPT)",
               modelKey: "claude",
               used: rep.used || 0,
               total: rep.total || 0,
               resetAt: rep.resetAt || null,
               remainingPercentage: rep.remainingPercentage,
+              percentScale: true,
             });
           }
 
@@ -473,7 +475,7 @@ export function parseQuotaData(provider, data) {
               total: quota.total || 0,
               resetAt: quota.resetAt || null,
               remainingPercentage: quota.remainingPercentage,
-              percentScale: quota.percentScale === true,
+              percentScale: true,
             });
           });
 
@@ -485,7 +487,7 @@ export function parseQuotaData(provider, data) {
               total: quota.total || 0,
               resetAt: quota.resetAt || null,
               remainingPercentage: quota.remainingPercentage,
-              percentScale: quota.percentScale === true,
+              percentScale: true,
             });
           });
         }
