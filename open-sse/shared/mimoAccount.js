@@ -211,9 +211,12 @@ async function acquireServiceCookie(passJar, proxyOptions) {
   const ck = () => cookieHeader(jar);
 
   // 1. Unauthenticated API call -> 302 carrying the sts callback (sid=mimopc)
+  // Every step carries a hard 10s timeout: the connection-test path awaits this
+  // whole chain, and one hung SSO hop used to freeze the dashboard's Test
+  // spinner indefinitely (the outer 15s probe timeout never gets reached).
   const r1 = await proxyAwareFetch(
     `${API_BASE}/api/user/xiaomi/me`,
-    { redirect: "manual", headers: { "User-Agent": API_UA, Cookie: ck() } },
+    { redirect: "manual", headers: { "User-Agent": API_UA, Cookie: ck() }, signal: AbortSignal.timeout(10000) },
     proxyOptions,
   );
   const redirect = r1.headers.get("location");
@@ -224,7 +227,7 @@ async function acquireServiceCookie(passJar, proxyOptions) {
   // 2. passportapi SSO phase 1 -> nonce + ssecurity
   const sso1 = await proxyAwareFetch(
     `https://${ACCOUNT_HOST}/pass/serviceLogin?sid=passportapi&_json=true`,
-    { headers: { Cookie: ck(), "User-Agent": SSO_UA, Accept: "application/json" } },
+    { headers: { Cookie: ck(), "User-Agent": SSO_UA, Accept: "application/json" }, signal: AbortSignal.timeout(10000) },
     proxyOptions,
   );
   const j1 = JSON.parse((await sso1.text()).replace(/^&&&START&&&/, ""));
@@ -234,7 +237,7 @@ async function acquireServiceCookie(passJar, proxyOptions) {
   // 3. passportapi SSO phase 2 -> account-level serviceToken
   const sso2 = await proxyAwareFetch(
     `${j1.location}&clientSign=${signatureClientSign(nonce, j1.ssecurity)}`,
-    { redirect: "manual", headers: { Cookie: ck(), "User-Agent": SSO_UA } },
+    { redirect: "manual", headers: { Cookie: ck(), "User-Agent": SSO_UA }, signal: AbortSignal.timeout(10000) },
     proxyOptions,
   );
   absorbSetCookie(jar, sso2);
@@ -242,7 +245,7 @@ async function acquireServiceCookie(passJar, proxyOptions) {
   // 4. mimopc SSO -> sts callback carrying a ticket
   const sso3 = await proxyAwareFetch(
     `https://${ACCOUNT_HOST}/pass/serviceLogin?sid=mimopc&callback=${encodeURIComponent(stsCallback)}&_json=true`,
-    { headers: { Cookie: ck(), "User-Agent": SSO_UA, Accept: "application/json" } },
+    { headers: { Cookie: ck(), "User-Agent": SSO_UA, Accept: "application/json" }, signal: AbortSignal.timeout(10000) },
     proxyOptions,
   );
   const j3 = JSON.parse((await sso3.text()).replace(/^&&&START&&&/, ""));
@@ -252,7 +255,7 @@ async function acquireServiceCookie(passJar, proxyOptions) {
   // 5. sts callback -> Set-Cookie: serviceToken (mimopc scope)
   const sts = await proxyAwareFetch(
     j3.location,
-    { redirect: "manual", headers: { "User-Agent": API_UA, Cookie: ck() } },
+    { redirect: "manual", headers: { "User-Agent": API_UA, Cookie: ck() }, signal: AbortSignal.timeout(10000) },
     proxyOptions,
   );
   absorbSetCookie(jar, sts);

@@ -101,6 +101,23 @@ export default function XiaomiMimoAuthModal({ isOpen, onSuccess, onClose }) {
     return () => { cancelled = true; };
   }, [isOpen]);
 
+  // Quiet re-check: the user may sign into MiMo Desktop WHILE this modal sits
+  // on the "not found" screen — the original detect only ran once on open, so
+  // the modal stayed stale until a full page refresh. Poll silently (no
+  // spinner flicker) and flip via the full detect() only when credentials
+  // actually appeared.
+  useEffect(() => {
+    if (!isOpen || phase !== "not-found") return;
+    const t = setInterval(async () => {
+      try {
+        const res = await fetch("/api/oauth/xiaomi-mimo/auto-import");
+        const data = await res.json();
+        if (data.found) detect();
+      } catch { /* transient — keep the current screen */ }
+    }, 4000);
+    return () => clearInterval(t);
+  }, [isOpen, phase]);
+
   // Import the auto-detected credentials. Session-only (no auth.json sk- key but
   // a readable Desktop account session) is a first-class path: the session alone
   // unlocks the Desktop-exclusive Preview models. The Desktop session passToken is
