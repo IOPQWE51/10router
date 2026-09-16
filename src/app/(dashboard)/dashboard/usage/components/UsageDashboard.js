@@ -119,11 +119,8 @@ CellContent.propTypes = {
   isOpen: PropTypes.bool,
 };
 
-// Perf columns (TTFT / latency / speed) under an expanded node: gated on the
-// NODE's own latency observation — a node with no measured latency (e.g. a
-// purely gateway-synced channel) expands into three all-dash columns that
-// carry no signal; hide them. When the node HAS latency the columns show and
-// per-model gaps render as "—".
+// Perf columns (TTFT / latency / speed) under an expanded node — per-axis
+// visibility rules live in ExpandedModelTable.
 const PERF_COLUMN_KEYS = new Set(["avgTtftMs", "avgLatencyMs", "avgSpeed"]);
 
 // Static per-model table shown inside an expanded node row. No header row —
@@ -131,14 +128,26 @@ const PERF_COLUMN_KEYS = new Set(["avgTtftMs", "avgLatencyMs", "avgSpeed"]);
 // subline either: the model name alone identifies the row, the parent node
 // is already stated one line up. Rows arrive pre-sorted by the caller with
 // the SAME order as the parent list.
+//
+// Perf columns are gated per-axis, not per-node: the two data stores now
+// merge per-metric, so a node can have TTFT samples but no speed (e.g.
+// non-streaming meta rows + a requestDetails ring that kept TTFT). A column
+// shows when the node OR any child row has samples for that axis; the
+// Health column follows the latency axis (score is null without it).
 function ExpandedModelTable({ rows, emptyText, parentNode }) {
   if (rows.length === 0) {
     return <p className="px-8 py-3 text-xs text-text-muted">{emptyText}</p>;
   }
-  const nodeHasLatency = parentNode?.avgLatencyMs != null;
-  const cols = nodeHasLatency
-    ? MODEL_COLUMNS
-    : MODEL_COLUMNS.filter((c) => !PERF_COLUMN_KEYS.has(c.key));
+  const axisPresent = {
+    avgTtftMs: Boolean(parentNode?.hasTtft) || rows.some((r) => r.hasTtft),
+    avgLatencyMs: Boolean(parentNode?.hasPerfData) || rows.some((r) => r.hasPerfData),
+    avgSpeed: Boolean(parentNode?.hasSpeed) || rows.some((r) => r.hasSpeed),
+  };
+  const cols = MODEL_COLUMNS.filter((c) => {
+    if (PERF_COLUMN_KEYS.has(c.key)) return axisPresent[c.key];
+    if (c.key === "score") return axisPresent.avgLatencyMs;
+    return true;
+  });
   return (
     <table className="w-full">
       <tbody>

@@ -1155,12 +1155,17 @@ export async function getUsageDashboard({ minRequests = 50 } = {}) {
       avgLatencyMs,
       avgTtftMs,
       avgSpeed,
-      // No latency sample → no health score: the row shows its traffic but
-      // stays out of the ranking entirely (frontend renders "—").
-      hasPerfData: avgLatencyMs != null,
-      score: avgLatencyMs == null
-        ? null
-        : computeScore(successRate, latencyScoreFromMs(avgLatencyMs), speedScoreFromTps(avgSpeed)),
+    // No latency sample → no health score: the row shows its traffic but
+    // stays out of the ranking entirely (frontend renders "—").
+    hasPerfData: avgLatencyMs != null,
+    // Availability of each perf axis, so the UI can hide columns a whole
+    // node has no samples for (a node can have TTFT without speed or any
+    // other combination once the two data stores merge per-metric).
+    hasTtft: avgTtftMs != null,
+    hasSpeed: avgSpeed != null,
+    score: avgLatencyMs == null
+      ? null
+      : computeScore(successRate, latencyScoreFromMs(avgLatencyMs), speedScoreFromTps(avgSpeed)),
       promptTokens: row.promptTokens || 0,
       completionTokens: row.completionTokens || 0,
       cost: row.cost || 0,

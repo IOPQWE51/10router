@@ -404,6 +404,8 @@ describe("getUsageDashboard imported-row handling", () => {
     expect(model.avgLatencyMs).toBe(2500); // (3000 + 2000) / 2
     // details: 100tok / 2.2s; meta: 100tok / 2.0s → 200 / 4.2s = 47.6
     expect(model.avgSpeed).toBe(47.6);
+    expect(model.hasTtft).toBe(true);   // TTFT axis survived via requestDetails
+    expect(model.hasSpeed).toBe(true);
   });
 
   it("defaults minRequests to 50 in getUsageDashboard", async () => {
