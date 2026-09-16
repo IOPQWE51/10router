@@ -1222,6 +1222,7 @@
   "Token is used once for deployment, not stored. Found in Organization Settings.": "令牌仅用于部署一次，不会被存储。可在组织设置中找到。",
   "Token will be auto-filled...": "令牌将自动填充...",
   "Tokens": "Token",
+  "Model Type": "模型类型",
   "Tokens auto-detected from Cursor IDE successfully!": "已成功从 Cursor IDE 自动检测到令牌！",
   "Tokens used to create cache entries (fallback to input rate)": "用于创建缓存条目的 Token（回退至输入费率）",
   "Tomorrow": "明天",
