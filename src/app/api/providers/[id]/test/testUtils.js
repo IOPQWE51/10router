@@ -812,17 +812,6 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
             if (!cookie) {
               return { valid: false, error: "Desktop session unavailable — sign in to MiMo Desktop once, then re-import" };
             }
-            // Region hint: this endpoint authorizes mainland-China callbacks
-            // only. An instance deployed overseas typically can't reach it
-            // without a China-side proxy — say so instead of a bare timeout.
-            const { getSettings } = await import("@/lib/localDb");
-            let regionHint = "";
-            try {
-              const s = await getSettings();
-              if (s?.serverRegion === "overseas") {
-                regionHint = " — this instance is marked Overseas; MiMo desktop endpoints authorize mainland-China callbacks only, so configure a China-side proxy for this connection";
-              }
-            } catch { /* settings unavailable — probe result stands on its own */ }
             // Minimal real call against the Desktop-exclusive Preview model.
             const probe = await fetchWithConnectionProxy(
               "https://mimo-server-cn.xiaomimimo.com/api/route/chat/completions",
@@ -846,10 +835,10 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
               effectiveProxy,
             );
             if (probe.status === 401 || probe.status === 403) {
-              return { valid: false, error: "Desktop session expired — sign in to MiMo Desktop again" + regionHint };
+              return { valid: false, error: "Desktop session expired — sign in to MiMo Desktop again" };
             }
             if (!probe.ok) {
-              return { valid: false, error: `Preview probe failed (HTTP ${probe.status})` + regionHint };
+              return { valid: false, error: `Preview probe failed (HTTP ${probe.status})` };
             }
             // Drain a little so the connection is not left half-open, then report.
             try {
@@ -863,7 +852,7 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
             // test actually passed.
             return { valid: true, error: null };
           } catch (e) {
-            return { valid: false, error: (e?.message || "Preview probe failed") + regionHint };
+            return { valid: false, error: e?.message || "Preview probe failed" };
           }
         }
         const baseUrls = { "xiaomi-mimo": "https://api.xiaomimimo.com/v1", "xiaomi-tokenplan": "https://token-plan-sgp.xiaomimimo.com/v1" };
