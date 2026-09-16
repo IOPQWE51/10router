@@ -67,10 +67,28 @@ export default function UsageChart({ period = "7d" }) {
     return Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
   }, [data]);
 
-  const modelData = useMemo(
-    () => data.map((d) => ({ label: d.label, ...(d.byModel || {}) })),
-    [data]
-  );
+  const modelData = useMemo(() => {
+    const rows = data.map((d) => ({ label: d.label, ...(d.byModel || {}) }));
+    // Head/tail zero-fill: buckets BEFORE a family's first appearance and
+    // AFTER its last are real 0s, so the curve touches the baseline at the
+    // edges (a silent morning shows a flat 0, not a floating line). INTERIOR
+    // gaps stay undefined so connectNulls keeps drawing the elevated
+    // straight connector between active periods.
+    for (const f of modelFamilies) {
+      let first = -1;
+      let last = -1;
+      rows.forEach((r, i) => {
+        if (typeof r[f] === "number") {
+          if (first < 0) first = i;
+          last = i;
+        }
+      });
+      if (first < 0) continue;
+      for (let i = 0; i < first; i++) if (typeof rows[i][f] !== "number") rows[i][f] = 0;
+      for (let i = last + 1; i < rows.length; i++) if (typeof rows[i][f] !== "number") rows[i][f] = 0;
+    }
+    return rows;
+  }, [data, modelFamilies]);
 
   const hasData =
     viewMode === "models"
@@ -160,7 +178,7 @@ export default function UsageChart({ period = "7d" }) {
           </AreaChart>
         </ResponsiveContainer>
       ) : (
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height={264}>
           <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="gradTokens" x1="0" y1="0" x2="0" y2="1">
