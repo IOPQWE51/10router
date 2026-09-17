@@ -7,6 +7,40 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 本插件尚未发布 1.0.0——0.3.0 之后直接进入 1.1.0（首次支持多数据源）。
 
+## [1.4.0] — 2026-09-17
+
+### 新增
+
+- **实例状态监控命令 `/10router-sync:status`**（`scripts/status.mjs`）：只读查看一个
+  10Router 实例的实时状态，分三段输出——
+  - **渠道熔断**：`settings.channelBlocks` 里仍在冷却期的 provider，含剩余时间、strike
+    次数与是否已升级（60s → 10min）。这是判断「CodeBuddy 11128 之类渠道级风控是否正在
+    生效」最直接的入口。
+  - **账号健康**：按 provider 分组，列出各连接的启用状态与**当前生效的 per-model 锁**
+    （`modelLock_<model>` 未过期项，含剩余时间）——能一眼看出「某个模型被锁了多久」。
+  - **用量**：今日请求数/tokens/成本 + 累计请求/tokens + 最常用模型 + 缓存命中率 + 连续
+    活跃天数。
+  - 支持 `--json` 输出机器可读结果，便于脚本消费。
+
+- **鉴权（与 sync-usage 不同，务必注意）**：本命令读的 `/api/settings`、`/api/providers`、
+  `/api/usage/dashboard` 由 `dashboardGuard` 保护，**只认 JWT 会话 Cookie 或本地 CLI
+  Token，虚拟 `sk-` key 在这里无效**（sk- 只开 LLM API 与 import-usage 路由）。因此脚本
+  按以下顺序取凭据：
+  1. `--cli-token <t>` 显式指定；
+  2. `--password <面板密码>` → `POST /api/auth/login` 换取会话 Cookie；
+  3. **endpoint 为 loopback 时自动推导本地 CLI token**（读数据目录的 `machine-id` +
+     `auth/cli-secret`，算法与服务端 `getConsistentMachineId('9r-cli-auth')` 一致）——
+     本机零配置即可用。
+
+- **失败语义**：`/api/health` 先探活，不通直接以退出码 1 报「无法访问」；三个数据接口各自
+  独立 catch，单个失败只让该段显示「无法读取」而其余照常输出（退出码仍为 1，便于调用方
+  感知部分失败）。退出码 2 保留给参数错误与凭据缺失/失效。
+
+### 文档
+
+- 新增 `commands/status.md`；`plugin.json` / 根 `marketplace.json` / `zcode-plugin/marketplace.json`
+  三处版本号与描述同步至 1.4.0（Discover 索引是根 `marketplace.json`，勿只改其一）。
+
 ## [1.3.0] — 2026-09-15
 
 ### 新增

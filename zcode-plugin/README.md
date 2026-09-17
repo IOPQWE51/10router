@@ -2,12 +2,14 @@
 
 把本机 ZCode 的模型调用流水（`~/.zcode/cli/db/db.sqlite` 的 `model_usage` 表）、OpenCode 桌面端的会话用量（`~/.local/share/opencode/opencode.db` 的 `session` 表）、mirasim 桌面端的调用账本（`~/.mirasim/insights/usage-*.ndjson`）、小米 MiMo 桌面版的逐条消息用量（`~/.local/share/mimocode/mimocode.db` 的 `message` 表），或**另一个 10Router/9Router 实例**的用量库（其 `data.sqlite` 的 `usageHistory` 表）导出并导入 10Router 的用量统计，复用 10Router 的 `/api/settings/database/import-usage` 接口。
 
+同时提供 **`/10router-sync:status`**：只读查看一个 10Router 实例的实时状态（渠道熔断 / 账号健康 / 用量）。
+
 ## 能力
 
 - **幂等**：10Router 按行签名去重，重复运行不会产生重复数据
 - **防双重计数**：ZCode 源默认**只导出官方渠道**（`builtin:*`，如 `builtin:bigmodel-*`、`builtin:zai-*`）——自定义/网关类 provider 的流量已由 10Router 自身或其他同步源记账，导出会重复（需要时用 `--include-custom` 恢复导出）；mirasim 源按 `upstreamHost` 排除中转流量
 - **溯源**：导入后 provider 显示为 `zcode-<名称>`（如 `zcode-bigmodel-start-plan`）、`opencode-<providerID>`、`mirasim-<协议>`、`mimo-<providerID>`，cost 记 0（订阅制渠道），agent/会话/时长等明细在 meta 里；`--source 10r` 原样保留源实例的 provider/cost/status（同名 provider 在目标侧自然合并），来源路径记在 `meta.syncedFrom`
-- **鉴权**：虚拟 key（`sk-…`，推荐）或仪表盘密码，与 10Router v1.0.7+ 的导入鉴权匹配
+- **鉴权**：同步用虚拟 key（`sk-…`，推荐）或仪表盘密码，与 10Router v1.0.7+ 的导入鉴权匹配；**状态监控只能用面板密码或本地 CLI token**（详见下方状态监控章节）
 
 ## 安装
 
@@ -21,7 +23,7 @@ Plugins → 从目录安装，选择 `zcode-plugin/` 目录（含 `.zcode-plugin
 
 ## 使用
 
-- 斜杠命令：`/10router-sync:sync-usage`（可带参数，如 NAS 地址）
+- 斜杠命令：`/10router-sync:sync-usage`（同步用量）、`/10router-sync:status`（查看实例状态），均可带参数（如 NAS 地址）
 - 技能：对 ZCode 说「导出 ZCode 使用量到 10Router」即自动触发
 - 直接跑脚本：
 
@@ -126,6 +128,35 @@ node scripts/export-usage.mjs --import zcode-usage.json --endpoint http://<host>
 幂等去重按行签名，导出后隔多久导入、重复导入都安全。
 
 环境变量：`TENROUTER_ENDPOINT` / `TENROUTER_KEY` / `TENROUTER_PASSWORD`。
+
+## 实例状态监控：`/10router-sync:status`
+
+只读查看一个 10Router 实例的实时状态，三段输出：
+
+| 段 | 内容 |
+|---|---|
+| **渠道熔断** | 仍在冷却期的 provider，含剩余时间、strike 次数、是否已升级（60s → 10min）。判断渠道级风控（如 CodeBuddy 11128）是否正在生效的直接入口 |
+| **账号健康** | 按 provider 分组，各连接的启用状态与**当前生效的 per-model 锁**（含剩余时间） |
+| **用量** | 今日请求数/tokens/成本 + 累计请求/tokens + 最常用模型 + 缓存命中率 + 连续活跃天数 |
+
+```bash
+# 本机实例：零配置（自动推导本地 CLI token）
+node scripts/status.mjs
+
+# 远程实例：用面板密码换会话 Cookie
+node scripts/status.mjs --endpoint http://192.168.31.101:20127 --password <面板密码>
+
+# 机器可读
+node scripts/status.mjs --json
+```
+
+> ⚠️ **鉴权与 sync-usage 不同**：本命令读的 `/api/settings`、`/api/providers`、
+> `/api/usage/dashboard` 由 `dashboardGuard` 保护，**只认 JWT 会话 Cookie 或本地 CLI
+> Token，虚拟 `sk-` key 在这里无效**（sk- 只开 LLM API 与 import-usage 路由）。脚本的
+> 取凭据顺序：`--cli-token` → `--password` → loopback endpoint 时自动推导本地 CLI token。
+
+退出码：`0` 正常 · `1` 实例不可达或部分读取失败（报告仍打印能读到的部分）· `2` 参数错误
+或凭据缺失/失效。
 
 ## 运维工具：用量库校验与清理
 

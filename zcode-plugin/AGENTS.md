@@ -1,10 +1,11 @@
 # AGENTS.md — 10router-sync
 
-把本机 AI 编码工具的用量账本导出并导入 [10Router](https://github.com/techysy/10router) 的用量统计。
+把本机 AI 编码工具的用量账本导出并导入 [10Router](https://github.com/techysy/10router) 的用量统计，
+以及只读查看 10Router 实例的实时状态。
 
-**这只是一个 CLI 脚本**（`scripts/export-usage.mjs`），不依赖任何特定 agent 宿主。本目录下的
-`commands/` 和 `skills/` 是给 ZCode 用的可选包装；其他 agent（Claude Code、Codex、Cursor 等）
-直接按本文的命令调用脚本即可，行为完全一致。
+**这只是一组 CLI 脚本**（`scripts/export-usage.mjs` 同步、`scripts/status.mjs` 状态监控），不依赖任何
+特定 agent 宿主。本目录下的 `commands/` 和 `skills/` 是给 ZCode 用的可选包装；其他 agent
+（Claude Code、Codex、Cursor 等）直接按本文的命令调用脚本即可，行为完全一致。
 
 本机开发免 UI 直装：`~/.zcode/cli/config.json` 加
 `plugins.dirs: ["<本目录绝对路径>"]`，重启 ZCode 后插件以 `10router-sync@inline` 身份默认启用
@@ -15,6 +16,29 @@ shell 转义吃掉——用 `\\` 双写、正斜杠，或 `String.fromCharCode(9
 
 用户要求「同步/导出/导入用量到 10Router」「把 X 的使用量记到 10Router 统计里」，或想知道
 某工具的用量并希望它出现在 10Router 仪表盘时。
+
+用户问「10Router 现在什么状态」「哪个渠道被熔断了」「还有多久恢复」「今天用了多少」
+「哪个账号被锁了」时，用 `scripts/status.mjs`（见下方「状态监控」）。
+
+## 状态监控（`scripts/status.mjs`）
+
+只读三段输出：**渠道熔断**（`settings.channelBlocks` 中仍在冷却期的 provider，含剩余时间/
+strike/是否升级）、**账号健康**（按 provider 分组的启用状态与生效中的 `modelLock_<model>`）、
+**用量**（今日 + 累计 + 最常用模型 + 缓存命中率 + 连续天数）。
+
+```bash
+node scripts/status.mjs                                    # 本机：零配置
+node scripts/status.mjs --endpoint http://nas:20127 --password <面板密码>
+node scripts/status.mjs --json                             # 机器可读
+```
+
+> ⚠️ **鉴权与 export-usage 完全不同，别混用**。`/api/settings`、`/api/providers`、
+> `/api/usage/dashboard` 走 `dashboardGuard`，**只认 JWT 会话 Cookie 或本地 CLI Token**；
+> 虚拟 `sk-` key 只开 LLM API（`/v1/*`）与 `import-usage` 路由，对这三个接口一律 401。
+> 取凭据顺序：`--cli-token` → `--password`（`POST /api/auth/login` 换 Cookie）→
+> loopback endpoint 时自动推导本地 CLI token（`sha256(machine-id + "9r-cli-auth" + auth/cli-secret).slice(0,16)`，
+> 读 `%APPDATA%\10router|9router` 或 `~/.10router|~/.9router`）。
+> 退出码：0 正常 · 1 不可达或部分读取失败（报告仍打印可读部分）· 2 参数/凭据问题。
 
 ## 环境要求
 
@@ -233,7 +257,8 @@ provider 名下（与目标同名 provider 合并）。
 
 - [README.md](./README.md) — 安装方式（插件市场 / 目录安装）、各数据源示例、虚拟 key 创建
 - [CHANGELOG.md](./CHANGELOG.md) — 本插件各版本变更记录（版本号与 `.zcode-plugin/plugin.json` 同步）
-- [commands/sync-usage.md](./commands/sync-usage.md) — ZCode 斜杠命令定义
+- [commands/sync-usage.md](./commands/sync-usage.md) — ZCode 斜杠命令定义（用量同步）
+- [commands/status.md](./commands/status.md) — ZCode 斜杠命令定义（实例状态监控）
 - [skills/zcode-usage-sync/SKILL.md](./skills/zcode-usage-sync/SKILL.md) — ZCode 技能说明
 
 **10Router 服务端（导入侧）**
