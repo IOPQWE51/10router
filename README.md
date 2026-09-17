@@ -134,16 +134,43 @@ PORT=20128 HOSTNAME=0.0.0.0 npm run start
 - API endpoint: `http://localhost:20128/v1`
 - 初始密码: `123456`（登录后请修改）
 
-## 🔌 ZCode 用量同步插件
+## 🔌 用量同步插件（10router-sync）
 
-10Router 附带一个 **ZCode 插件**（`zcode-plugin/`，插件名 `10router-sync`），把本机 ZCode 的模型调用用量一键导入 10Router 统计——自动排除指向 10Router 的供应商防重复计数，幂等可重复执行。npm / 桌面 / 源码安装的用户都走同一条安装路径：
+10Router 附带一个**用量同步插件**（`zcode-plugin/`，插件名 `10router-sync`），把本机 AI 编码工具的调用用量一键导入 10Router 统计——幂等可重复执行，自动防双重计数。
 
-1. ZCode → Settings → Plugin Management → Discover 页 → 点 `+` 添加市场，填 GitHub 仓库 `techysy/10router`
-2. 找到 **10router-sync** 点 Get 安装
-3. 10Router 仪表盘 → API Keys → 新建一个虚拟 key（如命名 `zcode-usage-sync`）
-4. 在 ZCode 里执行 `/10router-sync:sync-usage`（或直接说「导出 ZCode 使用量到 10Router」）
+支持 **5 个数据源**：
 
-ZCode 机器与 10Router **不在同一网段**时走离线模式：本机 `--export zcode-usage.json` 导出（无需网络与凭据），把文件带到能连通的机器 `--import` 灌回，或直接在仪表盘 JSON 导入。
+| 数据源 | `--source` | 读取位置 |
+|--------|-----------|----------|
+| ZCode | `zcode`（默认） | `~/.zcode/cli/db/db.sqlite` |
+| OpenCode | `opencode` | `~/.local/share/opencode/opencode.db` |
+| mirasim | `mirasim` | `~/.mirasim/insights/usage-*.ndjson` |
+| 小米 MiMo | `mimo` | `~/.local/share/mimocode/mimocode.db` |
+| 10Router/9Router 实例 | `10r` | 另一个实例的 `data.sqlite` |
+
+还提供 **`/10router-sync:status`** 命令：不打开仪表盘，一条命令查看目标 10Router 实例的运行状态（渠道熔断 / 账号健康 / 今日用量）。
+
+### 安装
+
+ZCode → Settings → Plugin Management → Discover 页 → 点 `+` 添加市场，填 GitHub 仓库 `techysy/10router` → 找到 **10router-sync** 点 Get 安装。
+
+### 使用
+
+```bash
+# 同步 ZCode 用量（默认）
+node scripts/export-usage.mjs --endpoint http://127.0.0.1:20127 --key sk-…
+
+# 同步 OpenCode / mirasim / MiMo / 10r 实例
+node scripts/export-usage.mjs --source opencode --endpoint <URL> --key sk-…
+node scripts/export-usage.mjs --source mirasim --endpoint <URL> --key sk-…
+node scripts/export-usage.mjs --source mimo --endpoint <URL> --key sk-…
+node scripts/export-usage.mjs --source 10r --endpoint <URL> --key sk-…
+
+# 查看实例状态
+node scripts/status.mjs --endpoint <URL> --password <面板密码>
+```
+
+离线模式：本机 `--export usage.json` 导出，带到能连通的机器 `--import` 灌回。
 
 详见 [zcode-plugin/README.md](zcode-plugin/README.md)。
 
