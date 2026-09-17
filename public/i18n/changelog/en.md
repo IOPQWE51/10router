@@ -2,6 +2,21 @@
 
 User-facing highlights per release. See [CHANGELOG.md](https://github.com/techysy/10router/blob/main/CHANGELOG.md) for the full developer log.
 
+## v1.1.2 (2026-09-18)
+
+### ✨ New
+
+- **Usage dashboard overhaul**: Lifetime stats cards, a GitHub-style activity heatmap (day/week views with hover details), and a node health score table (success rate / latency / speed weighted, expandable per-model rows) on the Usage Details page. The unit-abbreviation toggle now applies globally — overview cards follow the same switch.
+- **Xiaomi Token Plan egress-region matching**: Adding or editing a connection auto-selects the cn / sgp / ams cluster based on your network egress (multi-source probing, fail-open), and the connection test button now routes to the selected cluster. MiMo 429 responses carry friendly guidance, and cooldowns honor the upstream "retry after N seconds" hint.
+- **10router-sync plugin v1.4.0**: New `/10router-sync:status` command — instance status and today's usage without opening the dashboard.
+
+### 🛠️ Improvements & Fixes
+
+- **CodeBuddy 11128 channel-level circuit breaker**: Channel-wide risk-control hits now trip a provider-level cooldown (no more per-account retry bursts amplifying risk), with bilingual guidance in the error response; extreme request sizes are backstopped locally.
+- **Credential auto-refresh fixed (Cline / ClinePass)**: Background refresh no longer fails with 400 — credentials renew automatically before expiry; dead credentials are explicitly flagged as needing re-authorization.
+- **Provider & chart cleanup**: Retired public endpoints removed; OpenCode Free / MiMo Code Free moved to a hidden-by-default "Trial" category; model family aggregation fixed (gpt-6, hy4, qwen3.8 etc. are no longer split); Model Type chart legend moved to the top-right with mobile responsiveness.
+- **Security**: The single-connection API no longer echoes the Xiaomi desktop session credential in plaintext.
+
 ## v1.1.1 (2026-09-14)
 
 ### ✨ New
