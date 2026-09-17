@@ -10,7 +10,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 import Card from "@/shared/components/Card";
 import { fmtCost } from "@/shared/utils/currency";
@@ -67,8 +66,35 @@ export default function UsageChart({ period = "7d" }) {
     return Object.keys(totals).sort((a, b) => totals[b] - totals[a]);
   }, [data]);
 
+  // Display cap: at most 6 series in BOTH the chart and the header legend, so
+  // every plotted color has a named entry and nothing is silently unexplained.
+  // "other" (the aggregate) always keeps one slot; the dropped tail is folded
+  // back into it client-side so the plotted totals still match the data.
+  const MAX_LEGEND_SERIES = 6;
+  const displayedFamilies = useMemo(() => {
+    const hasOther = modelFamilies.includes("other");
+    const named = modelFamilies.filter((f) => f !== "other");
+    const top = named.slice(0, hasOther ? MAX_LEGEND_SERIES - 1 : MAX_LEGEND_SERIES);
+    return hasOther ? [...top, "other"] : top;
+  }, [modelFamilies]);
+
   const modelData = useMemo(() => {
-    const rows = data.map((d) => ({ label: d.label, ...(d.byModel || {}) }));
+    const shown = new Set(displayedFamilies);
+    const named = displayedFamilies.filter((f) => f !== "other");
+    const keepOther = displayedFamilies.includes("other");
+    const rows = data.map((d) => {
+      const src = d.byModel || {};
+      const row = { label: d.label };
+      for (const f of named) row[f] = typeof src[f] === "number" ? src[f] : 0;
+      if (keepOther) {
+        let agg = typeof src.other === "number" ? src.other : 0;
+        for (const [k, v] of Object.entries(src)) {
+          if (!shown.has(k)) agg += typeof v === "number" ? v : 0;
+        }
+        row.other = agg;
+      }
+      return row;
+    });
     // Bucket gaps are filled with real 0s — ALWAYS, including interior gaps.
     // A family that ran at 02:00 and again at 18:00 was simply idle in between;
     // drawing one straight connector across those 15 silent hours renders as a
@@ -76,17 +102,17 @@ export default function UsageChart({ period = "7d" }) {
     // has no interior points to bend on, so it looks like a sharp polyline).
     // Zero-filling every gap makes idle time visibly idle and leaves the
     // smoothing to shape runs of real samples.
-    for (const f of modelFamilies) {
+    for (const f of displayedFamilies) {
       for (let i = 0; i < rows.length; i++) {
         if (typeof rows[i][f] !== "number") rows[i][f] = 0;
       }
     }
     return rows;
-  }, [data, modelFamilies]);
+  }, [data, displayedFamilies]);
 
   const hasData =
     viewMode === "models"
-      ? modelFamilies.length > 0
+      ? displayedFamilies.length > 0
       : data.some((d) => d.tokens > 0 || d.cost > 0);
 
   const MODES = [
@@ -97,16 +123,42 @@ export default function UsageChart({ period = "7d" }) {
 
   return (
     <Card className="flex min-w-0 flex-col gap-3 p-3 sm:p-4">
-      <div className="grid w-full grid-cols-3 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1 sm:w-auto sm:self-start">
-        {MODES.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => setViewMode(m.key)}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === m.key ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
-          >
-            {m.label}
-          </button>
-        ))}
+      {/* Top row: mode tabs on the left, the Model Type legend pinned to the
+          container's right edge (only in the Model Type view). The chart's own
+          <Legend> renders below the plot and wastes a row, so the legend is
+          hand-built here — same colors via familyColor(), so both stay in sync.
+
+          Responsive: on narrow screens the tabs already eat most of line 1, so
+          squeezing 6 legend items into the leftover width stacks them into a
+          tall column. `w-full` forces the legend onto its OWN row below the
+          tabs (left-aligned, free to wrap); from `sm` up it shrinks back to
+          content width and hugs the right edge (`sm:w-auto sm:justify-end`). */}
+      <div className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="grid grid-cols-3 items-center gap-1 rounded-lg border border-border bg-bg-subtle p-1 sm:w-auto">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setViewMode(m.key)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${viewMode === m.key ? "bg-primary text-white shadow-sm" : "text-text-muted hover:text-text hover:bg-bg-hover"}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        {viewMode === "models" && displayedFamilies.length > 0 && (
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-x-3 gap-y-1.5 text-[11px] leading-none text-text-muted sm:w-auto sm:justify-end sm:gap-y-1 sm:pr-3">
+            {displayedFamilies.map((f, i) => (
+              <span key={f} className="flex items-center gap-1.5 whitespace-nowrap">
+                <span
+                  className="inline-block size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: familyColor(f, i) }}
+                />
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -119,7 +171,7 @@ export default function UsageChart({ period = "7d" }) {
             {/* Same soft vertical-fade fill as the Tokens/Cost curves, one
                 gradient per family color. */}
             <defs>
-              {modelFamilies.map((f, i) => (
+              {displayedFamilies.map((f, i) => (
                 <linearGradient key={f} id={`gradFam-${i}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={familyColor(f, i)} stopOpacity={0.25} />
                   <stop offset="95%" stopColor={familyColor(f, i)} stopOpacity={0} />
@@ -151,8 +203,8 @@ export default function UsageChart({ period = "7d" }) {
               formatter={(value, name) => [fmtTokens(value), name]}
               itemSorter={(item) => -(Number(item.value) || 0)}
             />
-            <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
-            {modelFamilies.map((f, i) => (
+            {/* Legend lives in the header row (see above) — no <Legend> here. */}
+            {displayedFamilies.map((f, i) => (
               <Area
                 key={f}
                 type="monotone"
