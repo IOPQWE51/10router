@@ -1,7 +1,6 @@
 // Model-family distribution chart: model ids normalize to gateway-agnostic
-// families (provider prefix stripped, version segment only when a pure major
-// digit), and getChartData buckets carry byModel token series with the tail
-// folded into "other".
+// families (provider prefix stripped, NO version segment), and getChartData
+// buckets carry byModel token series with the tail folded into "other".
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -29,21 +28,35 @@ afterAll(() => {
 describe("modelFamilyName normalization", () => {
   it("maps acceptance examples to families", () => {
     const { modelFamilyName } = usageRepo;
-    expect(modelFamilyName("openai/gpt-4")).toBe("gpt-4");
-    expect(modelFamilyName("OpenAI/GPT-4")).toBe("gpt-4");
+    expect(modelFamilyName("openai/gpt-4")).toBe("gpt");
+    expect(modelFamilyName("OpenAI/GPT-4")).toBe("gpt");
     expect(modelFamilyName("Xiaomi/MiMo-V2.5")).toBe("mimo");
     expect(modelFamilyName("mimo-x-flash-preview")).toBe("mimo");
     expect(modelFamilyName("bai/glm-5.3-flash")).toBe("glm");
     expect(modelFamilyName("claude-opus-4-6-thinking")).toBe("claude");
-    // Prose example "gemini-pro" maps to the gemini family: the version rule
-    // keeps only pure-digit second segments (gpt-4, claude-3), so alphabetic
-    // qualifiers collapse — still one single aggregated category.
+    // Alphabetic qualifiers collapse to the product family — one category.
     expect(modelFamilyName("gemini-pro")).toBe("gemini");
     expect(modelFamilyName("nemotron-3.5-lightning-free")).toBe("nemotron");
     expect(modelFamilyName("deepseek-v4.1-flash")).toBe("deepseek");
     expect(modelFamilyName("Molotov-1206/mimo-x-flash-preview")).toBe("mimo");
     // Custom-channel UUID-ish ids collapse into "other".
     expect(modelFamilyName("85d2a64e-c610-4b3b-8c12-b857b6367207:323e6d8d")).toBe("other");
+  });
+
+  it("never splits one product line across integer and decimal majors", () => {
+    // Regression: the old "keep a pure-integer version segment" rule kept
+    // `gpt-6-astra` as gpt-6 but folded `gpt-5.6-sol` into gpt, so the legend
+    // showed `gpt` AND `gpt-6` side by side (same split for gemini/claude).
+    const { modelFamilyName } = usageRepo;
+    expect(modelFamilyName("gpt-6-astra")).toBe("gpt");
+    expect(modelFamilyName("gpt-5.6-sol")).toBe("gpt");
+    expect(modelFamilyName("gpt-5.5")).toBe("gpt");
+    expect(modelFamilyName("gpt-4")).toBe("gpt");
+    expect(modelFamilyName("gpt-5")).toBe("gpt");
+    expect(modelFamilyName("gemini-3-flash")).toBe("gemini");
+    expect(modelFamilyName("gemini-3.5-flash")).toBe("gemini");
+    expect(modelFamilyName("claude-3-sonnet")).toBe("claude");
+    expect(modelFamilyName("claude-3.5-sonnet")).toBe("claude");
   });
 });
 

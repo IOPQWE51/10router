@@ -676,10 +676,18 @@ export async function getUsageStats(period = "all") {
 // Model-family normalization for the distribution chart: this is an API
 // gateway serving the same underlying model through many channels, so the
 // chart aggregates by FAMILY, not by full model id and never by provider.
-//   openai/gpt-4          → gpt-4        (provider prefix stripped, lowercased)
-//   Xiaomi/MiMo-V2.5      → mimo         (version segment kept only when it
-//   bai/glm-5.3-flash     → glm           is a pure major digit: gpt-4, claude-3)
-//   85d2a64e-…:323e…      → other        (custom-channel UUID-ish ids)
+//   openai/gpt-4          → gpt        (provider prefix stripped, lowercased)
+//   Xiaomi/MiMo-V2.5      → mimo       (version segments are NEVER kept)
+//   bai/glm-5.3-flash     → glm
+//   85d2a64e-…:323e…      → other      (custom-channel UUID-ish ids)
+//
+// The version segment used to be kept when it was a pure integer
+// (`/^\d+$/` → gpt-4 / claude-3 / gemini-3). That rule split one family across
+// two buckets whenever the same product line mixed integer and decimal majors:
+// `gpt-6-astra` kept its version ("6" is pure digits) while `gpt-5.6-sol` lost
+// it ("5.6" has a dot) — so the legend showed both `gpt` AND `gpt-6`, and the
+// same happened for `gemini-3` / `claude-3` (8 families from 12 ids). Dropping
+// the version outright restores single-bucket-per-product aggregation.
 export function modelFamilyName(model) {
   const raw = String(model || "unknown");
   const noPrefix = raw.includes("/") ? raw.slice(raw.lastIndexOf("/") + 1) : raw;
@@ -688,9 +696,7 @@ export function modelFamilyName(model) {
   // no length cap (real descriptive names run 25-30 chars).
   if (/^[0-9a-f]{8,}/.test(lower)) return "other";
   const segs = lower.split("-");
-  let family = segs[0] || "other";
-  if (segs[1] && /^\d+$/.test(segs[1])) family += "-" + segs[1];
-  return family;
+  return segs[0] || "other";
 }
 
 // Keep the top families by period total, fold the rest into "other" — the
