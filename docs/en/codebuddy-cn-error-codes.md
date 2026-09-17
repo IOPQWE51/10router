@@ -32,7 +32,7 @@ CodeBuddy server **security policy** blocks requests it deems "from an unapprove
 - Trigger correlates with single-request shape; observed:
   - `FMT: claude→openai` (Claude client translated into CodeBuddy); successful batches were mostly `openai→openai`
   - **high tool-count (e.g. 54 vs ~31 on successful batches)** — the more tools, the more likely the security heuristic flags agent-abuse
-  - huge context (500+ MSG)
+  - huge context (500+ MSG) — **2026-09-17 Win addition: a single real-world mega-session also trips it**: `1676 MSG · 54 TOOL · THINK:high` with a **4.5MB** request body (real tool results) got 11128 on a lone account, while a **126KB** session from the same account went straight 200 ten minutes later. Note the earlier NAS "single requests always 200" verdict was measured with **synthetic** filler shapes — a real multi-turn session's size/content density is a different ballpark. **Volume itself is a trigger dimension**, not only multi-account bursts.
   - account under quota pressure (accompanied by 429 `6004` / modelLock)
 - **Not about account/format/model being banned** (glm/hy/deepseek all hit it at 54 tools; the same two accounts go straight 200 on a 31-tool deepseek).
 - **Not 10router-config fixable** (no missing header/key); path = wait out the breaker window / reduce request shape (fewer tools/messages) / switch channel.
