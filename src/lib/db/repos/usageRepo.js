@@ -696,7 +696,14 @@ export function modelFamilyName(model) {
   // no length cap (real descriptive names run 25-30 chars).
   if (/^[0-9a-f]{8,}/.test(lower)) return "other";
   const segs = lower.split("-");
-  return segs[0] || "other";
+  // Some brands attach the version DIRECTLY to the name with no hyphen, so it
+  // lands inside segs[0] and survives the split: hy4-preview → "hy4",
+  // hy3 → "hy3", qwen3.8-flash → "qwen3.8". Stripping a trailing numeric run
+  // folds those into one family (hy / qwen) — same aggregation the hyphenated
+  // form already gets (gpt-6-astra → gpt). Guard keeps a purely numeric first
+  // segment intact instead of collapsing it to "".
+  const first = segs[0] || "other";
+  return first.replace(/[0-9]+(?:\.[0-9]+)*$/, "") || first;
 }
 
 // Keep the top families by period total, fold the rest into "other" — the
