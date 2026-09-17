@@ -132,6 +132,7 @@
   },
   "cline": {
     "baseUrl": "https://api.cline.bot/api/v1/chat/completions",
+    "forceStream": true,
     "headers": {
       "HTTP-Referer": "https://cline.bot",
       "X-Title": "Cline"
@@ -1046,16 +1047,6 @@
     "validateUrl": "https://tokenbom.com/v1/models",
     "format": "openai"
   },
-  "gorouter": {
-    "baseUrl": "https://gorouter.app/v1/chat/completions",
-    "validateUrl": "https://gorouter.app/v1/models",
-    "format": "openai"
-  },
-  "tabiauto": {
-    "baseUrl": "https://tabitoken.com/v1/chat/completions",
-    "validateUrl": "https://tabitoken.com/v1/models",
-    "format": "openai"
-  },
   "agnes-ai": {
     "baseUrl": "https://apihub.agnes-ai.com/v1/chat/completions",
     "validateUrl": "https://apihub.agnes-ai.com/v1/models",
@@ -1069,6 +1060,11 @@
   "amd": {
     "baseUrl": "https://developer.amd.com.cn/radeon/api/v1/chat/completions",
     "validateUrl": "https://developer.amd.com.cn/radeon/api/v1/models",
+    "format": "openai"
+  },
+  "siliconflow-cn": {
+    "baseUrl": "https://api.siliconflow.cn/v1/chat/completions",
+    "validateUrl": "https://api.siliconflow.cn/v1/models",
     "format": "openai"
   }
 }

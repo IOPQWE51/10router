@@ -7,13 +7,12 @@ const ICON_ALIASES = {
   "vercel-ai-gateway": "vercel",
   "b.ai": "bai",
   "b-ai": "bai",
+  "siliconflow-cn": "siliconflow",
 };
 
 // Providers whose asset ships as SVG (everything else is .png).
 const ICON_EXTENSIONS = {
   bai: ".svg",
-  gorouter: ".svg",
-  tabiauto: ".svg",
 };
 
 // Runtime only — first 404 remembers id for the whole session

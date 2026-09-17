@@ -21,6 +21,7 @@ export default {
   topologyHiddenByDefault: true,
   category: "free",
   noAuth: true,
+  community: true,
   transport: {
     baseUrl: "https://api.xiaomimimo.com/api/free-ai/openai/chat",
     noAuth: true,

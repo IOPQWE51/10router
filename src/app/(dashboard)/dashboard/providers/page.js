@@ -101,7 +101,7 @@ export default function ProvidersPage() {
   const [providerNodes, setProviderNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAllApikey, setShowAllApikey] = useState(false);
-  // Community welfare providers (公益站: gorouter/tabiauto) show by default;
+  // Trial providers (体验: opencode/mimo-free) show by default;
   // hidden only when the settings toggle (Profile → Providers) is turned off.
   const [showCommunityProviders, setShowCommunityProviders] = useState(true);
   const [showAddCompatibleModal, setShowAddCompatibleModal] = useState(false);
@@ -404,7 +404,7 @@ export default function ProvidersPage() {
     if (ra !== rb) return ra - rb;
     const noAuthDiff = (b.info.noAuth ? 1 : 0) - (a.info.noAuth ? 1 : 0);
     if (noAuthDiff !== 0) return noAuthDiff;
-    // Community welfare providers (公益站: gorouter/tabiauto) cluster together
+    // Trial providers (体验: opencode/mimo-free) cluster together
     // as one contiguous block at the end of their rank group, instead of
     // interleaving with the regular free-tier providers by priority/name.
     const ca = a.info.community ? 1 : 0;
@@ -817,7 +817,7 @@ function ProviderCard({ providerId, provider, stats, authType, onToggle, topolog
                 {provider.name}
                 {provider.community && (
                   <Badge variant="warning" size="sm" className="shrink-0">
-                    {translate("Community")}
+                    {translate("Trial")}
                   </Badge>
                 )}
               </h3>
@@ -977,7 +977,7 @@ function ApiKeyProviderCard({
                 {provider.name}
                 {provider.community && (
                   <Badge variant="warning" size="sm" className="shrink-0">
-                    {translate("Community")}
+                    {translate("Trial")}
                   </Badge>
                 )}
               </h3>

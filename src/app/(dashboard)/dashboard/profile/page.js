@@ -1785,12 +1785,12 @@ export default function ProfilePage() {
               />
             </div>
 
-            {/* Show community welfare providers (公益站) */}
+            {/* Show community welfare / trial providers (体验) */}
             <div className="flex items-start sm:items-center justify-between gap-4 pt-4 border-t border-border/50">
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm sm:text-base">{translate("Show community welfare providers")}</p>
+                <p className="font-medium text-sm sm:text-base">{translate("Show trial providers")}</p>
                 <p className="text-xs sm:text-sm text-text-muted">
-                  Show free community gateways with no recharge entry (GoRouter / TaBiAI)
+                  {translate("Show public unauthenticated trial channels (e.g. OpenCode Free)")}
                 </p>
               </div>
               <Toggle

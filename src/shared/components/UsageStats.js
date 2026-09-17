@@ -281,7 +281,7 @@ export default function UsageStats({ period: periodProp, setPeriod: setPeriodPro
         for (const node of (nodesData?.nodes || [])) {
           nodeNameMap[node.id] = node.name;
         }
-        // Community welfare providers (公益站: gorouter/tabiauto) are hidden from
+        // Trial providers (体验) are hidden from
         // the topology unless the "Show community providers" setting is on — keep
         // this in sync with the providers page filter.
         const isCommunityHidden = (providerId) =>

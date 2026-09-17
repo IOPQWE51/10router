@@ -1502,10 +1502,9 @@
   "Only SQLite (.sqlite/.db) or JSON (.json) usage files can be imported": "只能导入 SQLite（.sqlite/.db）或 JSON（.json）使用量文件",
   "Invalid JSON usage file": "使用量 JSON 文件无效",
   "Account filter is active and persists across visits": "已启用账户筛选，该选择会在下次访问时保留",
-  "Community": "公益站",
-  "Show community welfare providers": "显示公益站供应商",
-  "Show community welfare providers (公益站) with no recharge entry": "显示无充值入口的公益站供应商（GoRouter / TaBiAI）",
-  "Show free community gateways with no recharge entry (GoRouter / TaBiAI)": "显示无充值入口的免费公益站供应商（GoRouter / TaBiAI）",
+  "Trial": "体验",
+  "Show trial providers": "显示体验供应商",
+  "Show public unauthenticated trial channels (e.g. OpenCode Free)": "显示公开免鉴权的免费体验通道（如 OpenCode Free）",
   "Add Custom Provider": "添加自定义供应商",
   "Import CodeBuddy CN Accounts": "导入 CodeBuddy CN 账号",
   "Import CodeBuddy CN accounts from JSON...": "从 JSON 导入 CodeBuddy CN 账号…",
@@ -1750,5 +1749,7 @@
   "Only real valid data is counted": "仅计算真实有效数据",
   "Current Streak": "当前连续天数",
   "Unit abbreviation": "单位缩写",
-  "This Week": "当周"
+  "This Week": "当周",
+  "Auto-matched region based on network location ({country})": "已根据网络出口（{country}）自动匹配节点",
+  "Current network location ({country}) recommended region: {region}": "当前网络出口（{country}）推荐节点：{region}"
 }

@@ -12,6 +12,7 @@ export default {
   },
   category: "free",
   noAuth: true,
+  community: true,
   // Free noAuth provider with no connections — hidden from the usage topology
   // canvas by default (same as mimo-free). Toggle via the topologyVisibility
   // setting on the providers page.
