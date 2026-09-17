@@ -5,6 +5,7 @@
 # 🚀 10Router
 
 [![10Router](https://img.shields.io/badge/10Router-v1.1.2-orange.svg)](https://github.com/techysy/10router/releases)
+[![Downloads](https://img.shields.io/github/downloads/techysy/10router/total?label=Downloads&color=green)](https://github.com/techysy/10router/releases)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io%2Ftechysy%2F10router-blue?logo=docker)](https://github.com/techysy/10router/pkgs/container/10router)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/techysy/10router?style=flat&logo=github)](https://github.com/techysy/10router/stargazers)
