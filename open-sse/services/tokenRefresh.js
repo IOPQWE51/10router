@@ -14,6 +14,7 @@ import {
   refreshCodebuddyToken,
   refreshCodebuddyIntlToken,
   refreshTraeToken,
+  refreshClineToken,
   refreshZedToken,
   refreshWindsurfToken,
   classifyOAuthRefreshError,
@@ -33,6 +34,7 @@ export {
   refreshCodebuddyToken,
   refreshCodebuddyIntlToken,
   refreshTraeToken,
+  refreshClineToken,
   refreshZedToken,
   refreshWindsurfToken,
   classifyOAuthRefreshError,
@@ -145,6 +147,10 @@ const REFRESH_HANDLERS = {
   "codebuddy-cn": (c, log) => refreshCodebuddyToken(c.refreshToken, log),
   "codebuddy-intl": (c, log) => refreshCodebuddyIntlToken(c.refreshToken, log),
   trae: (c, log) => refreshTraeToken(c.refreshToken, c, log),
+  // Cline/ClinePass: upstream demands camelCase JSON (issue #21), not the
+  // generic form-encoded OAuth2 body — dedicated handler, shared endpoints.
+  cline: (c, log) => refreshClineToken("cline", c.refreshToken, log),
+  clinepass: (c, log) => refreshClineToken("clinepass", c.refreshToken, log),
   zed: () => refreshZedToken(),
   windsurf: (c, log) => refreshWindsurfToken(c, log),
   // Kimi Code OAuth (merged into id `kimi`); legacy id still routes here
