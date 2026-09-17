@@ -2,7 +2,7 @@
  * Shared combo (model combo) handling with fallback support
  */
 
-import { checkFallbackError, formatRetryAfter } from "./accountFallback.js";
+import { checkFallbackError, formatRetryAfter, withRateLimitHint } from "./accountFallback.js";
 import { unavailableResponse } from "../utils/error.js";
 import { getCapabilitiesForModel } from "../providers/capabilities.js";
 import { extractTextContent } from "../translator/formats/gemini.js";
@@ -366,7 +366,10 @@ export async function handleComboChat({ body, models, handleSingleModel, log, co
   // or have no active credentials. 503 is more accurate and retryable by clients.
   const allDisabled = lastError && lastError.toLowerCase().includes("no credentials");
   const status = allDisabled ? 503 : (lastStatus || 503);
-  const msg = lastError || "All combo models unavailable";
+  // When the last failure was an upstream rate limit, translate the raw 429
+  // blob into an actionable sentence (non-429 passes through untouched); the
+  // retry timing below is appended by unavailableResponse as before.
+  const msg = withRateLimitHint(lastError || "All combo models unavailable");
 
   if (earliestRetryAfter) {
     const retryHuman = formatRetryAfter(earliestRetryAfter);

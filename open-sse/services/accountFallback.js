@@ -1,4 +1,4 @@
-import { ERROR_RULES, BACKOFF_CONFIG, TRANSIENT_COOLDOWN_MS, CHANNEL_BLOCK_MS, CHANNEL_BLOCK_ESCALATE_WINDOW_MS } from "../config/errorConfig.js";
+import { ERROR_RULES, BACKOFF_CONFIG, TRANSIENT_COOLDOWN_MS, CHANNEL_BLOCK_MS, CHANNEL_BLOCK_ESCALATE_WINDOW_MS, MAX_RATE_LIMIT_COOLDOWN_MS } from "../config/errorConfig.js";
 
 /**
  * Calculate exponential backoff cooldown for rate limits (429)
@@ -10,6 +10,47 @@ export function getQuotaCooldown(backoffLevel = 0) {
   const level = Math.max(0, backoffLevel - 1);
   const cooldown = BACKOFF_CONFIG.base * Math.pow(2, level);
   return Math.min(cooldown, BACKOFF_CONFIG.max);
+}
+
+/**
+ * Parse an explicit "wait N seconds" hint out of an upstream error message.
+ *
+ * Some upstreams state the exact window in the body itself — xiaomi-mimo TPM:
+ * `{"message":"用户 每人 触发 TPM 限流（上限 5000000），请约 23 秒后重试"}`.
+ * Ignoring it and applying the generic exponential backoff (base 2s) makes us
+ * re-hit the same limit: NAS log 2026-09-17 shows upstream asking for 23s
+ * while the gateway retried at 2s/4s/8s/16s — four wasted 429s in a row.
+ *
+ * @param {string} text - upstream error text / message field
+ * @returns {number|null} seconds, or null when no explicit hint is present
+ */
+export function extractRetrySeconds(text) {
+  const s = typeof text === "string" ? text : "";
+  if (!s) return null;
+  // Chinese: "请约 23 秒后重试" / "23 秒后重试" / "23 秒钟后重试"
+  let m = s.match(/(\d+)\s*秒(?:钟)?后(?:重试|再试|再尝试)?/);
+  if (m) return parseInt(m[1], 10);
+  // English: "retry after 23 seconds" / "retry in 23s" / "try again in 23 seconds"
+  m = s.match(/(?:retry|try again|come back|wait)\s+(?:after|in)\s+(\d+)\s*(?:s|sec|secs|seconds?)\b/i);
+  if (m) return parseInt(m[1], 10);
+  return null;
+}
+
+/**
+ * Cooldown for a `backoff: true` rule — exponential, but never shorter than an
+ * explicit wait the upstream just told us about.
+ * @param {string} errorText - message to scan for an explicit hint
+ * @param {number} backoffLevel - current backoff level
+ * @returns {number} cooldown ms (capped by MAX_RATE_LIMIT_COOLDOWN_MS)
+ */
+function backoffCooldown(errorText, backoffLevel) {
+  const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
+  const backoffMs = getQuotaCooldown(newLevel);
+  const hintSec = extractRetrySeconds(errorText);
+  if (hintSec === null) return backoffMs;
+  // max(): upstream hint wins when it is longer (it is authoritative), backoff
+  // wins when it already escalated past it — either way we never retry too soon.
+  return Math.min(Math.max(backoffMs, hintSec * 1000), MAX_RATE_LIMIT_COOLDOWN_MS);
 }
 
 /**
@@ -33,7 +74,7 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
     if (rule.text && lowerError && lowerError.includes(rule.text)) {
       if (rule.backoff) {
         const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
-        return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel, channelScope: !!rule.channelScope };
+        return { shouldFallback: true, cooldownMs: backoffCooldown(lowerError, backoffLevel), newBackoffLevel: newLevel, channelScope: !!rule.channelScope };
       }
       return { shouldFallback: true, cooldownMs: rule.cooldownMs, channelScope: !!rule.channelScope };
     }
@@ -42,7 +83,9 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
     if (rule.status && rule.status === status) {
       if (rule.backoff) {
         const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
-        return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel, channelScope: !!rule.channelScope };
+        // Respect an explicit "请约 N 秒后重试" in the body — plain exponential
+        // backoff starting at 2s re-hits an upstream that asked for 23s.
+        return { shouldFallback: true, cooldownMs: backoffCooldown(lowerError, backoffLevel), newBackoffLevel: newLevel, channelScope: !!rule.channelScope };
       }
       return { shouldFallback: true, cooldownMs: rule.cooldownMs, channelScope: !!rule.channelScope };
     }
@@ -218,6 +261,54 @@ export const CHANNEL_SCOPE_HINT =
 /** Append CHANNEL_SCOPE_HINT to a channel-block error message. */
 export function withChannelScopeHint(message) {
   return `${message}\n\n${CHANNEL_SCOPE_HINT}`;
+}
+
+// ─── friendly 429 (rate-limit) translation ──────────────────────────────────
+// Upstreams answer 429 with a raw JSON blob (xiaomi-mimo:
+// {"error":{"code":"429","message":"Too Many Requests","param":"Request rate
+// limited"}}) and10Router passes it through verbatim, so Claude-protocol
+// clients render a wall of escaped JSON instead of a sentence.
+//
+// NOTE: the cooldown itself is NOT new — ERROR_RULES already carries
+// { status: 429, backoff: true } (exponential backoff; NAS logs show 32s →
+// 64s and the per-model lock). This helper only translates the TEXT and leaves
+// the timing to the retry info the callers already append.
+// `_` matters: xiaomi-mimo's TPM shape ships `type:"rate_limit_error"` /
+// `code:"rate_limited"` (underscores, never a bare space) and carries no
+// `"429"` — only the `[429]:` prefix formatProviderError adds. See both shapes
+// in tests/unit/rate-limit-hint.test.js.
+const RATE_LIMIT_RE = /too many requests|rate[_\s-]*limit|频率限制|quota.*exceeded|"429"|\[\s*429\s*\]/i;
+
+// Where a 429 means "free/trial tier throttling" instead of an account fault.
+// Worth spelling out: users blame the account (or the gateway) when the
+// request budget is simply exhausted for this minute. Two shapes are seen on
+// xiaomi-mimo: "Too Many Requests / Request rate limited" (per-request) and
+// "用户 每人 触发 TPM 限流（上限 5000000）" (tokens-per-minute).
+const RATE_LIMIT_PROVIDER_NOTE = {
+  "xiaomi-mimo": "小米 MiMo 为体验/免费通道，每分钟请求数与 Token 数（TPM）均有硬限制，超出即拒绝。",
+};
+
+/** True when the message describes an upstream rate limit (429). */
+export function isRateLimitText(message) {
+  return RATE_LIMIT_RE.test(String(message || ""));
+}
+
+/**
+ * Append a friendly rate-limit explanation to a message that IS a rate limit.
+ * Non-rate-limit messages pass through untouched, so callers can apply it
+ * unconditionally. The wording stays shape-agnostic — the upstream body we
+ * append to already carries its own specifics (per-request vs TPM, wait time).
+ * @param {string} message - upstream/client-facing message
+ * @param {string} [provider] - adds a channel-specific note when known
+ */
+export function withRateLimitHint(message, provider) {
+  if (!isRateLimitText(message)) return message;
+  const note = RATE_LIMIT_PROVIDER_NOTE[provider] ? ` ${RATE_LIMIT_PROVIDER_NOTE[provider]}` : "";
+  return (
+    `${message}\n\n` +
+    `提示：上游触发了限流（HTTP 429），非账号异常，已按上游提示自动冷却并稍后自动恢复；` +
+    `期间可切换其他模型或渠道，或稍候重试。${note}`
+  );
 }
 
 /**

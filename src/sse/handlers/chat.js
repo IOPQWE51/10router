@@ -9,7 +9,7 @@ import {
   isValidApiKey,
 } from "../services/auth.js";
 import { getSettings, getChannelBlock, setChannelBlock, clearChannelBlock } from "@/lib/localDb";
-import { buildChannelBlock, channelBlockRemainingMs, formatRetryAfter, withChannelScopeHint } from "open-sse/services/accountFallback.js";
+import { buildChannelBlock, channelBlockRemainingMs, formatRetryAfter, withChannelScopeHint, withRateLimitHint } from "open-sse/services/accountFallback.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { isOversizedForCbcn } from "open-sse/executors/codebuddy-cn.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
@@ -272,14 +272,24 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
         const errorMsg = lastError || credentials.lastError || "Unavailable";
         const status = lastStatus || Number(credentials.lastErrorCode) || HTTP_STATUS.SERVICE_UNAVAILABLE;
         log.warn("CHAT", `[${provider}/${model}] ${errorMsg} (${credentials.retryAfterHuman})`);
-        return unavailableResponse(status, `[${provider}/${model}] ${errorMsg}`, credentials.retryAfter, credentials.retryAfterHuman);
+        // Cooldown is already running (backoff rule); translate a raw 429 JSON
+        // blob into something actionable for the client (non-429 passes through).
+        return unavailableResponse(
+          status,
+          withRateLimitHint(`[${provider}/${model}] ${errorMsg}`, provider),
+          credentials.retryAfter,
+          credentials.retryAfterHuman,
+        );
       }
       if (excludeConnectionIds.size === 0) {
         log.warn("AUTH", `No active credentials for provider: ${provider}`);
         return errorResponse(HTTP_STATUS.NOT_FOUND, `No active credentials for provider: ${provider}`);
       }
       log.warn("CHAT", "No more accounts available", { provider });
-      return errorResponse(lastStatus || HTTP_STATUS.SERVICE_UNAVAILABLE, lastError || "All accounts unavailable");
+      return errorResponse(
+        lastStatus || HTTP_STATUS.SERVICE_UNAVAILABLE,
+        withRateLimitHint(lastError || "All accounts unavailable", provider),
+      );
     }
 
     // Account selection shown in the unified "▶" line (acc:...)
