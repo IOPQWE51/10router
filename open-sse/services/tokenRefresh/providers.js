@@ -2,7 +2,7 @@ import { PROVIDERS, PROVIDER_OAUTH } from "../../config/providers.js";
 import { OAUTH_ENDPOINTS, GITHUB_COPILOT, buildKimiHeaders } from "../../config/appConstants.js";
 import { proxyAwareFetch } from "../../utils/proxyFetch.js";
 import { dedupRefresh } from "./dedup.js";
-import { buildClineHeaders } from "../../shared/clineAuth.js";
+import { buildClineHeaders, getClineAccessToken } from "../../shared/clineAuth.js";
 import { buildExternalIdpRefreshParams } from "../../../src/lib/oauth/kiroExternalIdp.js";
 
 let _xaiServiceSingleton = null;
@@ -686,11 +686,26 @@ export async function refreshClineToken(providerId, refreshToken, log) {
           "Content-Type": "application/json",
           Accept: "application/json",
         }),
-        body: JSON.stringify({ refreshToken, grantType: "refresh_token" }),
+        // clientType matches the authorization exchange convention in
+        // src/lib/oauth/providers/cline.js (client_type: "extension"); PR #22
+        // live-verified the three-field body, issue #21 the two-field one.
+        body: JSON.stringify({ refreshToken, grantType: "refresh_token", clientType: "extension" }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
+        // Terminal auth errors (revoked/expired/invalidated refresh token)
+        // surface as an unrecoverable marker instead of a bare null so logs
+        // say "re-auth required" and future scheduler logic can act on it.
+        // Transient failures — including any wrong-shape 400 — stay null/retry.
+        const failure = classifyOAuthRefreshError(errorText, response.status);
+        if (failure.permanent) {
+          log?.error?.("TOKEN_REFRESH", `${providerId} refresh token invalid or expired — re-auth required`, {
+            status: response.status,
+            code: failure.code,
+          });
+          return { error: "unrecoverable_refresh_error", code: failure.code };
+        }
         log?.error?.("TOKEN_REFRESH", `Failed to refresh ${providerId} token`, {
           status: response.status,
           error: errorText,
@@ -700,7 +715,9 @@ export async function refreshClineToken(providerId, refreshToken, log) {
 
       const payload = await response.json();
       const data = payload?.data || payload;
-      const accessToken = data?.accessToken;
+      // Canonical stored form: the workos: prefix the chat path expects
+      // (getClineAccessToken is idempotent, plain JWTs get prefixed).
+      const accessToken = getClineAccessToken(data?.accessToken);
       if (!accessToken) {
         log?.error?.("TOKEN_REFRESH", `${providerId} refresh returned no accessToken`, { payload });
         return null;

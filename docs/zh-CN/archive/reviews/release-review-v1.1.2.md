@@ -74,7 +74,7 @@
 | **失败总数** | 35 | **100% 吻合** 40 条 `known-fails` 基线（5 条基线项本轮未复现，属环境性波动） |
 | **新增回归失败** | **0** | 回归门禁 `verify-no-regression.mjs` ✅（issue #21 修复前后各跑一轮） |
 | **注册表基线** | 全绿 | providers 90 / alias 120 / oauth-urls byte-for-byte 一致 |
-| **本轮新增测试** | 21 例全绿 | `cline-refresh-token` 9 + `rate-limit-hint` 9 + `providers/[id]` 脱敏契约 3 |
+| **本轮新增测试** | 23 例全绿 | `cline-refresh-token` 11（含 PR #22 三点增量）+ `rate-limit-hint` 9 + `providers/[id]` 脱敏契约 3 |
 | **CI main tip** | 绿 | `5427acae` Tests 通过；历史两轮红 = Registry baselines 漂移已自愈 |
 
 ---
@@ -97,7 +97,7 @@
 | `ee7860ad` | 图例顶部右侧 + 6 项上限 + 移动端自适应 | ✅ other 固定最右、图表数据同集合折叠 |
 | `5427acae` | 家族归一化去连字符版本段 | ✅ CI 绿；本轮续修贴版数字形态 |
 | `7b548f34` | 审查报告收录（文档） | ✅ 本次扩写纠错的对象 |
-| 工作区 | 429 退避/限流文案、hy4/hy3 家族、概览缩写、P1 脱敏、**issue #21 Cline 刷新**、测试容错 | ✅ 全量门禁 0 新增回归（修复前后两轮）；21 例新测试绿 |
+| 工作区 | 429 退避/限流文案、hy4/hy3 家族、概览缩写、P1 脱敏、**issue #21 Cline 刷新**（09-18 吸收 PR #22 同场景三点增量：`clientType:"extension"` / accessToken `workos:` 前缀归一 / 永久性认证错误 `unrecoverable_refresh_error` 标记）、测试容错 | ✅ 全量门禁 0 新增回归（修复前后三轮）；23 例新测试绿；PR #22 superseded 关闭 |
 
 ---
 
