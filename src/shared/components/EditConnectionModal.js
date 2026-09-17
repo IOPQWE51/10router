@@ -8,6 +8,7 @@ import Button from "@/shared/components/Button";
 import Badge from "@/shared/components/Badge";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS } from "@/shared/constants/providers";
 import Select from "@/shared/components/Select";
+import { translate } from "@/i18n/runtime";
 
 export default function EditConnectionModal({ isOpen, connection, proxyPools, onSave, onClose }) {
   const [formData, setFormData] = useState({
@@ -23,6 +24,7 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
   });
   const [cloudflareData, setCloudflareData] = useState({ accountId: "" });
   const [region, setRegion] = useState("");
+  const [autoDetectedRegionInfo, setAutoDetectedRegionInfo] = useState(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [validating, setValidating] = useState(false);
@@ -53,6 +55,20 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
       if (providerCfg?.regions) {
         const savedRegion = connection.providerSpecificData?.region || providerCfg.defaultRegion || providerCfg.regions[0]?.id || "";
         setRegion(savedRegion);
+
+        // Fetch egress region recommendation for display
+        fetch("/api/network/egress-region")
+          .then((res) => res.json())
+          .then((data) => {
+            const rec = data?.recommendedRegions?.[connection.provider];
+            if (rec) {
+              setAutoDetectedRegionInfo({
+                country: data.country || data.countryCode,
+                regionId: rec,
+              });
+            }
+          })
+          .catch(() => {});
       }
       setTestResult(null);
       setValidationResult(null);
@@ -287,12 +303,24 @@ export default function EditConnectionModal({ isOpen, connection, proxyPools, on
         )}
 
         {providerRegions && (
-          <Select
-            label="Region"
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            options={providerRegions.map((r) => ({ value: r.id, label: r.label }))}
-          />
+          <div>
+            <Select
+              label="Region"
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              options={providerRegions.map((r) => ({ value: r.id, label: r.label }))}
+            />
+            {autoDetectedRegionInfo && (
+              <p className="text-xs text-text-muted mt-1 flex items-center gap-1">
+                <span>🌐</span>
+                <span>
+                  {translate("Current network location ({country}) recommended region: {region}")
+                    .replace("{country}", autoDetectedRegionInfo.country)
+                    .replace("{region}", autoDetectedRegionInfo.regionId)}
+                </span>
+              </p>
+            )}
+          </div>
         )}
 
         {!isCompatible && !isAzure && !isCloudflareAi && (

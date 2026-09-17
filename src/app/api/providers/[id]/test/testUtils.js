@@ -835,7 +835,15 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
               effectiveProxy,
             );
             if (probe.status === 401 || probe.status === 403) {
-              return { valid: false, error: "Desktop session expired — sign in to MiMo Desktop again" };
+              let overseasHint = "";
+              try {
+                const { getEgressRegion } = await import("@/lib/network/egressRegion");
+                const egress = await getEgressRegion({ timeoutMs: 1500 });
+                if (egress?.countryCode && egress.countryCode !== "CN") {
+                  overseasHint = " (detected non-mainland network; desktop preview models require China-side proxy)";
+                }
+              } catch {}
+              return { valid: false, error: `Desktop session expired or unauthorized — sign in to MiMo Desktop again${overseasHint}` };
             }
             if (!probe.ok) {
               return { valid: false, error: `Preview probe failed (HTTP ${probe.status})` };
@@ -855,11 +863,17 @@ async function testApiKeyConnection(connection, effectiveProxy = null) {
             return { valid: false, error: e?.message || "Preview probe failed" };
           }
         }
-        const baseUrls = { "xiaomi-mimo": "https://api.xiaomimimo.com/v1", "xiaomi-tokenplan": "https://token-plan-sgp.xiaomimimo.com/v1" };
-        const res = await fetchWithConnectionProxy(`${baseUrls[connection.provider]}/models`, {
+        let testUrl = "https://api.xiaomimimo.com/v1/models";
+        if (connection.provider === "xiaomi-tokenplan") {
+          const { resolveXiaomiTokenplanBaseUrl } = await import("open-sse/config/providers.js");
+          testUrl = `${resolveXiaomiTokenplanBaseUrl(connection)}/models`;
+        }
+        const res = await fetchWithConnectionProxy(testUrl, {
           headers: { Authorization: `Bearer ${connection.apiKey}` },
         }, effectiveProxy);
-        return { valid: res.ok, error: res.ok ? null : "Invalid API key" };
+        // xiaomi-tokenplan: /models returns 403 for valid keys lacking list permission; only 401 means invalid
+        const valid = connection.provider === "xiaomi-tokenplan" ? res.status !== 401 : res.ok;
+        return { valid, error: valid ? null : "Invalid API key" };
       }
       case "blackbox": {
         const baseUrl = PROVIDERS["blackbox"]?.baseUrl?.replace(/\/chat\/completions$/, "") || "https://api.blackbox.ai/v1";
@@ -918,9 +932,7 @@ case "llm7": {
       case "featherless":
       case "bluesminds":
       case "alitp-intl":
-      case "tokenbom":
-      case "gorouter":
-      case "tabiauto": {
+      case "tokenbom": {
         // Generic OpenAI-compatible freeTier/apikey providers with a GET
         // /models endpoint and default Bearer auth — validate via that.
         const validateUrl =
