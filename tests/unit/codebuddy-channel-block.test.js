@@ -19,7 +19,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { checkFallbackError, buildChannelBlock, channelBlockRemainingMs, isModelLockActive, buildModelLockUpdate } from "../../open-sse/services/accountFallback.js";
+import { checkFallbackError, buildChannelBlock, channelBlockRemainingMs, isModelLockActive, buildModelLockUpdate, withChannelScopeHint, CHANNEL_SCOPE_HINT } from "../../open-sse/services/accountFallback.js";
 import { ERROR_RULES, CHANNEL_BLOCK_MS, CHANNEL_BLOCK_ESCALATE_WINDOW_MS } from "../../open-sse/config/errorConfig.js";
 
 // markAccountUnavailable touches the DB + proxy/registry lookups; stub them so the
@@ -230,5 +230,27 @@ describe("channel block vs. earliest-expiry quota refresh", () => {
     // ...and an expired one does not, so refresh resumes on its own.
     const stale = { until: new Date(Date.now() - 1000).toISOString(), lastAt: "", strikes: 1 };
     expect(channelBlockRemainingMs(stale)).toBe(0);
+  });
+});
+
+// ─── friendly hint on channel-block responses ─────────────────────────────────
+describe("withChannelScopeHint — clients must be told WHAT TO DO, not just 'Bad Request'", () => {
+  it("appends the hint after the original message", () => {
+    const msg = withChannelScopeHint("[codebuddy-cn/glm-5.3-flash] upstream text");
+    expect(msg.startsWith("[codebuddy-cn/glm-5.3-flash] upstream text — ")).toBe(true);
+    expect(msg).toContain(CHANNEL_SCOPE_HINT);
+  });
+
+  it("hint explains the cause (request shape / channel-level) and the remedy (compact / retry later)", () => {
+    // English half — what caused it and what to do:
+    expect(CHANNEL_SCOPE_HINT).toContain("request shape");
+    expect(CHANNEL_SCOPE_HINT).toContain("channel-level security policy");
+    expect(CHANNEL_SCOPE_HINT).toContain("compact the session");
+    // Chinese half (upstream displayMsg already ships zh — ours must not be en-only):
+    expect(CHANNEL_SCOPE_HINT).toContain("压缩会话");
+    expect(CHANNEL_SCOPE_HINT).toContain("渠道级风控");
+    // Must not blame the account — that's the whole point of channel-scope:
+    expect(CHANNEL_SCOPE_HINT).toContain("not an account issue");
+    expect(CHANNEL_SCOPE_HINT).toContain("非账号问题");
   });
 });

@@ -204,6 +204,23 @@ export function channelBlockRemainingMs(block, nowMs = Date.now()) {
 }
 
 /**
+ * Friendly hint appended to channel-block responses. Clients (e.g. ZCode) wrap
+ * our400 into a bare "Bad Request", and the raw upstream JSON alone does not
+ * tell the user what to DO — so both the first-hit response and the
+ * window-blocked response carry this explanation. Bilingual because the
+ * upstream displayMsg already ships zh translations and our users read both.
+ */
+export const CHANNEL_SCOPE_HINT =
+  "hint: the request shape (very long conversation / many tools) triggered the upstream channel-level security policy — not an account issue; " +
+  "retry after the window or compact the session · " +
+  "提示:请求形态(超长会话/工具过多)触发上游渠道级风控,非账号问题;请压缩会话或稍后重试,窗口结束自动恢复";
+
+/** Append CHANNEL_SCOPE_HINT to a channel-block error message. */
+export function withChannelScopeHint(message) {
+  return `${message} — ${CHANNEL_SCOPE_HINT}`;
+}
+
+/**
  * Filter available accounts (not in cooldown)
  */
 export function filterAvailableAccounts(accounts, excludeId = null) {

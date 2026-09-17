@@ -9,7 +9,7 @@ import {
   isValidApiKey,
 } from "../services/auth.js";
 import { getSettings, getChannelBlock, setChannelBlock, clearChannelBlock } from "@/lib/localDb";
-import { buildChannelBlock, channelBlockRemainingMs, formatRetryAfter } from "open-sse/services/accountFallback.js";
+import { buildChannelBlock, channelBlockRemainingMs, formatRetryAfter, withChannelScopeHint } from "open-sse/services/accountFallback.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
 import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
@@ -238,7 +238,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
     log.warn("AUTH", `${provider} | channel blocked (${human}) — skipping all accounts`);
     return unavailableResponse(
       HTTP_STATUS.SERVICE_UNAVAILABLE,
-      `[${provider}/${model}] channel temporarily blocked by upstream security policy (${human})`,
+      withChannelScopeHint(`[${provider}/${model}] channel temporarily blocked by upstream security policy`),
       until,
       human,
     );
@@ -345,7 +345,7 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       log.warn("CHAT", `[${provider}/${model}] ${result.error} (channel blocked, ${human})`);
       return unavailableResponse(
         result.status || HTTP_STATUS.SERVICE_UNAVAILABLE,
-        `[${provider}/${model}] ${result.error}`,
+        withChannelScopeHint(`[${provider}/${model}] ${result.error}`),
         block.until,
         human,
       );

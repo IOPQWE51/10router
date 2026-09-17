@@ -28,6 +28,8 @@
 
 ### 🛠️ 优化与修复
 
+- **渠道熔断响应附带友好提示**：命中 11128 类渠道级风控时，客户端收到的不再只是上游原始 JSON（ZCode 等客户端只显示素的 "Bad Request"）——首次命中(400)与熔断窗口内(503)两处响应都追加中英双语说明：**这是请求形态（超长会话/工具过多）触发的上游渠道级安全风控，非账号问题；请压缩会话或稍后重试，窗口结束自动恢复**。纯函数 `withChannelScopeHint`（`open-sse/services/accountFallback.js`）承载文案，单测锁契约（cause/remedy/双语/不甩锅账号四要素）。
+
 - **渠道级熔断三项跟进修复（P0 运行时崩溃 + 并发竞态 + 死代码）**：
   - **P0：`chat.js` 运行时必崩修复**——`0065bd0c` 引入渠道熔断时，`getChannelBlock / setChannelBlock / clearChannelBlock` 只加在 `src/lib/db/index.js`，**漏了 `src/lib/localDb.js` 兼容 shim 的 re-export**。ESM 缺失命名导入在构建期不报错、单测又把 localDb 整个 mock 掉，导致全量测试绿灯但**运行时每个聊天请求都会 `TypeError: getChannelBlock is not a function` 直接 500**。补上 shim 导出；新增 `tests/unit/localdb-shim-export-guard.test.js`——解析全库 `import { … } from "@/lib/localDb"` 并逐一核对 shim 真实导出，下次再漏会在 CI 红而不是生产崩。
   - **熔断状态并发竞态修复**：`setChannelBlock` / `clearChannelBlock` 原实现在事务**外** `getSettings()` 读、再把整个 `channelBlocks` map 传入 `updateSettings` 覆盖写——两个 provider 同时熔断会互相丢 block，`clearChannelBlock` 也可能复活期间新设的 block（注释声称的并发安全并不成立）。新增事务内 read-modify-write helper `mutateSettings`，合并逻辑进事务才真正原子；`tests/unit/channel-block-repo.test.js` 5 例在真实 store 上跑（含并发 set 无丢失、set+clear 竞态一致性），旧实现下该并发用例必红。
