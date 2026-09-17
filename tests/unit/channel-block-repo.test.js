@@ -23,7 +23,10 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-  if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
+  // Windows: SQLite handles release lazily after the pool closes, so rmSync
+  // here can throw EPERM and fail the suite AFTER every test passed
+  // (release-review v1.1.2 §六.2). Cleanup is best-effort.
+  if (tempDir) { try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {} }
   if (originalDataDir === undefined) delete process.env.DATA_DIR;
   else process.env.DATA_DIR = originalDataDir;
 });
