@@ -211,13 +211,13 @@ export function channelBlockRemainingMs(block, nowMs = Date.now()) {
  * upstream displayMsg already ships zh translations and our users read both.
  */
 export const CHANNEL_SCOPE_HINT =
-  "hint: the request shape (very long conversation / many tools) triggered the upstream channel-level security policy — not an account issue; " +
-  "retry after the window or compact the session · " +
-  "提示:请求形态(超长会话/工具过多)触发上游渠道级风控,非账号问题;请压缩会话或稍后重试,窗口结束自动恢复";
+  "提示：当前请求触发上游渠道级安全风控（非账号问题）。" +
+  "出路：1. 开启新对话重试（推荐）；2. 输入 /compact 压缩会话后重试；3. 稍等窗口结束后自动恢复。" +
+  "（注意：切到其它渠道前请确认该渠道也有同名模型，否则会报 11102 模型不存在。）";
 
 /** Append CHANNEL_SCOPE_HINT to a channel-block error message. */
 export function withChannelScopeHint(message) {
-  return `${message} — ${CHANNEL_SCOPE_HINT}`;
+  return `${message}\n\n${CHANNEL_SCOPE_HINT}`;
 }
 
 /**

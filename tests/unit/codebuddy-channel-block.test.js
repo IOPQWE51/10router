@@ -237,20 +237,20 @@ describe("channel block vs. earliest-expiry quota refresh", () => {
 describe("withChannelScopeHint — clients must be told WHAT TO DO, not just 'Bad Request'", () => {
   it("appends the hint after the original message", () => {
     const msg = withChannelScopeHint("[codebuddy-cn/glm-5.3-flash] upstream text");
-    expect(msg.startsWith("[codebuddy-cn/glm-5.3-flash] upstream text — ")).toBe(true);
+    expect(msg.startsWith("[codebuddy-cn/glm-5.3-flash] upstream text\n\n")).toBe(true);
     expect(msg).toContain(CHANNEL_SCOPE_HINT);
   });
 
-  it("hint explains the cause (request shape / channel-level) and the remedy (compact / retry later)", () => {
-    // English half — what caused it and what to do:
-    expect(CHANNEL_SCOPE_HINT).toContain("request shape");
-    expect(CHANNEL_SCOPE_HINT).toContain("channel-level security policy");
-    expect(CHANNEL_SCOPE_HINT).toContain("compact the session");
-    // Chinese half (upstream displayMsg already ships zh — ours must not be en-only):
-    expect(CHANNEL_SCOPE_HINT).toContain("压缩会话");
-    expect(CHANNEL_SCOPE_HINT).toContain("渠道级风控");
-    // Must not blame the account — that's the whole point of channel-scope:
-    expect(CHANNEL_SCOPE_HINT).toContain("not an account issue");
+  it("hint explains the cause, offers actionable remedies, and warns about cross-channel model mismatch", () => {
+    // Cause — channel-level, explicitly not the account's fault:
+    expect(CHANNEL_SCOPE_HINT).toContain("渠道级安全风控");
     expect(CHANNEL_SCOPE_HINT).toContain("非账号问题");
+    // Remedies — at least the compact path and a new-session path:
+    expect(CHANNEL_SCOPE_HINT).toContain("压缩会话");
+    expect(CHANNEL_SCOPE_HINT).toContain("新对话");
+    // Cross-channel advice must carry the 11102 caveat: cbcn-only models
+    // (glm-5.3-flash, deepseek-v4-pro) do not exist on cbai, so a blind
+    // "switch channel" suggestion would produce a model-not-found error.
+    expect(CHANNEL_SCOPE_HINT).toContain("11102");
   });
 });

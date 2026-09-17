@@ -48,6 +48,7 @@
 | [sqlite-driver-chain](sqlite-driver-chain.md) | better-sqlite3 在 Node≥24 SIGSEGV → node:sqlite 回退链与打包取舍 |
 | [tray-icon-monochrome](tray-icon-monochrome.md) | mac template 图标的 alpha 陷阱（alpha=图案）与 Windows 双主题注册表 |
 | [mirasim-dsh-toolcall-loss](mirasim-dsh-toolcall-loss.md) | 内嵌 dsh 工具调用 id/name 丢失导致 CodeBuddy 11133 |
+| [zcode-cbcn-compatibility-and-plugin-design](zcode-cbcn-compatibility-and-plugin-design.md) | ZCode 与 CodeBuddy CN (cbcn) 11128 兼容治理与插件协同设计 |
 | [CodeBuddy-agent-amnesia-fix](CodeBuddy-agent-amnesia-fix.md) | CodeBuddy CN agent system prompt 失忆问题 |
 | [usage-usageKey-contract](usage-usageKey-contract.md) | 用量去重 usageKey 契约（请求聚合键）|
 | [contributors-cache-residue](archive/contributors-cache-residue.md) | GitHub 贡献者页幽灵数据（fork 网络残留缓存）|

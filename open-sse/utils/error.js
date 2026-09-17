@@ -13,6 +13,7 @@ export function buildErrorBody(statusCode, message) {
       : { type: "invalid_request_error", code: "" });
 
   return {
+    type: "error",
     error: {
       message: message || DEFAULT_ERROR_MESSAGES[statusCode] || "An error occurred",
       type: errorInfo.type,
@@ -148,7 +149,13 @@ export function unavailableResponse(statusCode, message, retryAfter, retryAfterH
   const retryAfterSec = Math.max(Math.ceil((new Date(retryAfter).getTime() - Date.now()) / 1000), 1);
   const msg = `${message} (${retryAfterHuman})`;
   return new Response(
-    JSON.stringify({ error: { message: msg } }),
+    JSON.stringify({
+      type: "error",
+      error: {
+        type: statusCode >= 500 ? "api_error" : "invalid_request_error",
+        message: msg,
+      },
+    }),
     {
       status: statusCode,
       headers: {

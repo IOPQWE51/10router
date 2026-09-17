@@ -87,4 +87,38 @@ export class CodeBuddyExecutor extends DefaultExecutor {
   }
 }
 
+/**
+ * Heuristics for requests destined for CodeBuddy CN that are almost guaranteed
+ * to trigger Tencent's upstream WAF 11128 ("unapproved channel") block.
+ *
+ * Real measurements on Win 1.1.2-test.30 (2026-09-17):
+ * - 4.5MB payload (1676 messages, 54 tools) triggers 11128 instantly (within 848ms).
+ * - 126KB payload on the same account succeeds with 200.
+ *
+ * Intercepting oversized payloads before dispatching to upstream saves the channel
+ * from being penalized and triggering a 60s/10m channel block for all accounts.
+ */
+export const CBCN_PAYLOAD_LIMITS = {
+  maxBytes: 3.2 * 1024 * 1024, // 3.2MB threshold (4.5MB is known to trigger)
+  maxMessages: 1200,
+  maxTools: 60,
+};
+
+export function isOversizedForCbcn(body) {
+  if (!body || typeof body !== "object") return false;
+  if (Array.isArray(body.messages) && body.messages.length > CBCN_PAYLOAD_LIMITS.maxMessages) {
+    return true;
+  }
+  if (Array.isArray(body.tools) && body.tools.length > CBCN_PAYLOAD_LIMITS.maxTools) {
+    return true;
+  }
+  try {
+    const rawLen = JSON.stringify(body).length;
+    if (rawLen > CBCN_PAYLOAD_LIMITS.maxBytes) {
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 export default CodeBuddyExecutor;
