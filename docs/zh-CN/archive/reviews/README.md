@@ -7,7 +7,7 @@
 | **v1.0.7** | [release-review-v1.0.7.md](release-review-v1.0.7.md) | 23 笔提交逐笔审查、安全修复验证、上游 v0.5.69 重实现审计与回归门禁 | v1.0.6..v1.0.7（23 commits） | 0 阻塞，已发布 |
 | **v1.1.0** | [release-review-v1.1.0.md](release-review-v1.1.0.md) | 原 1.0.9 计划作废并入 1.1.0 的决策记录，65 笔提交全量审查 | v1.0.8..v1.1.0（65 commits） | 0 阻塞，已发布 |
 | **v1.1.1** | [release-review-v1.1.1.md](release-review-v1.1.1.md) | 81 笔提交全量审读，覆盖 P1 安全修复、#13/#14、P2 批量启用/禁用、OAuth 加密传输与 SSR 冒烟闸门 | v1.1.0..v1.1.1（81 commits） | 0 阻塞，已发布 |
-| **v1.1.2** | [release-review-v1.1.2.md](release-review-v1.1.2.md) | 80 笔提交全量审读，覆盖 11128 渠道熔断及友好提示、小米双凭据体系脱敏、用量仪表盘/热力图/健康度、并发原子写与本地导出守卫 | v1.1.1..HEAD（80 commits） | 0 阻塞，就绪 |
+| **v1.1.2** | [release-review-v1.1.2.md](release-review-v1.1.2.md) | 87 笔提交 + 工作区复审轮全量审读，覆盖 11128 渠道熔断与 429 退避对齐、providers 双接口脱敏（P1）、issue #21 Cline 刷新 400 修复、用量仪表盘/家族聚合/图例、体验分类治理、并发原子写与注册表基线 | v1.1.1..HEAD（87 commits）+ 工作区 | 0 阻塞，就绪 |
 
 ---
 

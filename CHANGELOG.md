@@ -14,6 +14,10 @@
   - **数据口径**：外部导入行（`meta.imported`）**不参与健康度评分**但计入热力图与生涯统计。**9r/10r 网关同步行除外**（2026-09-16 补）：`meta.gatewaySync=true` 标记「源实例原生观测」的导入行（10router-sync `--source 10r` 仅对源库原生行打标；服务端 9r 备份 sqlite 导入路径同规则自动打标）——其状态码是真实网关结果，计入健康度评分；B 实例自己从客户端账本（zcode/mirasim/mimo）导入过的行经链式同步**不带**标记，继续排除。
   - 新 API `GET /api/usage/dashboard`（`src/lib/db/repos/usageRepo.js` 的 `getUsageDashboard`，`period/days/start/end` 参数保留兼容但已不使用）；i18n 词条接入 zh-CN；新增 `tests/unit/usage-dashboard-import-exclusion.test.js` 4 例（导入排除/热力包含/阈值/范围无关性 + lifetime 断言）。
 
+- **小米 Token Plan 出口节点智能匹配（ip.sb 多源探测）**：官方三集群 `cn`/`sgp`/`ams` 不再需要手动猜——添加/编辑 `xiaomi-tokenplan` 连接时自动探测本机网络出口地区并预选对应节点（中国大陆/港澳台→`cn`，欧洲→`ams`，其余海外→`sgp`），节点下拉框旁提示「已根据当前网络出口自动匹配节点」，用户随时可手动改回。服务端探测接口 `GET /api/network/egress-region`（`src/lib/network/egressRegion.js`）：ip.sb geoip + 3 秒超时 + 15 分钟内存缓存 + 整链 fail-open（探测失败静默返回 null，绝不阻塞连接添加/编辑流程）。顺带修复存量缺陷：连接「测试」按钮原把 `xiaomi-tokenplan` 硬编码打向 `sgp` 集群，配置 `cn`/`ams` 的连接永远测不通——现按 `providerSpecificData.region` 动态解析测试端点，与聊天转发行为一致；小米桌面会话模型出口在海外时的探测失败提示附带回国代理指引。新增 `tests/unit/egress-region.test.js`（国家→集群映射/缓存/超时 fail-open）与 `tests/unit/xiaomi-tokenplan-test-region.test.js`（region→测试 URL 路由）锁行为。
+
+- **10router-sync 插件 v1.4.0：新增 `/10router-sync:status` 实例状态监控命令**：不打开仪表盘、一条命令查看目标 10Router 实例的运行状态与今日用量摘要（版本、连接规模、今日请求数/Token/费用等），复用插件既有认证链（仪表盘会话 / CLI token `x-9r-cli-token`），与导出/导入命令同配置即用。插件发版三处版本号同步：`.zcode-plugin/plugin.json` + 根 `marketplace.json`（Discover 实际索引）+ `zcode-plugin/marketplace.json`。
+
 - **10router-sync 插件 v1.3.0：新增 10Router/9Router 实例用量同步（`--source 10r`）**。
   - 读另一个 10Router（或遗留 9Router）实例的 `data.sqlite`（`usageHistory` 表），原样透传导入目标实例——provider/cost/status/tokens/meta 全保留，同名 provider 在目标侧自然合并；适用于把 NAS 实例、兄弟中继、9Router 老安装的用量汇总进一处仪表盘。别名 `10router` / `9r` / `9router`。
   - 源库发现：`--db <path>` 显式指定（NAS 拷贝/挂载盘），否则自动发现 `%APPDATA%\10router|9router\db\data.sqlite` / `~/.10router|~/.9router/db/data.sqlite`（env `TENROUTER_DB` 优先，多库共存时提示）；`--tag` 自定义 `meta.syncedFrom` 标签；源实例 `connectionId` 挪进 `meta.sourceConnectionId` 并置空，避免污染目标按账户聚合。
@@ -68,6 +72,31 @@
   - **配额项名称国际化**：修复用量面板配额名称硬编码英文问题，Command Code 滚动限额（`session (5h)` / `Session (5h)` → 滚动 / 滾動）、每周限额（`weekly (7d)` / `Weekly (7d)` → 每周 / 每週）、Qoder 账号级别（`Personal` / `Organization` → 个人 / 组织）、DeepSeek 及其他渠道通用余额（`Balance`、`Balance (CNY)`、`Balance (USD)`、`Balance ($)` 及任意货币模式 `Balance (XXX)` 动态正则回落）全部接入国际化字典与展示层转换；
   - **卡片视图与进度条管道接入**：修复 `ProviderLimitCard` 视图中直接渲染原始英文 `quota.name`、`message`、`error` 导致界面未翻译的遗漏，全量接入 `translateQuotaName()` 与 `translate()` 管道；进度条 `QuotaProgressBar` 补齐重置词（`Reset` / `Expires` → 重置 / 过期）与请求次数（`requests` → 次请求）的多语言翻译；
   - **供应商未连接与异常提示词翻译**：补齐 MiniMax（`MiniMax API key invalid or inactive...`、`MiniMax API key not available...`）、小米桌面版（`Xiaomi MiMo Desktop not connected...`、`Weekly quota requires Xiaomi account session. API key alone is insufficient.`）、Command Code、DeepSeek、OpenCode Go、Qoder 等用量状态提示文案的 zh-CN / zh-TW 字典；新增单元测试 `tests/unit/usage-quota-i18n.test.js`。
+
+- **429 限流冷却尊重上游「请约 N 秒后重试」+ 客户端友好提示**：
+  - **退避失配修复**：上游错误体明确给出等待窗口时（小米 MiMo TPM 实测文案：`用户 每人 触发 TPM 限流（上限 5000000），请约 23 秒后重试`），网关原先无视提示、按通用指数退避 2s/4s/8s/16s 连续空打——NAS 日志实证 16 秒内 4 连 429 全部浪费。新增 `extractRetrySeconds()`（中英双语模式：「N 秒后重试」/「retry after N seconds」）与 `backoffCooldown()`：冷却取 `max(指数退避, 上游提示秒数)`，上限仍为 30 分钟封顶；`checkFallbackError` 两条 `backoff` 分支统一接入，渠道熔断（`channelScope`）路径不受影响。
+  - **限流文案友好化**：`withRateLimitHint()` 识别 429 限流类报文（`too many requests`/`rate_limit`/`频率限制`/`quota.*exceeded`/`[429]` 等形态），命中时在响应尾部追加「上游触发了限流（HTTP 429），非账号异常，已按上游提示自动冷却并稍后自动恢复；期间可切换其他模型或渠道」说明；小米 MiMo 渠道另附「体验/免费通道每分钟请求数与 TPM 均有硬限制」备注；非限流报文原样通过，可无条件套用。接入 `src/sse/handlers/chat.js`（全账号冷却、无账号可用两条客户端路径）与 `open-sse/services/combo.js` 组合模型兜底路径。
+  - 新增 `tests/unit/rate-limit-hint.test.js` 9 例：真实报文识别（mimo 每请求/TPM 两种 429、CodeBuddy 6004、11128 不误判）、秒数解析（中文 23s/21s/30s、英文 45s、无提示 null）、冷却取值（上游提示 23s→冷却 23000ms、无提示走纯指数退避、超 30 分钟封顶）、渠道熔断响应不受影响。
+
+- **修复 Cline/ClinePass 后台凭据自动刷新 400（issue #21，感谢 @TIANXT97 报告与定位）**：上游 `POST api.cline.bot/api/v1/auth/refresh` 不接受通用 OAuth2 蛇形表单体，严格校验 **JSON + 小驼峰**（`refreshToken` / `grantType`），原通用刷新链路对 cline 连接 100% 报 400 Validation failed，凭据到期即断连、后台无感续期失效。修法：`tokenRefresh/providers.js` 新增 `refreshClineToken(providerId, refreshToken, log)`——请求体 `{refreshToken, grantType:"refresh_token"}` JSON 提交，头部复用 `clineAuth.js` 的 `buildClineHeaders()`（chat/user 的 `Bearer workos:` 前缀不适用于刷新接口，token 走请求体），`dedupRefresh` 去重防调度器与请求路径并发重复打上游；响应 `data.expiresAt`（ISO）归一为相对 `expiresIn`（秒，与调度器/持久化层既有约定一致），`refreshToken` 轮换保留、无轮换回退旧值。`REFRESH_HANDLERS` 注册 `cline` + **`clinepass`**（ClinePass OAuth 共用同一 refresh 端点，原同样 400，一并修复）。新增 `tests/unit/cline-refresh-token.test.js` 9 例：请求体小驼峰 JSON（断言不含 `refresh_token`/`grant_type`）、端点 URL、`expiresIn` 归一、token 轮换/保旧、400 与无 accessToken 返回 null、双 provider 分发路由、merge 层 expiresAt 计算。
+
+- **用量「模型类型」图表治理（家族聚合两轮 + 图例重构 + 概览接入单位缩写）**：
+  - **家族归一化**：模型家族聚合原按连字符首段切分，`gpt-4o`/`gpt-6-astra` 归并正常，但版本号直接贴在品牌名上的产品被拆散——`hy4-preview`/`hy3` 各自成族、`qwen3.8` 与 `qwen2.5` 分家、`gpt-6` 与 `gpt` 分裂。两轮修复：先剥首段的连字符版本段（`gpt-6`→`gpt`），再对首段剥贴版数字（`hy4`→`hy`、`qwen3.8`→`qwen`，`[0-9]+(\.[0-9]+)*$` 正则），纯数字首段护栏保留原值不塌空、UUID 型模型名仍归 `other`。
+  - **图例重构**：图例从图表内迁至顶部标签行右侧、贴容器最右缘；「other」聚合项**固定最右侧且不简写**；最多显示 6 项（含 other），超出按用量折叠进 other、图表数据同集合同步折叠；移动端整行自适应（`w-full`，桌面右对齐），图例与系列颜色一一对应。
+  - **概览卡片接入单位缩写开关**：用量概览 5 张卡（总请求数/输入/缓存/输出 Token/费用）原用裸 `Intl.NumberFormat` 恒显完整千分位，与详情页的「单位缩写」开关脱节——四张计数卡统一改走 `fmtTokens(值, 语言)`（中文亿/万、其他语言 B/M/K，localStorage 开关双向生效）；Est. Cost 保持 `fmtCost`（货币金额不属于单位缩写范畴）。
+
+- **CodeBuddy 11128 极端体积兜底与错误体协议化**：在渠道熔断治理之上增加极端请求体积的本地兜底（`isOversizedForCbcn` 判定直接拦截），明显超限的会话不再白白触达上游触发风控；网关错误响应体按 Claude 协议补齐顶层 `type:"error"` 字段（`open-sse/utils/error.js` 的 `buildErrorBody`/`unavailableResponse`），Claude 系客户端不再把结构化错误渲染成裸「Bad Request」；渠道熔断提示文案改以中文为主（保留必要英文对照）。
+
+- **供应商与分类治理（体验分类 + 失效站下架 + 图标补齐）**：失效公益站 `gorouter`/`tabiauto` 下架移除（上游 403 FreeTierError 已死，无适配计划）；OpenCode Free / MiMo Code Free 归入新「体验」分类（registry 标记 `community: true`），默认从主列表隐藏，切换开关文案「显示公开免鉴权的免费体验通道（如 OpenCode Free）」；`siliconflow-cn` 补品牌图标（`providerIcon.js` 增加图标别名映射指向 siliconflow 资产）。
+
+- **安全（P1）：`GET/PUT /api/providers/[id]` 单条连接接口脱敏**：列表接口（`328ecc41`）已抹 `providerSpecificData.mimoPassToken`，但单条接口的 GET 与 PUT 响应仍把 `providerSpecificData` 整包回显——小米桌面会话 cookie 明文暴露给任何仪表盘消费者。新增 `toSafeConnection()` 与列表同规则：删 `mimoPassToken` 与顶层 `apiKey/accessToken/refreshToken/idToken`，补 `hasAccessToken`/`hasDesktopSession` 能力布尔（占位 session 不算真 key）；PUT 为 merge 语义，编辑回传缺字段不会灭失存量 token。契约测试 `providers-route-secret-stripping.test.js` 扩 3 例：单条 GET 响应脱敏、部分编辑响应脱敏且存量 token 存活、无 `providerSpecificData` 编辑不灭失。
+
+- **工程**：`tests/unit/channel-block-repo.test.js` 的 afterAll 临时目录清理包 try/catch 容错——Windows 下 SQLite 句柄延迟释放偶现 EPERM，把全绿套件打成 suite fail（发版审查 v1.1.2 §六.2 建议项落地）。
+
+### 📄 文档
+
+- **v1.1.2 全量审查报告**：`docs/zh-CN/archive/reviews/release-review-v1.1.2.md` 收录 v1.1.1→HEAD 全量审查，并于 2026-09-17 复审轮扩写——范围扩至 87 提交 + 工作区改动，纠错安全章节（单条接口泄漏已修），补发版 checklist；历史归档索引同步。
+- **CodeBuddy 错误码手册**（`docs/zh-CN/codebuddy-cn-error-codes.md`）：11128 条目补「渠道级熔断」处置与实测判据（CN + intl 通用）；ZCode 兼容文档（`docs/zh-CN/zcode-cbcn-compatibility-and-plugin-design.md`）将「体积即触发维度」更正为已推翻结论（60KB 失败 / 113KB 通过样本对照），网关侧极端体积仅作兜底定位。
 
 ## v1.1.1 (2026-09-14)
 
